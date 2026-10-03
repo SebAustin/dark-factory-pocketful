@@ -1,6 +1,7 @@
 """Entry point: python -m app.server. Listens on 0.0.0.0:$PORT (default 8080)."""
 import importlib
 import os
+import socketserver
 import sys
 import threading
 import traceback
@@ -37,6 +38,7 @@ class Handler(BaseHTTPRequestHandler):
     sys_version = ""
 
     def _handle(self):
+        self._ctx = None
         try:
             status, body = self._dispatch()
         except errors.ApiError as err:
@@ -66,7 +68,8 @@ class Handler(BaseHTTPRequestHandler):
             raise errors.malformed("request body too large")
         raw = self.rfile.read(n) if n else b""
         method = "GET" if self.command == "HEAD" else self.command
-        return routes.dispatch(Ctx(method, self.path, self.headers, raw))
+        self._ctx = Ctx(method, self.path, self.headers, raw)
+        return routes.dispatch(self._ctx)
 
     def _discard(self, n):
         """Read and drop an oversized body so the client receives the 400, not a reset."""
@@ -84,6 +87,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_raw(body)
         data = b"" if status == 204 or body is None else encode(body)
         self.send_response(status)
+        self._send_extra_headers()
         if status != 204:
             self.send_header("Content-Type", CONTENT_TYPE)
         self.send_header("Content-Length", str(len(data)))
@@ -93,12 +97,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def _send_raw(self, raw):
         self.send_response(raw.status)
+        self._send_extra_headers()
         for name, value in raw.headers.items():
             self.send_header(name, value)
         self.send_header("Content-Length", str(len(raw.data)))
         self.end_headers()
         if raw.data and self.command != "HEAD" and raw.status != 304:
             self.wfile.write(raw.data)
+
+    def _send_extra_headers(self):
+        for name, value in (self._ctx.response_headers if self._ctx else {}).items():
+            self.send_header(name, value)
 
     def __getattr__(self, name):
         # Every method reaches the router, which answers 404 or 405 with the envelope.
@@ -136,6 +145,14 @@ class Server(ThreadingHTTPServer):
     daemon_threads = True
     request_queue_size = 1024
     allow_reuse_address = True
+
+    def server_bind(self):
+        # The stdlib calls socket.getfqdn() here: a reverse DNS lookup that stalls start-up
+        # for seconds when the container has no network. The name is only used in logs.
+        socketserver.TCPServer.server_bind(self)
+        host, port = self.server_address[:2]
+        self.server_name = host
+        self.server_port = port
 
 
 def make_server(host: str, port: int) -> Server:

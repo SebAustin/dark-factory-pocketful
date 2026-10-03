@@ -74,6 +74,15 @@ class PageTest(WebRootCase):
         self.assertEqual(r.status, 201)
         self.assertEqual(r.body["status"], "pending")
 
+    def test_shared_urls_vary_on_accept(self):
+        reset()
+        tok = token("ada@example.com")
+        for path in ("/requests", "/authorizations"):
+            self.assertEqual(call("GET", path, headers=HTML).headers.get("Vary"), "Accept")
+            self.assertEqual(call("GET", path).headers.get("Vary"), "Accept")  # 401/404 JSON
+        self.assertEqual(call("GET", "/requests", token=tok).headers.get("Vary"), "Accept")
+        self.assertIsNone(call("GET", "/activity", token=tok).headers.get("Vary"))
+
     def test_assets(self):
         r = call("GET", "/assets/app.js")
         self.assertEqual((r.status, r.raw), (200, "console.log(1)"))
@@ -128,3 +137,19 @@ class PlaceholderTest(WebRootCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NoNetworkStartupTest(unittest.TestCase):
+    def test_bind_does_no_dns_lookup(self):
+        import socket
+        from app import server
+        saved = socket.getfqdn
+
+        def boom(*args):
+            raise AssertionError("DNS lookup at startup")
+        socket.getfqdn = boom
+        try:
+            srv = server.make_server("127.0.0.1", 0)
+            srv.server_close()
+        finally:
+            socket.getfqdn = saved

@@ -74,6 +74,7 @@ class Ctx:
         self.raw_body = raw_body
         self.params: dict = {}
         self._parsed = None
+        self.response_headers: dict = {}  # extra headers for whatever response is sent
 
     def preparse(self) -> None:
         """Parse the body once, outside any lock; keep the value or the error for later."""

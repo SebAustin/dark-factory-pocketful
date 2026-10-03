@@ -66,6 +66,8 @@ HTML_ALTERNATES: dict = {}
 
 def dispatch(ctx):
     page = HTML_ALTERNATES.get(ctx.path)
+    if page is not None:
+        ctx.response_headers["Vary"] = "Accept"  # both branches, errors included
     if page is not None and ctx.method == "GET" and accepts_html(ctx.header("Accept")):
         return page(ctx, None, None)
     r = _match(ctx)
