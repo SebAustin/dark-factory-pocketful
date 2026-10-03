@@ -20,7 +20,7 @@
 |---|---|---|---|---|---|
 | S1.1 | Skeleton | builder | 21:24 | yes | REJECT 0fa1f0b, ACCEPT 58c09cc |
 | S1.2 | Auth | builder | 21:33 | yes | ACCEPT dfd7dc3 |
-| S1.3 | Idempotency, payments, activity | builder | 21:33 | | REJECT 7e7c5c1 |
+| S1.3 | Idempotency, payments, activity | builder | 21:33 | yes | REJECT 7e7c5c1, ACCEPT 38bd922 |
 | S1.4 | Requests | builder | 21:40 | yes | ACCEPT 9407192 |
 | S1.5 | Splits | designer | 21:55 | yes | ACCEPT 8f88f60 |
 | S1.6 | Settlements | designer | 21:33 | yes | ACCEPT 0b87d7f |
