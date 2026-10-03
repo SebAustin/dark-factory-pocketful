@@ -1,0 +1,620 @@
+[
+  {
+    "state": "requests",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/375/01-requests.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-pay-refused",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/375/02-requests-pay-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ]
+  },
+  {
+    "state": "requests-paid",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/375/03-requests-paid.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-uncertain",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/375/04-requests-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "requests-empty",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/375/05-requests-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-hint",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/375/06-split-hint.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-preview",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/375/07-split-preview.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-success",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/375/08-split-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-error",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/375/09-split-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "state": "requests",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/390/01-requests.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-pay-refused",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/390/02-requests-pay-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ]
+  },
+  {
+    "state": "requests-paid",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/390/03-requests-paid.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-uncertain",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/390/04-requests-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "requests-empty",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/390/05-requests-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-hint",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/390/06-split-hint.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-preview",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/390/07-split-preview.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-success",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/390/08-split-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-error",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/390/09-split-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "state": "requests",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/768/01-requests.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-pay-refused",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/768/02-requests-pay-refused.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 947,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ]
+  },
+  {
+    "state": "requests-paid",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/768/03-requests-paid.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-uncertain",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/768/04-requests-uncertain.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "requests-empty",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/768/05-requests-empty.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 899,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-hint",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/768/06-split-hint.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-preview",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/768/07-split-preview.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-success",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/768/08-split-success.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-error",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/768/09-split-error.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "state": "requests",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1024/01-requests.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 1024
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-pay-refused",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1024/02-requests-pay-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ]
+  },
+  {
+    "state": "requests-paid",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1024/03-requests-paid.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 1024
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-uncertain",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1024/04-requests-uncertain.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 1024
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "requests-empty",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1024/05-requests-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-hint",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1024/06-split-hint.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 1024
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-preview",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1024/07-split-preview.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 1024
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-success",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1024/08-split-success.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 1024
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-error",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1024/09-split-error.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 1024
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "state": "requests",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1280/01-requests.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-pay-refused",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1280/02-requests-pay-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ]
+  },
+  {
+    "state": "requests-paid",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1280/03-requests-paid.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-uncertain",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1280/04-requests-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "requests-empty",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1280/05-requests-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-hint",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1280/06-split-hint.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-preview",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1280/07-split-preview.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-success",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1280/08-split-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-error",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U5-1ef373b/1280/09-split-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  }
+]
