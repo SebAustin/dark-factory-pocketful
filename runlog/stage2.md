@@ -19,6 +19,8 @@
 | S2.0 | Carry forward | builder | 22:56 | yes | ACCEPT 10e5b5e |
 | S2.1 | HTML/static seam | builder | 23:03 | yes | ACCEPT ea8913c, ACCEPT ef17a11 (Vary) |
 | S2.2 | Holds model | builder | 23:05 | yes | ACCEPT c0df3c8 |
+| S2.3 | Authorize + list | builder | 23:05 | yes | ACCEPT 3facf62 |
+| S2.4 | Capture + void | builder | 23:05 | yes | ACCEPT 3d926ec |
 
 ## Rejections and what they caught
 
