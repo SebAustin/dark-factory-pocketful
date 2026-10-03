@@ -11,6 +11,7 @@ const NAV = [
 ];
 const PUBLIC_ROUTES = new Set(["/login", "/signup"]);
 const SCREENS = {
+  "/": () => import("./screens/wallet.js").then((m) => m.walletScreen),
   "/login": () => import("./screens/auth.js").then((m) => m.loginScreen),
   "/signup": () => import("./screens/auth.js").then((m) => m.signupScreen),
 };
