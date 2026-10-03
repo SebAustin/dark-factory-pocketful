@@ -23,3 +23,15 @@ cd stage-1 && PORT=8080 python3 -m app.server
 ```sh
 cd stage-1 && python3 -m unittest discover -s tests -v
 ```
+
+## Load check (S1.8)
+
+Against a running container (example on port 18200):
+
+```sh
+docker run -d --rm --name pocketful -e PORT=18200 -p 18200:18200 --cpus 2 --memory 2g pocketful-s1
+TARGET_URL=http://127.0.0.1:18200 SOAK_SECONDS=60 python3 stage-1/tests/soak.py
+```
+
+It checks a 1000-user reset inside 10 s, a burst of 50 signups and 50 logins, then 50
+in-flight mixed operations: no 5xx, no response over 5 s, no negative balance, total unchanged.
