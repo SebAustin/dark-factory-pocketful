@@ -37,6 +37,8 @@ Round 1 (analyst, 22:3x): PLAN FINDINGS 1-6 against ledger 9bdc486. Lead decisio
 | S1.7 | Export/import | designer | 21:45 | yes | REJECT 52bf3ed, ACCEPT af5270c |
 | S1.12 | Import timestamp validation | designer | 22:4x | yes | ACCEPT 2b73788 |
 | S1.15 | Import huge-number guard | designer | 22:5x | yes | ACCEPT 97a2879 |
+| S1.11+S1.14 | Crash probes, numbers, lock scope, RUN.md, hidden-sweep fixes | builder | 22:3x | yes | ACCEPT 2e25cdb |
+| S1.13 | Bound hashing concurrency | designer | 22:4x | yes | REJECT 5ff293a, ACCEPT 25fc824 |
 | S1.8 | Load and limits | builder | 21:24 (plan) | yes | ACCEPT ef350b3 |
 
 ## Rejections and what they caught
@@ -46,6 +48,10 @@ Round 1 (analyst, 22:3x): PLAN FINDINGS 1-6 against ledger 9bdc486. Lead decisio
 - S1.1 @0fa1f0b REJECT (verifier): HEAD/OPTIONS returned 501 text/html and a malformed request line returned stdlib HTML 400 — violates §5 envelope and no-5xx. Note promoted by lead: 1 MiB body cap would break large fixtures/imports (§3.3, §10).
 - S1.3 @7e7c5c1 REJECT (verifier): GET /activity sorted created_at as strings; a +02:00 seeded timestamp ordered wrongly vs a +00:00 one (§8 newest first, §3.4 explicit offsets). Fix generalised by lead to every list and to fixture timestamp validation.
 - S1.7 @52bf3ed REJECT (verifier): export after a legal zero-share split (§9) was refused by import with 422 (§10 'must accept an unchanged export'). Lead widened fix to a round-trip test after every kind of write.
+
+## Stage gate
+
+- Gate packet sent on 9d7ab5e (spec pasted 4 parts + packet); all seats told to stop containers for a quiet host.
 
 ## Gate table at acceptance
 

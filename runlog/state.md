@@ -10,9 +10,9 @@ Last accepted revision: none (stage 1 is the first).
 - [x] Ledger (analyst) 9bdc486
 - [x] Plan (builder) 3fb74d0
 - [x] Plan gate: closed by lead decision L2 after round 1
-- [ ] Work items split
-- [ ] Item reviews
-- [ ] Stage gate
+- [x] Work items split
+- [x] Item reviews (all accepted; S1.17 7a9d1cf reviewed inside gate)
+- [ ] Stage gate: packet sent on 9d7ab5e (seats told to quiet host)
 - [ ] Run log recorded
 
 ## Work items
@@ -31,13 +31,13 @@ Last accepted revision: none (stage 1 is the first).
 | S1.7 | Export/import | designer | transfer_io.py, tests/test_transfer_io.py | accepted | af5270c | 1 |
 | S1.8 | Load and limits (builder delivered before re-plan; designer copy cancelled) | builder | tests/soak.py | accepted | ef350b3 | 0 |
 | S1.9 | Diagnose >5 s tail under auth-heavy load | designer | tools/soak.py, D-19 | done: CFS throttling by parallel scrypt | 3c8ac32 | 0 |
-| S1.13 | Bound hashing concurrency (semaphore 1) | designer (passwords.py moved for this item) | app/passwords.py, tests/test_passwords_concurrency.py | fix resubmitted (slot 1, n=2^13, seed n=2^9) in review | 25fc824 | 1 |
+| S1.13 | Bound hashing concurrency (semaphore 1) | designer (passwords.py moved for this item) | app/passwords.py, tests/test_passwords_concurrency.py | accepted | 25fc824 | 1 |
 | S1.10 | Early event-checker signal (moved to analyst) | analyst | findings only | run 1 PASS 147/147 claimed stage 1 on 5619099; re-run after S1.11/S1.14 | 5619099 | 0 |
 | S1.A | Acceptance suite (400 tests) | analyst | stage-1/acceptance/ | built; 385/400 on c19a2b7, failures -> S1.11 | 1a37936 | 0 |
-| S1.11 | Crash probes, numbers, lock scope, RUN.md | builder | validation, http_util, routes, store, server, RUN.md | built (in review) | 2e25cdb | 0 |
+| S1.11 | Crash probes, numbers, lock scope, RUN.md | builder | validation, http_util, routes, store, server, RUN.md | accepted | 2e25cdb | 0 |
 | S1.12 | Import timestamp validation | designer | transfer_io.py | accepted | 2b73788 | 0 |
 | S1.AH | Hidden-requirement sweep (73/79 confirmed) | analyst | stage-1/acceptance/ | done | 2200e4a | 0 |
-| S1.14 | Hidden-sweep fixes H1-H4 (regex \n, long query int, surrogates, exponent in canonical) | builder | validation, http_util, server, auth | built with S1.11 (in review) | 2e25cdb | 0 |
+| S1.14 | Hidden-sweep fixes H1-H4 (regex \n, long query int, surrogates, exponent in canonical) | builder | validation, http_util, server, auth | accepted | 2e25cdb | 0 |
 | S1.15 | Import huge-number guard | designer | transfer_io.py | accepted | 97a2879 | 0 |
 | S1.16 | Residual spike diagnosis | designer | D-20 | done: host contention + client saturation; server max hold 4.2 ms; no app change | 25fc824 | 0 |
 | S1.17 | Lowercase t/z RFC 3339 (verifier note) | builder | store.py | built (review at gate) | 7a9d1cf | 0 |
