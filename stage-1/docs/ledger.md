@@ -360,6 +360,19 @@ and crossing-payment probes). R-6.11 (hashing) is proven partially via export co
 fully only by code review. Recompute: `grep -c '^| R-' ledger.md` and
 `grep -c '^| R-<section>\.' ledger.md`.
 
+## Proof naming in the committed suite (S1.A)
+
+The suite in `stage-1/acceptance/` names every test `test_R<id>_...` with the ids it proves
+(`test_R7_13_claimed_key_beats_validation` → R-7.13); the proof column above gives the file and
+intent, and `grep -n "R7_13" stage-1/acceptance/*.py` finds the test. Rows proven without their
+own test name: R-5.1/R-5.2 (the `assert_error` helper used by every error test), R-5.6/R-5.7/R-5.8
+(inside R-4.13, R-8.11, R-7.8 tests), R-6.8/R-6.9 (`test_R5_5_R6_8_...`), R-7.1, R-8.2, R-8.14,
+R-8.23, R-11.20 (every `test_idempotency.py` test is parametrised over the five paths),
+R-8.3/R-8.15/R-11.5 (body-shape rows inside the 201 tests), R-9.3–R-9.6
+(`test_R9_2_to_R9_7_...` rows), R-4.6 (`test_R8_5_R1_1_send_by_handle_201`), R-1.5 (every
+invariant test). Container rows (R-2.x, R-3.1, R-3.3) are in `test_operational.py` and run with
+`ACCEPTANCE_DOCKER=1`; R-2.2/R-2.5/R-2.6/R-2.10/R-2.12/R-10.5 are verifier-run.
+
 ## Hidden requirements no sample check is likely to ask about
 
 R-2.9 bcrypt cost vs 5 s / 10 s budgets · R-3.8 charset on errors · R-3.10 unknown fields cannot
