@@ -55,7 +55,36 @@ Round 1 (analyst, 22:3x): PLAN FINDINGS 1-6 against ledger 9bdc486. Lead decisio
 
 ## Gate table at acceptance
 
+Stage 1 ACCEPTED at 9d7ab5e76ada506165f010ef4e751b746ffef108 (verdict reviews/stage1/GATE-9d7ab5e.md, commit 4fbeae9).
+
 | Gate | Result | Evidence |
 |---|---|---|
+| G1 Ledger | green | 228 rows, 0 blank cells; 210 tested + 12 ops + 6 untestable with reasons; 0 ids unaccounted |
+| G2 Plan | green | plan.md + lead decision L2 (one critique round, findings converted to S1.11 / shown by ACCEPTs) |
+| G3 Acceptance | green | pytest stage-1/acceptance: 422 passed, 3 skipped, 0 failed; ACCEPTANCE_DOCKER=1 test_operational 4 passed (incl. no-outbound network) |
+| G4 Chain | n/a | first stage |
+| G5 Supplied checker | green | harness --stage 1 --mode isolated --out checks/s1-gate-verifier-174743: "stage 1: pass", "highest contiguous stage: 1", "claimed stage: 1 on the shipped checks" (stage 2 fail expected) |
+| G6 Invariants | green | stress.py 60 s 8/8, 19615 reqs, 0 5xx; soak 15591 reqs, max <= 2.07 s, nr_throttled 0/1240; big: reset 2000 users 1.56 s, export/import 0.09/0.14 s; burst_auth max 1.10 s; 32 MiB |
+| G7 Review | green | standards + spec, incl. 7a9d1cf and 6a73e1f; no plaintext passwords; RUN.md single command; no runtime network |
+| G8 User facing | n/a | HTTP only |
 
 ## Wall time
+
+Dispatch 21:22:12Z -> gate ACCEPT 22:51Z: about 1 h 29 min. Items: 17 work items (incl. ledger, plan, acceptance, stress tool, 3 diagnoses); 5 item rejections, 0 stage-gate failures.
+
+## Findings caught beyond item reviews
+
+- Analyst acceptance suite (S1.A) and hidden sweep (S1.AH) caught defects every item review had passed: deep-nesting segfault (exit 139), huge-exponent amount wedging the service under the lock, 5000-digit ints -> 400 not 422, lone surrogates committing a payment then dropping the connection and poisoning /activity for all users, trailing-newline regex bypasses, huge exponent in unknown fields and in import. All fixed in 2e25cdb / 97a2879.
+- Designer soak (S1.9) caught CFS CPU throttling from concurrent scrypt (calls up to 8.2 s); fixed in 25fc824 after one rejection for over-serialising (S1.13 F7).
+- Event checker (isolated) passed 147/147 throughout; it did not reach any of the above.
+
+## Decisions
+
+- L1 build before plan gate closed; L2 plan gate closed after one round; L3 5000-digit offset is valid (200 empty page). Details in runlog/state.md.
+
+## Open risks
+
+- scrypt cost lowered to N=2^13 (signup) and 2^9 (seeded) for the 2 vCPU / 5 s budget; spec sets no floor.
+- Equal seeded passwords share one salt (plan D7).
+- Latency on a heavily loaded host: client-side maxima up to ~10 s were measured only when host load was 14-18 on 10 CPUs (D-20); server-side handler time stayed < 0.75 s.
+- A refused settlement consumes an id counter value (not observable).

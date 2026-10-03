@@ -3,7 +3,7 @@
 Track: pocketful. Current stage: 1. Dispatch: 2026-10-03T21:22:12Z.
 Room: af150286-bfd0-4fd8-8ae1-c57d84bf2e91. Seats: henry.sebastien1982/{analyst,builder,designer,verifier}.
 Spec copy (shared memory): runlog/stage1-spec.md (verbatim copy of pocketful/spec/stage-1.md).
-Last accepted revision: none (stage 1 is the first).
+Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1, gate ACCEPT 22:51Z).
 
 ## Stage 1 phase
 
@@ -12,8 +12,8 @@ Last accepted revision: none (stage 1 is the first).
 - [x] Plan gate: closed by lead decision L2 after round 1
 - [x] Work items split
 - [x] Item reviews (all accepted; S1.17 7a9d1cf reviewed inside gate)
-- [ ] Stage gate: packet sent on 9d7ab5e (seats told to quiet host)
-- [ ] Run log recorded
+- [x] Stage gate: ACCEPT 9d7ab5e (reviews/stage1/GATE-9d7ab5e.md)
+- [x] Run log recorded
 
 ## Work items
 
