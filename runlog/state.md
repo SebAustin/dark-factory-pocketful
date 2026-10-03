@@ -20,14 +20,17 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 
 | Id | Title | Owner | Paths | State | Last rev | Rejections |
 |---|---|---|---|---|---|---|
-| S2.0 | Carry forward copy | builder | stage-2/ (whole copy) | built, in review (verifier) | 10e5b5e | 0 |
+| S2.0 | Carry forward copy | builder | stage-2/ (whole copy) | accepted | 10e5b5e | 0 |
+| S2.V | Screen walker tooling | verifier | reviews/stage2/tools/ | done (375/390/1280) | 1275ada | 0 |
 | S2.L | Ledger + glossary | analyst | stage-2/docs/ledger.md, glossary.md | assigned | - | 0 |
 | S2.P | API/model plan | builder | stage-2/docs/plan.md | assigned | - | 0 |
-| S2.U | UI plan | designer | stage-2/docs/ui-plan.md | assigned | - | 0 |
+| S2.U | UI plan | designer | stage-2/docs/ui-plan.md | built (to critique) | 624aa75 | 0 |
+| S2.1 | HTML/static seam | builder | app/ web serving, Dockerfile | assigned | - | 0 |
+| S2.U1 | Shell, visual system, nav, auth screens | designer | web/** | assigned | - | 0 |
 
 ## Stage 2 decisions
 
-none yet
+- L4 (23:0x): designer starts U1 and builder the S2.1 seam before the plan gate closes (as L1 in stage 1); critiques return as fix notes.
 
 ---
 
