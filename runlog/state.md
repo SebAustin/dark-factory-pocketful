@@ -37,7 +37,7 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 | S2.U6 | Authorizations screen | designer | web/** | accepted | 3dbd491 | 0 |
 | S2.U7 | Competing clients / uncertain / upgrade | designer | web/** | accepted | 46b6e6f | 0 |
 | S2.PG | Plan gate | analyst | - | done: 1 blocking (D-22 -> L5) + 5 minor -> S2.8, S2.U10 (L6) | - | 0 |
-| S2.A | Acceptance (stage1 carried 425 + stage2 264) | analyst | stage-2/acceptance/ | built; re-run on current main requested | 16f5866 | 0 |
+| S2.A | Acceptance (stage1 carried 425 + stage2 264) | analyst | stage-2/acceptance/ | re-run on 79a7bf6: stage1 422/0/3, stage2 262/268 (4 = S2.8, 2 = refresh button -> S2.U10) | 29db0cd | 0 |
 | S2.U10 | Plan-gate UI fixes (dirty key, split parse, list DOM) | designer | web/** | assigned | - | 0 |
 | S2.U1 | Shell, visual system, nav, auth screens | designer | web/** | accepted (F1/F2 closed in U2-U3 review) | 773f649 | 1 |
 | S2.U2+U3 | Client core + wallet screen | designer | web/** | fix resubmitted (in review) | b0aae37 | 1 |

@@ -16,6 +16,8 @@
 
 - Event checker run 1 (builder, isolated, rev 3dbd491): stage 1 pass; stage 2 33/35 — 2 failures: /signup and /login redirect a signed-in user (UI) -> S2.U9.
 
+- Acceptance re-run (analyst, image 79a7bf6, tests 29db0cd): carried stage 1 422 passed/0 failed/3 skipped; stage 2 262/268 — 4 await S2.8 (D-22), 2 = refresh button disabled during refresh (R2-RACE.2) -> S2.U10.
+
 ## Plan gate
 
 Round 1 (analyst): 1 blocking (D-22 browser session across stage-1 import -> lead ruling L5) + 5 minor. Lead decision L6: gate closed; findings -> S2.8 (builder), S2.U10 (designer), or already satisfied.
