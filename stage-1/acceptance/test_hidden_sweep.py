@@ -16,10 +16,17 @@ def test_R5_14_query_int_with_newline_422(world, api, path, param, bad):
 
 
 @pytest.mark.parametrize("path", ["/activity", "/requests"])
-@pytest.mark.parametrize("param", ["limit", "offset"])
-def test_R5_19_R5_17_query_int_5000_digits_422(world, api, path, param):
-    r = api.get(path, world.tok["ada"], params={param: "1" * 5000})
+def test_R5_19_R5_17_query_limit_5000_digits_422(world, api, path):
+    r = api.get(path, world.tok["ada"], params={"limit": "1" * 5000})
     assert_error(r, 422, "validation_failed")
+
+
+@pytest.mark.parametrize("path,key", [("/activity", "payments"), ("/requests", "requests")])
+def test_R5_19_R5_18_query_offset_5000_digits_valid_empty_page(world, api, path, key):
+    # offset: "integer 0 or more", no maximum -> a huge offset is valid and past the end
+    r = api.get(path, world.tok["ada"], params={"offset": "1" * 5000})
+    assert r.status_code == 200, r.text
+    assert r.json() == {key: [], "has_more": False}
 
 
 def test_R4_5_fixture_handle_with_newline_422(api):
