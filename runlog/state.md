@@ -22,7 +22,8 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 |---|---|---|---|---|---|---|
 | S2.0 | Carry forward copy | builder | stage-2/ (whole copy) | accepted | 10e5b5e | 0 |
 | S2.V | Screen walker tooling | verifier | reviews/stage2/tools/ | done (375/390/1280) | 1275ada | 0 |
-| S2.L | Ledger + glossary | analyst | stage-2/docs/ledger.md, glossary.md | assigned | - | 0 |
+| S2.L | Ledger + glossary (182 new rows, D-21..D-38) | analyst | stage-2/docs/ledger.md, glossary.md | done | f146c3b | 0 |
+| S2.8 | Upgrade keeps destination sessions (D-22 / L5) | builder | transfer_io.py | assigned | - | 0 |
 | S2.P | API/model plan | builder | stage-2/docs/plan.md | built (to critique) | 0cfc980 | 0 |
 | S2.U | UI plan | designer | stage-2/docs/ui-plan.md | built (to critique) | 624aa75 | 0 |
 | S2.1 | HTML/static seam | builder | app/ web serving, Dockerfile | accepted | ea8913c | 0 |
@@ -43,6 +44,7 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 
 ## Stage 2 decisions
 
+- L5 (23:4x): D-22 ruled as analyst recommends. Stage 2 'A browser signed in before that export/import upgrade must remain signed in afterwards' overrides stage 1 §10 'Import removes all previous destination ... credentials' for the upgrade path only: tokens in the export survive import; additionally a STAGE-1-format import keeps any destination token whose user (same id, email and handle) exists in the imported state. A stage-2-format import stays pure replacement (R-10.16 holds).
 - L4 (23:0x): designer starts U1 and builder the S2.1 seam before the plan gate closes (as L1 in stage 1); critiques return as fix notes.
 
 ---
