@@ -34,10 +34,10 @@ Last accepted revision: none (stage 1 is the first).
 | S1.13 | Bound hashing concurrency (semaphore 1) | designer (passwords.py moved for this item) | app/passwords.py, tests/test_passwords_concurrency.py | in review (unexplained 5.3 s spike once on busy host — risk) | 5ff293a | 0 |
 | S1.10 | Early event-checker signal (moved to analyst) | analyst | findings only | run 1 PASS 147/147 claimed stage 1 on 5619099; re-run after S1.11/S1.14 | 5619099 | 0 |
 | S1.A | Acceptance suite (400 tests) | analyst | stage-1/acceptance/ | built; 385/400 on c19a2b7, failures -> S1.11 | 1a37936 | 0 |
-| S1.11 | Crash probes, numbers, lock scope, RUN.md | builder | validation, http_util, routes, store, server, RUN.md | assigned (top priority) | - | 0 |
+| S1.11 | Crash probes, numbers, lock scope, RUN.md | builder | validation, http_util, routes, store, server, RUN.md | built (in review) | 2e25cdb | 0 |
 | S1.12 | Import timestamp validation | designer | transfer_io.py | accepted | 2b73788 | 0 |
 | S1.AH | Hidden-requirement sweep (73/79 confirmed) | analyst | stage-1/acceptance/ | done | 2200e4a | 0 |
-| S1.14 | Hidden-sweep fixes H1-H4 (regex \n, long query int, surrogates, exponent in canonical) | builder | validation, http_util, server, auth | assigned | - | 0 |
+| S1.14 | Hidden-sweep fixes H1-H4 (regex \n, long query int, surrogates, exponent in canonical) | builder | validation, http_util, server, auth | built with S1.11 (in review) | 2e25cdb | 0 |
 | S1.15 | Import huge-number guard | designer | transfer_io.py | in review | 97a2879 | 0 |
 
 ## Open rejections
@@ -49,6 +49,8 @@ Last accepted revision: none (stage 1 is the first).
 - S1.3 R1 @7e7c5c1: F2 activity sorted by created_at string, wrong with mixed offsets.
 
 ## Decisions
+
+- L3 (23:0x): huge `offset` (e.g. 5000 digits) is VALID: §5 shared ranges give offset 'integer 0 or more' with no maximum, and §5 makes out-of-range 422 only for 'values exceeding a stated maximum'. Answer 200 with an empty list and has_more false; never 5xx. `limit` stays 1..200 -> 422. Analyst flips the two offset acceptance cases.
 
 - L2 (22:3x): plan gate (G2) closed after one critique round. Analyst found 6 plan findings; code already existed, so each became a fix packet or was shown already satisfied by a verifier ACCEPT: P1,P2,P5,P6 -> S1.11 builder; P3 proven by S1.7 snapshot isolation probe; P4 proven by S1.6 precedence probes. Why: re-planning written code wastes a round; findings are fully covered by fix packets with DONE WHEN.
 
