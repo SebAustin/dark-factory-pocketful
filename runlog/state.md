@@ -25,7 +25,7 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 | S2.L | Ledger + glossary | analyst | stage-2/docs/ledger.md, glossary.md | assigned | - | 0 |
 | S2.P | API/model plan | builder | stage-2/docs/plan.md | built (to critique) | 0cfc980 | 0 |
 | S2.U | UI plan | designer | stage-2/docs/ui-plan.md | built (to critique) | 624aa75 | 0 |
-| S2.1 | HTML/static seam | builder | app/ web serving, Dockerfile | in review | ea8913c | 0 |
+| S2.1 | HTML/static seam | builder | app/ web serving, Dockerfile | accepted | ea8913c | 0 |
 | S2.2 | Holds model | builder | store, me, fixture | assigned | - | 0 |
 | S2.3 | Authorize + list | builder | authorizations.py | assigned | - | 0 |
 | S2.4 | Capture + void | builder | authorizations.py, store | assigned | - | 0 |

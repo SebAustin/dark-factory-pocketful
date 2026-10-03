@@ -16,6 +16,8 @@
 
 | Id | Title | Owner | Assigned | Accepted | Verdicts |
 |---|---|---|---|---|---|
+| S2.0 | Carry forward | builder | 22:56 | yes | ACCEPT 10e5b5e |
+| S2.1 | HTML/static seam | builder | 23:03 | yes | ACCEPT ea8913c |
 
 ## Rejections and what they caught
 
