@@ -259,6 +259,8 @@ def validated_state(submitted) -> dict:
         p.setdefault("authorization_id", None)
         _opt_str(p["authorization_id"], "payment authorization_id")
     store.recompute_held(state, store.clock())  # held is derived, never trusted (plan §5)
+    if any(u["held"] > u["balance"] for u in state["users"].values()):
+        _bad("open holds exceed a balance (available would be negative)")
     return state
 
 

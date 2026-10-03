@@ -465,3 +465,33 @@ class LargeStateTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HoldsImportTest(unittest.TestCase):
+    """Stage 2: an imported state must keep available = total - held >= 0."""
+
+    def snapshot_with_hold(self, amount, expires):
+        from datetime import datetime, timedelta, timezone
+        reset()
+        body = json.loads(json.dumps(call("GET", "/_test/export").body))
+        when = (datetime.now(timezone.utc) + timedelta(seconds=expires)).isoformat()
+        body["state"]["authorizations"] = {"a_x": {
+            "id": "a_x", "from": "u_cy", "to": "u_ada", "amount": amount, "captured": 0,
+            "note": "", "visibility": "public", "status": "open", "expires_at": when,
+            "created_at": when, "seq": 999, "payment_ids": []}}
+        body["state"]["seq"] = 1000
+        return body
+
+    def test_open_holds_above_balance_are_422_and_change_nothing(self):
+        body = self.snapshot_with_hold(1, 3600)  # cy has balance 0
+        before = call("GET", "/_test/export").body
+        r = call("POST", "/_test/import", body)
+        self.assertEqual((r.status, r.code), (422, "validation_failed"), r.raw)
+        self.assertEqual(call("GET", "/_test/export").body, before)
+
+    def test_expired_hold_above_balance_is_fine(self):
+        body = self.snapshot_with_hold(1, -3600)
+        self.assertEqual(call("POST", "/_test/import", body).status, 204)
+        with STORE.lock:
+            self.assertEqual(STORE.state["authorizations"]["a_x"]["status"], "expired")
+            self.assertEqual(STORE.state["users"]["u_cy"]["held"], 0)
