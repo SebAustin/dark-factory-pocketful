@@ -38,6 +38,8 @@ Round 1 (analyst, 22:3x): PLAN FINDINGS 1-6 against ledger 9bdc486. Lead decisio
 
 ## Rejections and what they caught
 
+- S1.13 @5ff293a REJECT (verifier): the semaphore(1) fix for CPU throttling serialised all scrypt; a 50-signup / 50-login burst then took up to 5.9 s (9-14 calls > 5 s) vs 3.9 s before — §2 5 s per-request timeout.
+
 - S1.1 @0fa1f0b REJECT (verifier): HEAD/OPTIONS returned 501 text/html and a malformed request line returned stdlib HTML 400 — violates §5 envelope and no-5xx. Note promoted by lead: 1 MiB body cap would break large fixtures/imports (§3.3, §10).
 - S1.3 @7e7c5c1 REJECT (verifier): GET /activity sorted created_at as strings; a +02:00 seeded timestamp ordered wrongly vs a +00:00 one (§8 newest first, §3.4 explicit offsets). Fix generalised by lead to every list and to fixture timestamp validation.
 - S1.7 @52bf3ed REJECT (verifier): export after a legal zero-share split (§9) was refused by import with 422 (§10 'must accept an unchanged export'). Lead widened fix to a round-trip test after every kind of write.
