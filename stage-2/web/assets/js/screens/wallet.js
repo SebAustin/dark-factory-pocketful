@@ -108,10 +108,17 @@ export async function walletScreen({ go }) {
   };
   const refresh = () => run(load, apply);
 
+  // The button stays enabled while a refresh runs, so a stalled read can always be superseded by a later one.
+  let lastClick = 0;
   refreshBtn.addEventListener("click", async () => {
-    refreshBtn.disabled = true; refreshBtn.replaceChildren(spinner(), document.createTextNode("Refreshing…"));
+    const mine = ++lastClick;
+    refreshBtn.setAttribute("aria-busy", "true");
+    refreshBtn.replaceChildren(spinner(), document.createTextNode("Refreshing…"));
     await refresh();
-    refreshBtn.disabled = false; refreshBtn.replaceChildren(document.createTextNode("Refresh"));
+    if (mine === lastClick) {
+      refreshBtn.removeAttribute("aria-busy");
+      refreshBtn.replaceChildren(document.createTextNode("Refresh"));
+    }
   });
 
   const panels = buildPanels({ me, refresh });

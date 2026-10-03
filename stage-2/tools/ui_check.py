@@ -224,12 +224,13 @@ def check_units(browser):
       out.parse3 = ['1.234','1.2345','2'].map(t => parse(t, 3));
       out.fmt = [m.formatAmount(10000,2,'EUR'), m.formatAmount(1200,0,'JPY'), m.formatAmount(1234,3,'BHD'), m.formatAmount(5,2,'EUR'), m.formatAmount(0,2,'EUR'),
                  m.formatAmount(9007199254740992n,2,'EUR'), m.formatAmount(123456789012,2,'EUR')];
+      let out_dirty = false;
       const a = new i.Attempt('/payments'); const body = {to_handle:'bob', amount:1500, note:'', visibility:'public'};
       const p1 = a.prepare(body); a.begin(); a.uncertain();
       const p2 = a.prepare(body); a.begin(); a.succeeded();
-      const p3 = a.prepare(body); const p4 = a.prepare({...body, amount:1600}); a.begin(); a.refused(); const p5 = a.prepare({...body, amount:1600});
+      const p3 = a.prepare(body); a.markDirty(); const pd = a.prepare(body); out_dirty = pd.key !== p1.key && !pd.skip; a.begin(); a.succeeded(); const p4 = a.prepare({...body, amount:1600}); a.begin(); a.refused(); const p5 = a.prepare({...body, amount:1600});
       out.keys = {same_after_uncertain: p1.key === p2.key, skip_after_success: !!p3.skip, new_for_change: p4.key !== p1.key, new_after_refusal: p5.key !== p4.key,
-                  keyorder: a.fingerprintOf({b:1,a:2}) === a.fingerprintOf({a:2,b:1})};
+                  keyorder: a.fingerprintOf({b:1,a:2}) === a.fingerprintOf({a:2,b:1}), edit_revert_new_key: out_dirty};
       const run = f.latestOnly(); const applied = [];
       const slow = run(() => new Promise(r => setTimeout(() => r('old'), 120)), v => applied.push(v));
       const fast = run(() => new Promise(r => setTimeout(() => r('new'), 10)), v => applied.push(v));
@@ -260,7 +261,8 @@ def check_wallet(browser):
         pg = Page(browser, width)
         page = pg.page
         posts = []
-        page.on("request", lambda r: posts.append(r.post_data) if r.method == "POST" and r.url.endswith("/payments") else None)
+        keys = []
+        page.on("request", lambda r: (posts.append(r.post_data), keys.append(r.headers.get("idempotency-key"))) if r.method == "POST" and r.url.endswith("/payments") else None)
         login(pg)
         pg.t("wallet-balance").wait_for()
         for tid in ("wallet-available", "wallet-balance", "wallet-refresh", "pay-handle", "pay-amount", "pay-note", "pay-visibility", "pay-submit",
@@ -306,13 +308,20 @@ def check_wallet(browser):
         pg.t("pay-success").wait_for()
         pg.wait_text("wallet-balance", "70.00 EUR")
         check(len(posts) == 2, "a changed field is a new payment")
+        # edit then revert: still a new payment request (D-24), with a new key
+        pg.t("pay-note").fill("dinner 3")
+        pg.t("pay-note").fill("dinner 2")
+        pg.t("pay-submit").click()
+        pg.t("pay-success").wait_for()
+        check(len(posts) == 3 and keys[2] != keys[1], f"edit-then-revert sends a new POST with a new key ({len(posts)} posts, keys {keys})")
+        pg.wait_text("wallet-balance", "55.00 EUR")
 
         # local validation: no request
         for bad in ("15.005", "abc", "-5", ""):
             pg.t("pay-amount").fill(bad)
             pg.t("pay-submit").click()
             pg.t("pay-error").wait_for()
-        check(len(posts) == 2, "invalid amounts send no request")
+        check(len(posts) == 3, "invalid amounts send no request")
         pg.shot("wallet", "pay-invalid")
 
         # refused: insufficient funds; inputs kept, error shown, balance refreshed
@@ -448,6 +457,7 @@ def check_requests(browser):
         pg.page.goto(BASE + "/requests")
         pg.t("empty-requests").wait_for()
         check(pg.t("empty-requests").is_visible(), "empty-requests visible")
+        check(pg.t("incoming-list").count() == 1 and pg.t("outgoing-list").count() == 1, "list containers stay in the DOM when empty")
         pg.shot("requests", "empty")
         pg.done("requests-empty")
 
@@ -500,6 +510,13 @@ def check_split(browser):
         check(pg.t("split-share-ada").text_content() == "10.00 EUR", "caller only")
         pg.t("split-submit").click()
         pg.t("split-success").wait_for()
+        n0 = len(posts)
+        for bad in ("ada,,bob", "ada, bob,", ",ada", "ada, ,bob"):
+            pg.t("split-handles").fill(bad)
+            pg.t("split-submit").click()
+            pg.t("split-error").wait_for()
+            check(pg.t("split-share-ada").count() == 0, f"no preview shares for {bad!r}")
+        check(len(posts) == n0, "empty handle segments send no request")
         pg.t("split-handles").fill("ada, nobody")
         pg.t("split-submit").click()
         pg.t("split-error").wait_for()
@@ -723,6 +740,7 @@ def check_chaos(browser):
         gate["hold"] = True
         pg.t("wallet-refresh").click()          # refresh A: its answers are held
         page.wait_for_timeout(300)
+        check(pg.t("wallet-refresh").is_enabled() and pg.t("wallet-refresh").get_attribute("disabled") is None, "wallet-refresh stays enabled while a refresh is in flight")
         gate["hold"] = False
         bob = token_for("bob@example.com")
         api_json("/payments", token=bob, method="POST", body={"to_handle": "ada", "amount": 500, "note": "newer"}, key="newer")

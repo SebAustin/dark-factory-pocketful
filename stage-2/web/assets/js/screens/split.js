@@ -5,8 +5,12 @@ import { formatAmount, splitShares } from "../money.js";
 import { amountFrom, handleValue } from "../forms/panels.js";
 import { writeForm } from "../forms/writeform.js";
 
+/** Split on commas, trim each, keep order. `empty` is true when any segment is blank ("ada,,bob", trailing comma). */
 export function parseHandles(text) {
-  return String(text ?? "").split(",").map(handleValue).filter(Boolean);
+  const raw = String(text ?? "");
+  if (!raw.trim()) return { list: [], empty: false };
+  const list = raw.split(",").map(handleValue);
+  return { list, empty: list.some((handle) => !handle) };
 }
 
 export async function splitScreen({ go }) {
@@ -24,9 +28,14 @@ export async function splitScreen({ go }) {
   const renderPreview = () => {
     const now = me();
     const parsed = amountFrom(amount.input.value, now);
-    const list = [...new Set(parseHandles(handles.input.value))];
+    const parsedHandles = parseHandles(handles.input.value);
+    const list = [...new Set(parsedHandles.list)];
     preview.replaceChildren();
     lastShares = [];
+    if (parsedHandles.empty) {
+      preview.append(h("p", { class: "split-preview__hint", text: "There's an empty entry between commas. Remove it to see each share." }));
+      return;
+    }
     if (parsed.error || !list.length || parsed.minor < 1) {
       preview.append(h("p", { class: "split-preview__hint", text: "Enter an amount and at least one handle to see each share." }));
       return;
@@ -48,8 +57,9 @@ export async function splitScreen({ go }) {
       const now = me();
       const parsed = amountFrom(amount.input.value, now);
       if (parsed.error) return { error: parsed.error };
-      const list = parseHandles(handles.input.value);
+      const { list, empty } = parseHandles(handles.input.value);
       if (!list.length) return { error: "Enter at least one handle." };
+      if (empty) return { error: "There's an empty entry between commas. Remove the extra comma." };
       return { body: { amount: parsed.minor, participant_handles: list, note: note.input.value } };
     },
     successText: (r) => {

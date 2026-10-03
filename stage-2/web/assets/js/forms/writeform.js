@@ -58,16 +58,15 @@ export function writeForm(config) {
     setLabel(label);
   };
 
-  // Editing after an unknown outcome: the form is no longer the same request.
-  form.addEventListener("input", () => {
+  // Any edit makes the form a different request, even if the values are later put back (new key on the next send).
+  const onEdit = () => {
     if (busy) return;
-    const built = config.build();
-    if (attempt.phase === "uncertain") {
-      if (built.body && attempt.isUncertainFor(built.body)) { showUncertain(); } else { showStaleNote(); }
-      return;
-    }
+    attempt.markDirty();
+    if (attempt.phase === "uncertain") { showStaleNote(); return; }
     if (slot.firstChild && slot.firstChild.getAttribute("data-testid") !== `${ids.uncertain}-note`) clearFeedback();
-  });
+  };
+  form.addEventListener("input", onEdit);
+  form.addEventListener("change", onEdit);
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();

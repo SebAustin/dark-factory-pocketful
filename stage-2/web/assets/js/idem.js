@@ -13,15 +13,18 @@ export function newKey() {
 }
 
 export class Attempt {
-  constructor(path) { this.path = path; this.fingerprint = null; this.key = null; this.phase = "idle"; }
+  constructor(path) { this.path = path; this.fingerprint = null; this.key = null; this.phase = "idle"; this.dirty = false; }
+
+  /** Any edit of a field makes the next send a new request, even if the values are later put back. */
+  markDirty() { this.dirty = true; }
 
   fingerprintOf(body) { return `${this.path} ${canonical(body)}`; }
 
   /** Decide what a submit of `body` should do: {send, key} or {skip}. */
   prepare(body) {
     const fp = this.fingerprintOf(body);
-    if (fp !== this.fingerprint) {            // a different request: a new key
-      this.fingerprint = fp; this.key = newKey(); this.phase = "idle";
+    if (fp !== this.fingerprint || this.dirty) {   // an edited form is a different request: a new key
+      this.fingerprint = fp; this.key = newKey(); this.phase = "idle"; this.dirty = false;
       return { send: true, key: this.key };
     }
     if (this.phase === "succeeded") return { skip: true };
