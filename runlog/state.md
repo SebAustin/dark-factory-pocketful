@@ -1,5 +1,39 @@
 # Run state (lead's durable memory)
 
+Track: pocketful. CURRENT STAGE: 2. Stage 2 dispatch: 2026-10-03T22:54:33Z.
+Room: af150286-bfd0-4fd8-8ae1-c57d84bf2e91. Seats: henry.sebastien1982/{analyst,builder,designer,verifier}.
+Spec copies: runlog/stage1-spec.md, runlog/stage2-spec.md.
+Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stage-1/ is FROZEN.
+
+## Stage 2 phase
+
+- [ ] Carry forward (builder copies stage-1 -> stage-2, commits unchanged)
+- [ ] Ledger (analyst) S2.L
+- [ ] API/model plan (builder) S2.P ; UI plan (designer) S2.U
+- [ ] Plan gate
+- [ ] Work items split
+- [ ] Item reviews
+- [ ] Stage gate
+- [ ] Run log recorded
+
+## Stage 2 work items
+
+| Id | Title | Owner | Paths | State | Last rev | Rejections |
+|---|---|---|---|---|---|---|
+| S2.0 | Carry forward copy | builder | stage-2/ (whole copy) | assigned | - | 0 |
+| S2.L | Ledger + glossary | analyst | stage-2/docs/ledger.md, glossary.md | assigned | - | 0 |
+| S2.P | API/model plan | builder | stage-2/docs/plan.md | assigned | - | 0 |
+| S2.U | UI plan | designer | stage-2/docs/ui-plan.md | assigned | - | 0 |
+
+## Stage 2 decisions
+
+none yet
+
+---
+
+# STAGE 1 (accepted, archived below)
+
+
 Track: pocketful. Current stage: 1. Dispatch: 2026-10-03T21:22:12Z.
 Room: af150286-bfd0-4fd8-8ae1-c57d84bf2e91. Seats: henry.sebastien1982/{analyst,builder,designer,verifier}.
 Spec copy (shared memory): runlog/stage1-spec.md (verbatim copy of pocketful/spec/stage-1.md).
