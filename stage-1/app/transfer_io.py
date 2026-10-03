@@ -135,7 +135,7 @@ def _check_payments(state: dict) -> int:
             _bad("payment id is missing")
         _user_ref(users, p.get("from"), "payment from")
         _user_ref(users, p.get("to"), "payment to")
-        _int(p.get("amount"), 1, BALANCE_LIMIT, "payment amount")
+        _int(p.get("amount"), 0, BALANCE_LIMIT, "payment amount")  # 0: paid zero-share request (D-11)
         _str(p.get("note"), "payment note")
         if p.get("visibility") not in VISIBILITIES:
             _bad("payment visibility is invalid")
@@ -156,7 +156,7 @@ def _check_requests(state: dict) -> int:
             _bad("request id is missing")
         _user_ref(users, r.get("requester"), "request requester")
         _user_ref(users, r.get("payer"), "request payer")
-        _int(r.get("amount"), 1, BALANCE_LIMIT, "request amount")
+        _int(r.get("amount"), 0, BALANCE_LIMIT, "request amount")  # 0: zero split share (§9)
         _str(r.get("note"), "request note")
         if r.get("status") not in REQUEST_STATUSES:
             _bad("request status is invalid")

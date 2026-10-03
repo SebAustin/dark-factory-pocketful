@@ -286,7 +286,7 @@ class InvalidImportTest(unittest.TestCase):
     def test_payment_fields(self):
         def edit(**kw):
             return lambda b: next(iter(b["state"]["payments"].values())).update(kw)
-        for kw in ({"amount": 0}, {"amount": 1.5}, {"amount": "1"}, {"visibility": "friends"},
+        for kw in ({"amount": -1}, {"amount": 1.5}, {"amount": "1"}, {"visibility": "friends"},
                    {"note": None}, {"created_at": 5}, {"seq": "1"}, {"id": "p_other"}):
             self.rejects(edit(**kw))
 
@@ -333,6 +333,71 @@ class InvalidImportTest(unittest.TestCase):
         raw = raw.replace('"balance": %d' % ada, '"balance": %d.0' % ada)
         self.assertEqual(call("POST", "/_test/import", raw=raw).status, 204)
         self.assertEqual(dump_state(), self.before)
+
+
+class EveryWriteRoundTripTest(unittest.TestCase):
+    """Export after each kind of write the service performs; every export must re-import."""
+
+    def roundtrip(self, label):
+        snap = export()
+        self.assertEqual(call("POST", "/_test/import", snap).status, 204, label)
+        self.assertEqual(export(), snap, label)
+        self.assertEqual(call("POST", "/_test/import", snap).status, 204, label + " (twice)")
+
+    def test_state_after_every_kind_of_write(self):
+        f = fixture()
+        f["requests"] += [
+            {"id": "rq_p", "requester_id": "u_bob", "payer_id": "u_ada", "amount": 5, "status": "paid", "payment_id": "p_1"},
+            {"id": "rq_d", "requester_id": "u_bob", "payer_id": "u_ada", "amount": 5, "status": "declined"},
+            {"id": "rq_c", "requester_id": "u_bob", "payer_id": "u_ada", "amount": 5, "status": "cancelled"},
+        ]
+        f["payments"].append({"id": "p_2", "from_user_id": "u_bob", "to_user_id": "u_cy", "amount": 3,
+                              "visibility": "private", "request_id": "rq_ghost"})
+        reset(f)
+        self.roundtrip("seeded fixture")
+        ada, bob, cy = login(), login("bob@example.com"), login("cy@example.com")
+        self.roundtrip("after logins")
+        self.assertEqual(pay(ada, "bob", 10, "pub").status, 201)
+        self.assertEqual(pay(ada, "bob", 10, "priv", visibility="private", note="é ☕").status, 201)
+        self.assertEqual(pay(ada, "bob", 10 ** 9, "failed").status, 409)
+        self.roundtrip("after payments")
+        signup = call("POST", "/auth/signup", {"email": "New.User@Example.com", "password": "password1",
+                                                "display_name": "New"})
+        self.assertEqual(signup.status, 201)
+        self.assertEqual(call("POST", "/auth/signup", {"email": "bad", "password": "password1",
+                                                        "display_name": "x"}).status, 422)
+        self.roundtrip("after signup")
+        req = {}
+        for name in ("pending", "toPay", "toDecline", "toCancel"):
+            r = call("POST", "/requests", {"payer_handle": "ada", "amount": 7, "note": name}, token=bob, key="rq-" + name)
+            self.assertEqual(r.status, 201, r.raw)
+            req[name] = r.body["request_id"]
+        self.assertEqual(call("POST", "/requests/%s/pay" % req["toPay"], {"visibility": "private"}, token=ada, key="pay1").status, 201)
+        self.assertEqual(call("POST", "/requests/%s/decline" % req["toDecline"], token=ada).status, 200)
+        self.assertEqual(call("POST", "/requests/%s/cancel" % req["toCancel"], token=bob).status, 200)
+        self.assertEqual(call("POST", "/requests", {"payer_handle": "ada", "amount": 0}, token=bob, key="z").status, 422)
+        self.roundtrip("requests in every status")
+        zero = call("POST", "/splits", {"amount": 1, "participant_handles": ["ada", "bob", "cy"], "note": "z"},
+                    token=ada, key="split-zero")
+        self.assertEqual(zero.status, 201)
+        self.assertEqual([q["amount"] for q in zero.body["requests"]], [0, 0])
+        self.roundtrip("after a zero-share split")
+        paid0 = call("POST", "/requests/%s/pay" % zero.body["requests"][0]["request_id"], {}, token=bob, key="pay-zero")
+        self.assertEqual((paid0.status, paid0.body["amount"]), (201, 0), paid0.raw)
+        self.roundtrip("after paying a zero request")
+        self.assertEqual(call("POST", "/splits", {"amount": 777, "participant_handles": ["ada"]}, token=ada,
+                              key="solo").status, 201)
+        self.assertEqual(call("POST", "/splits", {"amount": 3000, "participant_handles": ["bob", "cy"]}, token=ada,
+                              key="s2").status, 201)
+        self.roundtrip("after more splits")
+        op = settle(cy, [{"from_handle": "cy", "to_handle": "bob", "amount": 20},
+                         {"from_handle": "bob", "to_handle": "ada", "amount": 20, "visibility": "private"}], "set1")
+        self.assertEqual(op.status, 201, op.raw)
+        self.assertEqual(settle(cy, [{"from_handle": "cy", "to_handle": "bob", "amount": 10 ** 8}], "set-fail").status, 409)
+        self.roundtrip("after a settlement")
+        self.assertEqual(pay(ada, "bob", 10, "pub").status, 200)  # replay
+        self.assertEqual(export(), export())
+        self.roundtrip("after replays")
 
 
 class LargeStateTest(unittest.TestCase):
