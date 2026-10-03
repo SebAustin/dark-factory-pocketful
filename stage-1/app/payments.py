@@ -1,7 +1,7 @@
 """POST /payments and GET /activity (spec §8, §4 feed contract)."""
 from . import errors, validation
 from .routes import route
-from .store import apply_transfer, payment_view, user_by_handle
+from .store import apply_transfer, newest_first, payment_view, user_by_handle
 
 
 def visible_to(payment: dict, user_id: str) -> bool:
@@ -27,10 +27,6 @@ def page(query: dict, items: list):
     limit = validation.query_int(query, "limit", 50, 1, 200)
     offset = validation.query_int(query, "offset", 0, 0)
     return items[offset:offset + limit], len(items) > offset + limit
-
-
-def newest_first(records):
-    return sorted(records, key=lambda r: (r["created_at"], r["seq"]), reverse=True)
 
 
 @route("POST", "/payments", idempotent=True)

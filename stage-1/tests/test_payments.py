@@ -285,3 +285,54 @@ class ActivityTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class InstantOrderTest(unittest.TestCase):
+    """F2: newest first by created_at means by instant, whatever the offset."""
+
+    def fixture(self):
+        f = copy.deepcopy(FIXTURE)
+        f["payments"] = [
+            {"id": "p_east", "from_user_id": "u_ada", "to_user_id": "u_bob", "amount": 1,
+             "note": "17:00Z", "visibility": "public",
+             "created_at": "2026-09-24T19:00:00+02:00"},
+            {"id": "p_utc", "from_user_id": "u_ada", "to_user_id": "u_bob", "amount": 1,
+             "note": "18:30Z", "visibility": "public",
+             "created_at": "2026-09-24T18:30:00+00:00"},
+            {"id": "p_west", "from_user_id": "u_ada", "to_user_id": "u_bob", "amount": 1,
+             "note": "18:45Z", "visibility": "public",
+             "created_at": "2026-09-24T13:45:00-05:00"},
+        ]
+        return f
+
+    def test_activity_orders_by_instant_and_keeps_offsets(self):
+        reset(self.fixture())
+        feed = call("GET", "/activity", token=token("cy@example.com")).body["payments"]
+        self.assertEqual([p["payment_id"] for p in feed], ["p_west", "p_utc", "p_east"])
+        self.assertEqual(feed[2]["created_at"], "2026-09-24T19:00:00+02:00")
+
+    def test_new_payment_is_newest(self):
+        reset(self.fixture())
+        ada = token("ada@example.com")
+        made = pay(ada, {"to_handle": "bob", "amount": 1}).body
+        feed = call("GET", "/activity", token=ada).body["payments"]
+        self.assertEqual(feed[0]["payment_id"], made["payment_id"])
+
+    def test_invalid_fixture_created_at_is_422(self):
+        for bad in ("yesterday", "2026-09-24T18:30:00", "2026-09-24", "2026-13-01T00:00:00Z",
+                    5, True, "2026-09-24 18:30:00+00:00"):
+            f = self.fixture()
+            f["payments"][0]["created_at"] = bad
+            r = call("POST", "/_test/reset", f)
+            self.assertEqual((r.status, r.code), (422, "validation_failed"), bad)
+            f = self.fixture()
+            f["requests"][0]["created_at"] = bad
+            r = call("POST", "/_test/reset", f)
+            self.assertEqual((r.status, r.code), (422, "validation_failed"), bad)
+
+    def test_z_suffix_accepted_and_rendered_with_offset(self):
+        f = self.fixture()
+        f["payments"][1]["created_at"] = "2026-09-24T18:30:00Z"
+        reset(f)
+        feed = call("GET", "/activity", token=token("cy@example.com")).body["payments"]
+        self.assertEqual(feed[1]["created_at"], "2026-09-24T18:30:00+00:00")

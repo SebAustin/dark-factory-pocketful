@@ -159,6 +159,23 @@ class OddRequestTest(unittest.TestCase):
                           b"Connection: close\r\n\r\n")
         self.assert_envelope(out, 400, "malformed_request")
 
+    def test_five_mib_fixture_accepted(self):
+        users = [{"id": "u%d" % i, "email": "u%d@e.com" % i, "password": "same password",
+                  "display_name": "D" * 400, "handle": "h%d" % i, "balance": 2}
+                 for i in range(12000)]
+        fixture = {"currency": "EUR", "minor_units": 2, "users": users}
+        import json
+        self.assertGreater(len(json.dumps(fixture)), 5 * 1024 * 1024)
+        reset(fixture)
+        self.assertEqual(total(), 24000)
+
+    def test_oversized_body_elsewhere_is_400_envelope_not_dropped(self):
+        body = b'{"to_handle":"bob","amount":1,"note":"' + b"x" * (2 * 1024 * 1024) + b'"}'
+        out = raw_request(b"POST /payments HTTP/1.1\r\nHost: x\r\nConnection: close\r\n"
+                          b"Content-Length: "
+                          + str(len(body)).encode() + b"\r\n\r\n" + body)
+        self.assert_envelope(out, 400, "malformed_request")
+
     def test_fixture_over_one_mib_accepted(self):
         users = [{"id": "u%d" % i, "email": "u%d@e.com" % i, "password": "same password",
                   "display_name": "U" * 200, "handle": "h%d" % i, "balance": 1}

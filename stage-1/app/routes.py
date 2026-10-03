@@ -6,7 +6,7 @@ lock themselves (used for work that must stay outside the lock, e.g. password ha
 """
 import re
 
-from . import errors
+from . import errors, idempotency
 from .store import STORE
 
 _ROUTES = []
@@ -67,7 +67,6 @@ def dispatch(ctx):
             raise errors.forbidden("settlement operator required")
         if not r["idempotent"]:
             return r["handler"](ctx, state, user)
-        from . import idempotency
         body = ctx.json_object()
         key = _idempotency_key(ctx)
         slot = idempotency.slot(ctx.method, ctx.path, key)

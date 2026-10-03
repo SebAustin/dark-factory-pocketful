@@ -4,9 +4,11 @@ State holds JSON-native values only (dicts, lists, str, int, bool, None) so that
 exported as-is. Every function here that reads or writes `state` expects the caller to hold
 `STORE.lock`, except `load_fixture`, which builds a fresh state off to the side.
 """
+import re
 import secrets
 import threading
 from datetime import datetime, timezone
+from functools import lru_cache
 
 from . import errors, passwords
 from .validation import BALANCE_LIMIT, HANDLE_RE, MAX_ID, VISIBILITIES, integral
@@ -42,6 +44,33 @@ STORE = Store()
 
 def now_ts() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+RFC3339_RE = re.compile(
+    r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?([Zz]|[+-]\d\d:\d\d)$")
+_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+
+def parse_rfc3339(value):
+    """Parse an RFC 3339 timestamp with an explicit offset; None if it is not one."""
+    if not isinstance(value, str) or not RFC3339_RE.match(value):
+        return None
+    try:
+        return datetime.fromisoformat(value.upper().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+@lru_cache(maxsize=65536)
+def instant(ts: str) -> float:
+    """Seconds since the epoch for a stored created_at (any offset). Never raises."""
+    parsed = parse_rfc3339(ts)
+    return (parsed - _EPOCH).total_seconds() if parsed else float("-inf")
+
+
+def newest_first(records):
+    """The one ordering rule for every list: newest instant first, ties by creation order."""
+    return sorted(records, key=lambda r: (instant(r["created_at"]), r["seq"]), reverse=True)
 
 
 def next_seq(state: dict) -> int:
@@ -172,16 +201,15 @@ def _opt_str(obj: dict, name: str, default: str, where: str) -> str:
     return obj[name]
 
 
-def _opt_ts(obj: dict, default: str) -> str:
+def _opt_ts(obj: dict, default: str, where: str) -> str:
+    """Fixture created_at: absent/null -> reset time; else RFC 3339 with an offset or 422."""
     value = obj.get("created_at")
-    if isinstance(value, str):
-        try:
-            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-            if parsed.tzinfo is not None:
-                return parsed.isoformat(timespec="seconds")
-        except ValueError:
-            pass
-    return default
+    if value is None:
+        return default
+    parsed = parse_rfc3339(value)
+    if parsed is None:
+        _fail(where + " has a created_at that is not RFC 3339 with an offset")
+    return parsed.isoformat()
 
 
 def _load_users(state, users, ts):
@@ -228,7 +256,7 @@ def _load_payments(state, payments, ts):
             "amount": _need_int(p, "amount", pid, 1, BALANCE_LIMIT),
             "note": _opt_str(p, "note", "", pid), "visibility": vis,
             "request_id": p.get("request_id") if isinstance(p.get("request_id"), str) else None,
-            "settlement_id": None, "created_at": _opt_ts(p, ts), "seq": next_seq(state),
+            "settlement_id": None, "created_at": _opt_ts(p, ts, pid), "seq": next_seq(state),
         }
         state["payment_order"].append(pid)
 
@@ -249,7 +277,7 @@ def _load_requests(state, requests, ts):
             "amount": _need_int(r, "amount", rid, 1, BALANCE_LIMIT),
             "note": _opt_str(r, "note", "", rid), "status": status,
             "payment_id": r.get("payment_id") if isinstance(r.get("payment_id"), str) else None,
-            "created_at": _opt_ts(r, ts), "seq": next_seq(state),
+            "created_at": _opt_ts(r, ts, rid), "seq": next_seq(state),
         }
 
 

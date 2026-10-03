@@ -92,11 +92,14 @@ def check_big_reset():
 
 
 def check_auth_burst():
-    burst(lambda i: call("POST", "/auth/signup", {"email": "s%d@x.com" % i,
-                                                  "password": "correct horse",
-                                                  "display_name": "S"}), 50)
-    burst(lambda i: call("POST", "/auth/login", {"email": "s%d@x.com" % i,
-                                                 "password": "correct horse"}), 50)
+    signups = burst(lambda i: call("POST", "/auth/signup", {"email": "s%d@x.com" % i,
+                                                            "password": "correct horse",
+                                                            "display_name": "S"}), 50)
+    logins = burst(lambda i: call("POST", "/auth/login", {"email": "s%d@x.com" % i,
+                                                          "password": "correct horse"}), 50)
+    if any(s != 201 for s, _ in signups) or any(s != 200 for s, _ in logins):
+        fails.append("auth burst statuses: signups {} logins {}".format(
+            sorted({s for s, _ in signups}), sorted({s for s, _ in logins})))
     print("50 signups + 50 logins: max latency so far {:.2f}s".format(max(lat)))
 
 

@@ -1,9 +1,9 @@
 """Payment requests (spec §8 requests endpoints, §4 requests)."""
 from . import errors, validation
-from .payments import newest_first, page, resolve_counterparty
+from .payments import page, resolve_counterparty
 from .routes import route
-from .store import (REQUEST_STATUSES, apply_transfer, new_id, next_seq, now_ts, payment_view,
-                    request_view)
+from .store import (REQUEST_STATUSES, apply_transfer, new_id, newest_first, next_seq, now_ts,
+                    payment_view, request_view)
 
 
 def create_request(state: dict, requester_id: str, payer_id: str, amount: int, note: str,

@@ -3,6 +3,7 @@ import importlib
 import os
 import sys
 import traceback
+from urllib.parse import urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import errors, routes
@@ -11,7 +12,10 @@ from .http_util import CONTENT_TYPE, Ctx, encode
 # Route modules register themselves on import. Modules not built yet are skipped.
 ROUTE_MODULES = ("testctl", "auth", "payments", "requests_", "splits", "settlements",
                  "transfer_io")
-MAX_BODY = 64 * 1024 * 1024  # large reset/import fixtures
+MAX_BODY = 1024 * 1024                 # ordinary API bodies
+MAX_STATE_BODY = 64 * 1024 * 1024      # reset fixtures and import snapshots
+STATE_PATHS = ("/_test/reset", "/_test/import")
+DRAIN_CHUNK = 64 * 1024
 
 
 def _load_route_modules():
@@ -45,11 +49,26 @@ class Handler(BaseHTTPRequestHandler):
             n = int(length) if length else 0
         except ValueError:
             raise errors.malformed("invalid Content-Length")
-        if n < 0 or n > MAX_BODY:
+        if n < 0:
             raise errors.malformed("invalid Content-Length")
+        cap = MAX_STATE_BODY if urlsplit(self.path).path in STATE_PATHS else MAX_BODY
+        if n > cap:
+            self._discard(n)
+            raise errors.malformed("request body too large")
         raw = self.rfile.read(n) if n else b""
         method = "GET" if self.command == "HEAD" else self.command
         return routes.dispatch(Ctx(method, self.path, self.headers, raw))
+
+    def _discard(self, n):
+        """Read and drop an oversized body so the client receives the 400, not a reset."""
+        if n > MAX_STATE_BODY:
+            self.close_connection = True
+            return
+        while n > 0:
+            chunk = self.rfile.read(min(n, DRAIN_CHUNK))
+            if not chunk:
+                break
+            n -= len(chunk)
 
     def _send(self, status, body):
         data = b"" if status == 204 or body is None else encode(body)

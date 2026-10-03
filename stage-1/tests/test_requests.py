@@ -251,3 +251,20 @@ class ListTest(Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RequestInstantOrderTest(unittest.TestCase):
+    def test_requests_order_by_instant(self):
+        import copy
+        from harness import FIXTURE
+        f = copy.deepcopy(FIXTURE)
+        f["requests"] = [
+            {"id": "rq_east", "requester_id": "u_bob", "payer_id": "u_ada", "amount": 1,
+             "status": "pending", "created_at": "2026-09-24T19:00:00+02:00"},
+            {"id": "rq_utc", "requester_id": "u_bob", "payer_id": "u_ada", "amount": 1,
+             "status": "pending", "created_at": "2026-09-24T18:30:00+00:00"},
+        ]
+        reset(f)
+        body = call("GET", "/requests", token=token("ada@example.com")).body
+        self.assertEqual([r["request_id"] for r in body["requests"]], ["rq_utc", "rq_east"])
+        self.assertEqual(body["requests"][1]["created_at"], "2026-09-24T19:00:00+02:00")
