@@ -12,7 +12,7 @@ import sys
 import urllib.request
 from pathlib import Path
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import expect, sync_playwright
 
 BASE = os.environ.get("TARGET_URL", "http://127.0.0.1:18300").rstrip("/")
 ROOT = Path(__file__).resolve().parents[2]
@@ -60,6 +60,12 @@ class Page:
 
     def t(self, testid):
         return self.page.get_by_test_id(testid)
+
+    def wait_attr(self, testid, name, value):
+        expect(self.t(testid)).to_have_attribute(name, value)
+
+    def wait_text(self, testid, value):
+        expect(self.t(testid)).to_have_text(value)
 
     def no_hscroll(self, label):
         sw = self.page.evaluate("[document.documentElement.scrollWidth, innerWidth]")
@@ -278,7 +284,7 @@ def check_wallet(browser):
         pg.t("pay-note").fill("dinner 2")
         pg.t("pay-submit").click()
         pg.t("pay-success").wait_for()
-        page.wait_for_function("document.querySelector('[data-testid=wallet-balance]').textContent === '70.00 EUR'")
+        pg.wait_text("wallet-balance", "70.00 EUR")
         check(len(posts) == 2, "a changed field is a new payment")
 
         # local validation: no request
@@ -346,7 +352,149 @@ def check_wallet(browser):
         pg.done("wallet-max")
 
 
-CHECKS = {"auth": check_auth, "units": check_units, "wallet": check_wallet}
+def token_for(email):
+    return api_json("/auth/login", method="POST", body={"email": email, "password": PASSWORD})[1]["token"]
+
+
+def check_requests(browser):
+    users = [
+        {"id": "u_ada", "email": "ada@example.com", "password": PASSWORD, "display_name": "Ada", "handle": "ada", "balance": 10000},
+        {"id": "u_bob", "email": "bob@example.com", "password": PASSWORD, "display_name": "Bob", "handle": "bob", "balance": 2500},
+        {"id": "u_cy", "email": "cy@example.com", "password": PASSWORD, "display_name": "Cy", "handle": "cy", "balance": 0},
+    ]
+    def rq(i, req, payer, amount, status="pending", note=""):
+        return {"id": i, "requester_id": req, "payer_id": payer, "amount": amount, "note": note, "status": status}
+    requests = [rq("rq_in", "u_bob", "u_ada", 1200, note="taxi"), rq("rq_pay", "u_bob", "u_ada", 300, note="lunch"),
+                rq("rq_dec", "u_cy", "u_ada", 50), rq("rq_out", "u_ada", "u_cy", 99999, note="rent"),
+                rq("rq_done", "u_bob", "u_ada", 300, "declined", "old")]
+    for width in WIDTHS:
+        reset(users, requests=requests)
+        pg = Page(browser, width)
+        page = pg.page
+        login(pg)
+        page.goto(BASE + "/requests")
+        pg.t("incoming-list").wait_for()
+        pg.t("request-item-rq_in").wait_for()
+        for tid in ("incoming-list", "outgoing-list", "request-item-rq_in", "request-item-rq_out", "request-item-rq_done", "request-amount-rq_in", "request-pay-rq_in",
+                    "request-decline-rq_in", "request-cancel-rq_out"):
+            check(pg.t(tid).count() == 1, f"requests @{width}: {tid} present once")
+        check(pg.t("request-item-rq_in").get_attribute("data-status") == "pending", "pending status")
+        check(pg.t("request-item-rq_done").get_attribute("data-status") == "declined", "declined status")
+        check(pg.t("request-amount-rq_in").text_content() == "12.00 EUR", "request amount exact")
+        check(pg.t("request-amount-rq_out").text_content() == "999.99 EUR", "long amount exact")
+        for tid in ("request-cancel-rq_in", "request-pay-rq_out", "request-decline-rq_out", "request-pay-rq_done", "request-decline-rq_done", "request-cancel-rq_done", "request-error", "empty-requests"):
+            check(pg.t(tid).count() == 0 or not pg.t(tid).is_visible(), f"requests @{width}: {tid} absent")
+        in_ids = page.eval_on_selector_all("[data-testid=incoming-list] [data-testid^=request-item-]", "e => e.map(x => x.dataset.testid)")
+        check("request-item-rq_out" not in in_ids and "request-item-rq_in" in in_ids, f"incoming list contents {in_ids}")
+        pg.no_hscroll("requests")
+        pg.shot("requests", "loaded")
+
+        # cancelled elsewhere while the pay button is visible -> request-error, stale button disappears
+        bob = token_for("bob@example.com")
+        st, _ = api_json("/requests/rq_in/cancel", token=bob, method="POST")
+        check(st == 200, "bob cancels rq_in elsewhere")
+        pg.t("request-pay-rq_in").click()
+        pg.t("request-error").wait_for()
+        pg.t("request-item-rq_in").wait_for()
+        pg.wait_attr('request-item-rq_in', 'data-status', 'cancelled')
+        check(pg.t("request-pay-rq_in").count() == 0, "stale pay button disappears")
+        check("no longer pending" in pg.t("request-error").inner_text(), "request-error names the cause")
+        pg.shot("requests", "stale-refused")
+
+        # pay moves money once and shows paid
+        before = api_json("/me", token=token_for("ada@example.com"))[1]["balance"]
+        pg.t("request-pay-rq_pay").click()
+        pg.wait_attr('request-item-rq_pay', 'data-status', 'paid')
+        after = api_json("/me", token=token_for("ada@example.com"))[1]["balance"]
+        check(before - after == 300, f"pay moved {before - after}")
+        check(pg.t("request-pay-rq_pay").count() == 0, "no pay button once paid")
+        check(pg.t("request-paid").count() == 1, "paid confirmation after refresh")
+        chip = page.locator("[data-chip=balance] b").text_content()
+        check(chip is not None and chip.startswith("97.00") or chip.startswith("9700"), f"header balance chip refreshed: {chip}")
+
+        pg.t("request-decline-rq_dec").click()
+        pg.wait_attr('request-item-rq_dec', 'data-status', 'declined')
+        pg.t("request-cancel-rq_out").click()
+        pg.wait_attr('request-item-rq_out', 'data-status', 'cancelled')
+        check(pg.t("request-cancel-rq_out").count() == 0, "no cancel button once cancelled")
+        pg.shot("requests", "after-actions")
+        pg.focus_visible("requests")
+        pg.done("requests")
+
+        reset([users[2]], requests=[])
+        pg = Page(browser, width)
+        login(pg, "cy@example.com")
+        pg.page.goto(BASE + "/requests")
+        pg.t("empty-requests").wait_for()
+        check(pg.t("empty-requests").is_visible(), "empty-requests visible")
+        pg.shot("requests", "empty")
+        pg.done("requests-empty")
+
+
+def check_split(browser):
+    users = [
+        {"id": "u_ada", "email": "ada@example.com", "password": PASSWORD, "display_name": "Ada", "handle": "ada", "balance": 10000},
+        {"id": "u_bob", "email": "bob@example.com", "password": PASSWORD, "display_name": "Bob", "handle": "bob", "balance": 0},
+        {"id": "u_cy", "email": "cy@example.com", "password": PASSWORD, "display_name": "Cy", "handle": "cy", "balance": 0},
+    ]
+    rows = [("10.00", "ada, bob, cy", ["3.34 EUR", "3.33 EUR", "3.33 EUR"]), ("0.01", "ada,bob,cy", ["0.01 EUR", "0.00 EUR", "0.00 EUR"]),
+            ("0.10", "bob, cy, ada", ["0.04 EUR", "0.03 EUR", "0.03 EUR"]), ("9.99", "ada, bob, cy", ["3.33 EUR"] * 3), ("0.05", "a, b, c, d, e", ["0.01 EUR"] * 5)]
+    for width in WIDTHS:
+        reset(users)
+        pg = Page(browser, width)
+        page = pg.page
+        posts = []
+        page.on("request", lambda r: posts.append(r.post_data) if r.method == "POST" and r.url.endswith("/splits") else None)
+        login(pg)
+        page.goto(BASE + "/split")
+        pg.t("split-amount").wait_for()
+        check(pg.t("split-preview").count() == 1, "split-preview present")
+        for amount, handles, want in rows:
+            pg.t("split-amount").fill(amount)
+            pg.t("split-handles").fill(handles)
+            names = [h.strip().lstrip("@") for h in handles.split(",")]
+            for name, share in zip(names, want):
+                check(pg.t(f"split-share-{name}").text_content() == share, f"split @{width} {amount}/{handles}: {name} {pg.t(f'split-share-{name}').text_content()!r} != {share}")
+        check(len(posts) == 0, "preview sends nothing")
+        pg.t("split-amount").fill("10.00")
+        pg.t("split-handles").fill("ada, bob, cy")
+        pg.t("split-note").fill("dinner")
+        preview = [pg.t(f"split-share-{n}").text_content() for n in ("ada", "bob", "cy")]
+        pg.shot("split", "preview")
+        pg.t("split-submit").click()
+        pg.t("split-success").wait_for()
+        check(len(posts) == 1, "one POST /splits")
+        st, body = api_json("/requests", token=token_for("bob@example.com"))
+        got = [f"{q['amount'] // 100}.{q['amount'] % 100:02d} EUR" for q in body["requests"]]
+        check(got == [preview[1]], f"server share for bob {got} == preview {preview[1]}")
+        pg.shot("split", "success")
+        pg.t("split-submit").click()
+        pg.t("split-already").wait_for()
+        page.wait_for_timeout(200)
+        check(len(posts) == 1, "unchanged resubmit sends nothing")
+        # caller omitted, only the caller, unknown handle, invalid input
+        pg.t("split-handles").fill("bob, cy")
+        check([pg.t("split-share-bob").text_content(), pg.t("split-share-cy").text_content()] == ["5.00 EUR", "5.00 EUR"], "caller omitted: n = listed handles")
+        pg.t("split-handles").fill("ada")
+        check(pg.t("split-share-ada").text_content() == "10.00 EUR", "caller only")
+        pg.t("split-submit").click()
+        pg.t("split-success").wait_for()
+        pg.t("split-handles").fill("ada, nobody")
+        pg.t("split-submit").click()
+        pg.t("split-error").wait_for()
+        pg.shot("split", "error")
+        n = len(posts)
+        pg.t("split-amount").fill("1.005")
+        pg.t("split-submit").click()
+        pg.t("split-error").wait_for()
+        check(len(posts) == n, "invalid amount sends nothing")
+        check(pg.t("split-share-ada").count() == 0, "no shares for an invalid amount")
+        pg.no_hscroll("split")
+        pg.focus_visible("split")
+        pg.done("split")
+
+
+CHECKS = {"auth": check_auth, "units": check_units, "wallet": check_wallet, "requests": check_requests, "split": check_split}
 
 
 def main():

@@ -36,9 +36,9 @@ function notice(kind, glyph, testid, role, text, extra) {
  */
 export function writeForm(config) {
   const { form, button, label, busyLabel, ids } = config;
-  const attempt = new Attempt(config.path);
-  const slot = h("div", { class: "form-feedback", "aria-live": "polite" });
-  button.before(slot);
+  const attempt = config.attempt || new Attempt(config.path);
+  const slot = config.slot || h("div", { class: "form-feedback", "aria-live": "polite" });
+  if (!config.slot) button.before(slot);
   let busy = false;
 
   const clearFeedback = () => slot.replaceChildren();
