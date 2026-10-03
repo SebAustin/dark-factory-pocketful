@@ -41,6 +41,7 @@ Round 1 (analyst): 1 blocking (D-22 browser session across stage-1 import -> lea
 | S2.U6 | Authorizations screen | designer | 23:03 | yes | ACCEPT 3dbd491 |
 | S2.U7 | Competing clients, uncertain, upgrade | designer | 23:03 | yes | ACCEPT 46b6e6f |
 | S2.U9 | /signup,/login reachable while signed in | designer | 23:3x | yes | ACCEPT 77250c4 |
+| S2.8 | Upgrade sessions (L5), ttl, pay replay | builder | 23:5x | yes | ACCEPT bf2e57d |
 | S2.5A | Import hold check | builder | 23:2x | yes | ACCEPT eab708e |
 
 ## Rejections and what they caught
