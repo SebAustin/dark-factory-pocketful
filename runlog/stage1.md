@@ -70,7 +70,7 @@ Stage 1 ACCEPTED at 9d7ab5e76ada506165f010ef4e751b746ffef108 (verdict reviews/st
 
 ## Wall time
 
-Dispatch 21:22:12Z -> gate ACCEPT 22:51Z: about 1 h 29 min. Items: 17 work items (incl. ledger, plan, acceptance, stress tool, 3 diagnoses); 5 item rejections, 0 stage-gate failures.
+Dispatch 21:22:12Z -> gate ACCEPT 22:51Z: about 1 h 29 min. Items: 17 work items (incl. ledger, plan, acceptance, stress tool, 3 diagnoses); 4 item rejections (0fa1f0b, 7e7c5c1, 52bf3ed, 5ff293a), 0 stage-gate failures; F4-F6 were findings attached to the S1.12 ACCEPT, not a rejection.
 
 ## Findings caught beyond item reviews
 
