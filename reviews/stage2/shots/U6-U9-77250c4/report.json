@@ -1,0 +1,613 @@
+[
+  {
+    "state": "login-signed-in",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/375/01-login-signed-in.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup-signed-in",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/375/02-signup-signed-in.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-held",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/375/03-wallet-held.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/375/04-holds.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-refused",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/375/05-hold-capture-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    ]
+  },
+  {
+    "state": "hold-captured",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/375/06-hold-captured.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-uncertain",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/375/07-hold-capture-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "authorize-refused",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/375/08-authorize-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds-empty",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/375/09-holds-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "login-signed-in",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/390/01-login-signed-in.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup-signed-in",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/390/02-signup-signed-in.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-held",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/390/03-wallet-held.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/390/04-holds.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-refused",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/390/05-hold-capture-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    ]
+  },
+  {
+    "state": "hold-captured",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/390/06-hold-captured.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-uncertain",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/390/07-hold-capture-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "authorize-refused",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/390/08-authorize-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds-empty",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/390/09-holds-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "login-signed-in",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/768/01-login-signed-in.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup-signed-in",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/768/02-signup-signed-in.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-held",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/768/03-wallet-held.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/768/04-holds.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-refused",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/768/05-hold-capture-refused.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    ]
+  },
+  {
+    "state": "hold-captured",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/768/06-hold-captured.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-uncertain",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/768/07-hold-capture-uncertain.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "authorize-refused",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/768/08-authorize-refused.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds-empty",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/768/09-holds-empty.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 899,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "login-signed-in",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1024/01-login-signed-in.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 1024
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup-signed-in",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1024/02-signup-signed-in.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 1024
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-held",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1024/03-wallet-held.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 1024
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1024/04-holds.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 1024
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-refused",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1024/05-hold-capture-refused.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 1024
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    ]
+  },
+  {
+    "state": "hold-captured",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1024/06-hold-captured.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 1024
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-uncertain",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1024/07-hold-capture-uncertain.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 1024
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "authorize-refused",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1024/08-authorize-refused.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 1024
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds-empty",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1024/09-holds-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "login-signed-in",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1280/01-login-signed-in.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup-signed-in",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1280/02-signup-signed-in.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-held",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1280/03-wallet-held.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1280/04-holds.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-refused",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1280/05-hold-capture-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    ]
+  },
+  {
+    "state": "hold-captured",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1280/06-hold-captured.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-uncertain",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1280/07-hold-capture-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "authorize-refused",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1280/08-authorize-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds-empty",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/U6-U9-77250c4/1280/09-holds-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  }
+]
