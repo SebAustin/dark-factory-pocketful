@@ -43,3 +43,26 @@ Domain terms as the specification uses them. No implementation detail.
 | import | `POST /_test/import`: atomic replacement of all state by an unchanged export; 204; tokens, receipts and ids survive. | reset, merge |
 | error envelope | `{"error": {"code", "message"}}` on every 4xx/5xx. | |
 | receipt | The original response body of a successful idempotent write, returned again on replay. | current state of the resource |
+
+## Stage 2 additions
+
+| term | meaning | not to be confused with |
+|---|---|---|
+| total | A wallet's money, equal to `balance`; the sum of all totals equals the seeded total. | available |
+| held | Sum of the remaining amounts of a payer's open, unexpired authorizations. Moves no money. | captured amount |
+| available | `total − held`; what the user can spend; never negative; the headline number in the UI. | total, balance (balance = total) |
+| authorization | A payer's reservation of money for a receiver (`to` party), captured later; statuses `open`, `captured`, `voided`, `expired`. | request (asks; reserves nothing), payment (moves money) |
+| hold | The reservation an open authorization places on the payer's wallet, for its remaining amount. | balance debit |
+| capture | Receiver's action turning (part of) an open authorization into an ordinary payment carrying `authorization_id`. | request pay |
+| final capture | A capture with `final` true (default): closes the authorization (`captured`) and releases any remainder. | non-final capture (keeps the remainder held, stays `open`) |
+| remaining amount | `amount − captured_amount` while open; 0 once closed. Exposed as `remaining_amount`. | captured_amount (cumulative) |
+| void | Payer's release of their own open hold; status `voided`; idempotent at 200. | cancel (requests), decline |
+| expiry | An authorization whose `expires_at` ≤ now is `expired` and holds nothing, evaluated at read/write time. | void |
+| authorization_ttl_seconds | Fixture-wide lifetime for API-created authorizations (default 600): `expires_at = created_at + ttl`. | seeded `expires_at` (absolute) |
+| upgrade | Importing the stage-1 service's export into the stage-2 service while a browser stays open. | reset |
+| uncertain outcome | A write whose response was lost (network error, abort, 5xx): shown as `pay-uncertain`, retried with the same key and body. | refusal (a 4xx, shown as `pay-error`) |
+| latest refresh wins | Only the most recently issued read may update the wallet/feed display; older responses arriving later are discarded. | last response wins |
+| formatted amount | Minor units shown as a decimal with exactly `minor_units` places, one space, the currency code (`100.00 EUR`, `1200 JPY`, `1.500 BHD`); no sign, no grouping. | raw minor units (`data-amount`) |
+| decimal input | What a person types in an amount field (`15`, `15.5`, `15.00`), converted to minor units; more than `minor_units` places or nonnumeric is refused before any request. | API amount (integer minor units) |
+| split preview | Client-side shares computed by the §9 rule before posting; must equal the server's shares. | split response `shares` |
+| content negotiation | `/requests` and `/authorizations` return HTML for `Accept: text/html`, JSON otherwise. | separate UI routes |
