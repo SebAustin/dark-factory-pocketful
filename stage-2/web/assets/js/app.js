@@ -79,7 +79,6 @@ async function render() {
   let state = authToken() ? await loadMe() : "signed-out";
   if (mine !== renderToken) return;
   if (state === "signed-out" && !isPublic) return go("/login", { replace: true });
-  if (state === "ok" && isPublic) return go("/", { replace: true });
 
   const me = state === "ok" || state === "unreachable" ? currentUser() : null;
   const { header, main, tabbar } = chrome(path, state === "ok" ? me : null);

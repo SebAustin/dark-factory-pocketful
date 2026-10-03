@@ -56,14 +56,22 @@ function authForm({ kind, fields, submitLabel, testid, path, build, after, intro
   return form;
 }
 
-function shell({ title, lede, form, alt }) {
+function signedInNote(me) {
+  if (!me) return null;
+  return h("div", { class: "notice notice--info auth__signed-in", "data-role": "signed-in-note" }, icon("info"),
+    h("div", { class: "notice__body" }, `You're signed in as ${me.display_name}. `,
+      h("a", { href: "/", "data-link": "", text: "Continue to your wallet" }),
+      ". Submitting this form switches to the other account."));
+}
+
+function shell({ title, lede, form, alt, me }) {
   return h("div", { class: "auth" },
     h("div", { class: "auth__lede" }, h("h1", { text: title }), h("p", { text: lede }), h("div", { class: "ledger-rules", "aria-hidden": "true" })),
-    h("section", { class: "panel auth__panel" }, h("h2", { text: alt.heading }), form,
+    h("section", { class: "panel auth__panel" }, h("h2", { text: alt.heading }), signedInNote(me), form,
       h("p", { class: "auth__alt" }, alt.text, " ", h("a", { href: alt.href, "data-link": "", text: alt.link }))));
 }
 
-export async function loginScreen({ go }) {
+export async function loginScreen({ go, me }) {
   const email = field({ id: "login-email", label: "Email", testid: "login-email", type: "email", autocomplete: "username", required: true });
   const password = passwordField({ id: "login-password", label: "Password", testid: "login-password", autocomplete: "current-password" });
   const form = authForm({
@@ -72,10 +80,10 @@ export async function loginScreen({ go }) {
     after: () => go("/", { replace: true }),
   });
   return shell({ title: "Money that moves when you say so.", lede: "Send, request and reserve funds with a wallet that always tells you exactly what you can spend.", form,
-    alt: { heading: "Log in", text: "New here?", href: "/signup", link: "Create an account" } });
+    me, alt: { heading: "Log in", text: "New here?", href: "/signup", link: "Create an account" } });
 }
 
-export async function signupScreen({ go }) {
+export async function signupScreen({ go, me }) {
   const name = field({ id: "signup-display-name", label: "Display name", testid: "signup-display-name", autocomplete: "name", required: true });
   const email = field({ id: "signup-email", label: "Email", testid: "signup-email", type: "email", autocomplete: "email", required: true,
     hint: "Your handle is made from the part before the @." });
@@ -86,5 +94,5 @@ export async function signupScreen({ go }) {
     after: () => go("/", { replace: true }),
   });
   return shell({ title: "A calm place for everyday money.", lede: "Open a wallet in a minute. You can pay anyone by handle and see every movement in plain words.", form,
-    alt: { heading: "Create your account", text: "Already have one?", href: "/login", link: "Log in" } });
+    me, alt: { heading: "Create your account", text: "Already have one?", href: "/login", link: "Log in" } });
 }

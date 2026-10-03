@@ -135,6 +135,24 @@ def check_auth(browser):
             pg.no_hscroll(route)
         pg.shot("auth", "signed-in-shell")
 
+        # a session does not hide /signup or /login: the forms render, and submitting switches accounts
+        for route, submit in (("/signup", "signup-submit"), ("/login", "login-submit")):
+            page.goto(BASE + route)
+            pg.t(submit).wait_for()
+            check(pg.t("current-user").is_visible() and pg.t("current-handle").text_content() == "ada", f"signed-in chrome on {route}")
+            pg.no_hscroll(route + " signed in")
+        pg.shot("auth", "login-while-signed-in")
+        pg.t("login-email").fill("bob@example.com")
+        pg.t("login-password").fill(PASSWORD)
+        pg.t("login-submit").click()
+        page.wait_for_url(BASE + "/")
+        pg.wait_text("current-handle", "bob")
+        page.goto(BASE + "/login")
+        pg.t("login-email").fill("ada@example.com")
+        pg.t("login-password").fill(PASSWORD)
+        pg.t("login-submit").click()
+        pg.wait_text("current-handle", "ada")
+
         # token survives a reload; logout clears it
         page.reload()
         pg.t("current-user").wait_for()
