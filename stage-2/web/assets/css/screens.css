@@ -111,7 +111,7 @@
 .hold-amounts { margin-left: auto; text-align: right; display: grid; gap: var(--s1); justify-items: end; align-self: start; }
 .hold-captured, .hold-remaining, .hold-expiry { font-size: var(--t-sm); color: var(--ink-2); }
 .hold-remaining { color: var(--held); font-weight: 600; }
-.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--t-xs); overflow-wrap: anywhere; white-space: normal; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--t-xs); white-space: nowrap; }
 .capture-form { display: flex; flex-wrap: wrap; align-items: end; gap: var(--s3); width: 100%; }
 .capture-form .field { flex: 1 1 10ch; }
 .input--small { min-height: 40px; }
