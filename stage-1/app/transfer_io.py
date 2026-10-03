@@ -17,6 +17,7 @@ FORMAT_VERSION = 1
 MINOR_UNITS = (0, 2, 3)
 COUNTER_KINDS = ("p", "rq", "sp", "st", "u")
 STATE_KEYS = tuple(empty_state())
+MAX_EXPONENT = 18  # 2^53 has 16 digits; anything past 1e18 can never be a valid state value
 
 
 def _bad(message: str):
@@ -41,6 +42,9 @@ def _native(value):
     if isinstance(value, list):
         return [_native(v) for v in value]
     if isinstance(value, Decimal):
+        # Refuse absurd exponents before int() could build a billion-digit integer.
+        if not value.is_finite() or not -MAX_EXPONENT <= value.adjusted() <= MAX_EXPONENT:
+            _bad("number out of range")
         n = integral(value)
         if n is None:
             _bad("non-integer number")

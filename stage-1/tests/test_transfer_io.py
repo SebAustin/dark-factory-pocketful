@@ -320,6 +320,22 @@ class InvalidImportTest(unittest.TestCase):
         self.rejects(lambda b: b["state"]["settlements"].update(st_x={"id": "st_x", "committed_at": "later"}))
         self.rejects(lambda b: b["state"]["splits"].update(sp_x={"id": "sp_x", "created_at": 7}))
 
+    def test_huge_exponents_are_refused_quickly(self):
+        import time
+        for number in ("1e999999999", "1E+400", "1e19", "-1e999999999", "1e-999999999", "123456789012345678901234.5"):
+            for key, parent in (("seq", None), ("balance", "u_ada")):
+                raw = json.dumps(self.snap)
+                if parent is None:
+                    raw = json.dumps({**self.snap, "state": {**self.snap["state"], "seq": 0}}).replace('"seq": 0', '"seq": ' + number, 1)
+                else:
+                    ada = self.snap["state"]["users"]["u_ada"]["balance"]
+                    raw = raw.replace('"balance": %d' % ada, '"balance": ' + number, 1)
+                began = time.monotonic()
+                r = call("POST", "/_test/import", raw=raw)
+                self.assertLess(time.monotonic() - began, 5, number)
+                self.assertEqual((r.status, r.code), (422, "validation_failed"), (key, number, r.raw[:100]))
+                self.assertEqual(dump_state(), self.before)
+
     def test_counters_and_seq(self):
         self.rejects(lambda b: b["state"].update(seq="9"))
         self.rejects(lambda b: b["state"].update(seq=-1))
