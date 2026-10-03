@@ -26,8 +26,11 @@ export function go(path, { replace = false } = {}) {
   return render();
 }
 
+const WIDE = window.matchMedia("(min-width: 1240px)");
+
+// The chip only exists in the DOM when the header has room for it (>= 1240px).
 function balanceChip(me) {
-  if (!me) return null;
+  if (!me || !WIDE.matches) return null;
   const available = me.available ?? me.balance;
   return h("span", { class: "balance-chip", "data-chip": "balance" },
     h("span", { text: "Available" }),
@@ -106,6 +109,13 @@ document.addEventListener("click", (event) => {
   if (url.pathname !== location.pathname) go(url.pathname);
 });
 window.addEventListener("popstate", render);
+WIDE.addEventListener("change", () => {
+  const area = document.querySelector(".user-area"), me = currentUser();
+  if (!area || !me) return;
+  area.querySelector('[data-chip="balance"]')?.remove();
+  const chip = balanceChip(me);
+  if (chip) area.prepend(chip);
+});
 // Keep the header balance chip in step with every refresh of /me.
 document.addEventListener("pocketful:me", (event) => {
   const chip = document.querySelector('[data-chip="balance"]');

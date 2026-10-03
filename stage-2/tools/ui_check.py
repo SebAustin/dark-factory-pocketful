@@ -429,8 +429,9 @@ def check_requests(browser):
         check(before - after == 300, f"pay moved {before - after}")
         check(pg.t("request-pay-rq_pay").count() == 0, "no pay button once paid")
         check(pg.t("request-paid").count() == 1, "paid confirmation after refresh")
-        chip = page.locator("[data-chip=balance] b").text_content()
-        check(chip is not None and chip.startswith("97.00") or chip.startswith("9700"), f"header balance chip refreshed: {chip}")
+        if width >= 1240:   # the header only has room for the balance chip on wide screens
+            chip = page.locator("[data-chip=balance] b").text_content()
+            check(chip.startswith("97.00"), f"header balance chip refreshed: {chip}")
 
         pg.t("request-decline-rq_dec").click()
         pg.wait_attr('request-item-rq_dec', 'data-status', 'declined')
@@ -776,7 +777,40 @@ def check_chaos(browser):
         pg.done("chaos-upgrade")
 
 
-CHECKS = {"auth": check_auth, "units": check_units, "wallet": check_wallet, "requests": check_requests, "split": check_split, "holds": check_holds, "chaos": check_chaos}
+def check_header(browser):
+    """The signed-in header must not scroll sideways or overlap at any width from 375 up, with extreme data."""
+    reset([{"id": "u_ada", "email": "ada@example.com", "password": PASSWORD, "display_name": "Ada Lovelace-Byron of a Very Long Name", "handle": "ada_lovelace_byron_1",
+            "balance": 123456789012}, {"id": "u_bob", "email": "bob@example.com", "password": PASSWORD, "display_name": "Bob", "handle": "bob", "balance": 5}])
+    widths = (375, 390, 414, 600, 640, 641, 700, 768, 820, 900, 999, 1000, 1024, 1100, 1200, 1239, 1240, 1280, 1366, 1440, 1920)
+    for width in widths:
+        pg = Page(browser, width, 800)
+        login(pg)
+        pg.t("wallet-balance").wait_for()
+        for route in ("/", "/requests", "/split", "/authorizations"):
+            pg.page.goto(BASE + route)
+            pg.t("current-user").wait_for()
+            pg.no_hscroll(f"header {route}")
+            boxes = pg.page.evaluate("""() => {
+              const q = s => [...document.querySelectorAll(s)].filter(e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
+              const items = [['brand', '.app-header .brand'], ['nav', '.nav-main'], ['chip', '.balance-chip'], ['user', '.user-chip'], ['logout', '[data-testid=logout-button]']];
+              return items.map(([n, s]) => { const e = q(s)[0]; if (!e) return null; const r = e.getBoundingClientRect(); return {n, l: r.left, r: r.right, w: r.width, h: r.height}; }).filter(Boolean); }""")
+            boxes.sort(key=lambda b: b["l"])
+            for a, b in zip(boxes, boxes[1:]):
+                check(a["r"] <= b["l"] + 0.5, f"header @{width} {route}: {a['n']} overlaps {b['n']} ({a['r']:.0f} > {b['l']:.0f})")
+            lines = pg.page.evaluate("""() => { const b = document.querySelector('[data-testid=logout-button]'); const r = document.createRange(); r.selectNodeContents(b); return new Set([...r.getClientRects()].map(x => Math.round(x.top))).size; }""")
+            check(lines == 1, f"header @{width}: Log out wraps")
+            check(pg.page.evaluate("document.querySelector('.brand svg').getBoundingClientRect().width") >= 21, f"header @{width}: brand icon squeezed")
+            has_tab = pg.page.evaluate("getComputedStyle(document.querySelector('.tabbar')).display !== 'none'")
+            has_nav = pg.page.evaluate("getComputedStyle(document.querySelector('.nav-main')).display !== 'none'")
+            check(has_tab != has_nav, f"header @{width}: exactly one of tab bar / top nav ({has_tab},{has_nav})")
+        if width in (768, 1024, 1280):
+            pg.page.goto(BASE + "/")
+            pg.t("wallet-balance").wait_for()
+            pg.shot("header", f"wallet-{width}")
+        pg.done(f"header @{width}")
+
+
+CHECKS = {"header": check_header, "auth": check_auth, "units": check_units, "wallet": check_wallet, "requests": check_requests, "split": check_split, "holds": check_holds, "chaos": check_chaos}
 
 
 def main():

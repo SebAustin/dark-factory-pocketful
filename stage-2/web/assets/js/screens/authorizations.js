@@ -50,8 +50,11 @@ export async function authorizationsScreen({ go }) {
     h("p", { class: "empty__hint", text: "Reserve money for someone to collect later. Open holds reduce what you can spend until they are collected, voided or expire." }));
   const me = () => currentUser();
 
-  const showError = (text) => feedback.replaceChildren(h("div", { class: "notice notice--refused", role: "alert", tabindex: "-1", "data-testid": "authorization-error" },
-    icon("cross"), h("div", { class: "notice__body", text })));
+  const showError = (text) => {
+    feedback.replaceChildren(h("div", { class: "notice notice--refused", role: "alert", tabindex: "-1", "data-testid": "authorization-error" },
+      icon("cross"), h("div", { class: "notice__body", text })));
+    feedback.firstChild.scrollIntoView({ block: "nearest" });
+  };
 
   const load = () => loadAll(authToken());
   const apply = (result) => {

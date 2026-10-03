@@ -101,7 +101,8 @@
 .split-shares { list-style: none; padding: 0; margin: var(--s2) 0 0; display: grid; gap: var(--s2); }
 .split-share { display: flex; justify-content: space-between; gap: var(--s3); border-bottom: 1px solid var(--rule); padding-bottom: var(--s2); }
 .split-share:last-child { border-bottom: 0; padding-bottom: 0; }
-.split-share__who { overflow-wrap: anywhere; }
+.split-share__who { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.split-share .num { flex: none; }
 
 /* ---------- holds ---------- */
 .holds-layout { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); gap: var(--s6); align-items: start; }

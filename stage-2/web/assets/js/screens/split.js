@@ -35,7 +35,7 @@ export async function splitScreen({ go }) {
     lastShares = list.map((handle, i) => ({ handle, amount: Number(shares[i]) }));
     preview.append(h("p", { class: "eyebrow", text: "Each share" }),
       h("ul", { class: "split-shares" }, lastShares.map((s) => h("li", { class: "split-share" },
-        h("span", { class: "split-share__who", text: s.handle }),
+        h("span", { class: "split-share__who", title: s.handle, text: s.handle }),
         h("span", { class: "num", "data-testid": `split-share-${s.handle}`, text: formatAmount(s.amount, now.minor_units, now.currency) })))));
   };
   form.addEventListener("input", renderPreview);

@@ -42,6 +42,7 @@ export async function requestsScreen({ go }) {
   const showError = (text) => {
     feedback.replaceChildren(h("div", { class: "notice notice--refused", role: "alert", tabindex: "-1", "data-testid": "request-error" },
       icon("cross"), h("div", { class: "notice__body", text })));
+    feedback.firstChild.scrollIntoView({ block: "nearest" });  // the slot sits above the tapped row; bring it into view
   };
   const clearFeedback = () => feedback.replaceChildren();
 

@@ -27,17 +27,17 @@
 .nav-main svg, .tabbar svg { width: 18px; height: 18px; flex: none; }
 .app-header :focus-visible, .tabbar :focus-visible { outline-color: #9CC2FF; }
 
-.user-area { margin-left: auto; display: flex; align-items: center; gap: var(--s3); min-width: 0; }
+.user-area { margin-left: auto; display: flex; align-items: center; justify-content: flex-end; gap: var(--s3); min-width: 0; flex: 0 1 auto; }
 .user-area > * { flex: none; }
-.user-area > .user-chip { flex: 0 1 auto; }
+.user-area > .user-chip { flex: 0 1 auto; min-width: 0; }
 .user-chip { display: grid; line-height: 1.2; min-width: 0; text-align: right; }
 .user-chip [data-testid="current-user"] {
-  font-weight: 600; font-size: var(--t-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 22ch;
+  font-weight: 600; font-size: var(--t-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 18ch;
 }
 .user-chip [data-testid="current-handle"] { font-size: var(--t-xs); color: var(--nav-inactive); }
 .user-chip [data-testid="current-handle"]::before { content: "@"; }
 .balance-chip {
-  display: none; align-items: baseline; gap: var(--s2);
+  display: inline-flex; align-items: baseline; gap: var(--s2);
   padding: var(--s1) var(--s3); border: 1px solid rgb(245 242 235 / .35); border-radius: 999px;
   font-size: var(--t-sm); white-space: nowrap;
 }
@@ -59,11 +59,13 @@
 }
 .tabbar a[aria-current="page"] { color: var(--ink); background: var(--paper); }
 
-@media (min-width: 641px) { .balance-chip { display: inline-flex; } }
-@media (max-width: 640px) {
+/* The full nav needs about 1000px; below that the tab bar carries it. The balance chip only shows when there is room. */
+@media (max-width: 999px) {
   .nav-main { display: none; }
   .tabbar { display: block; }
   body.has-tabbar { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 640px) {
   .app-header__inner { padding: 0 var(--s3); gap: var(--s3); }
   .user-chip [data-testid="current-user"] { max-width: 14ch; }
 }

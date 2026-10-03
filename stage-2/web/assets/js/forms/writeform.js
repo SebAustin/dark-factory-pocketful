@@ -43,7 +43,10 @@ export function writeForm(config) {
 
   const clearFeedback = () => slot.replaceChildren();
   const setLabel = (text) => { button.replaceChildren(document.createTextNode(text)); };
-  const showError = (text) => { slot.replaceChildren(notice("refused", "cross", ids.error, "alert", text)); };
+  const showError = (text) => {
+    slot.replaceChildren(notice("refused", "cross", ids.error, "alert", text));
+    slot.firstChild.scrollIntoView({ block: "nearest" });  // a shared page-level slot may be off-screen
+  };
   const showUncertain = () => {
     slot.replaceChildren(notice("unsure", "question", ids.uncertain, "status",
       config.uncertainText || "We didn't get an answer. This may or may not have gone through. Retrying is safe: it can't happen twice."));
