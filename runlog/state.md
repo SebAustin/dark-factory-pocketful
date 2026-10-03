@@ -38,7 +38,7 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 | S2.PG | Plan gate | analyst | - | assigned (after ledger) | - | 0 |
 | S2.A | Acceptance (stage1 carried + stage2 API + screens) | analyst | stage-2/acceptance/ | assigned | - | 0 |
 | S2.U1 | Shell, visual system, nav, auth screens | designer | web/** | accepted (F1/F2 closed in U2-U3 review) | 773f649 | 1 |
-| S2.U2+U3 | Client core + wallet screen | designer | web/** | rejected R1 (F3 header overflow 641-1030 px) -> designer fixing | 0fa1361 | 1 |
+| S2.U2+U3 | Client core + wallet screen | designer | web/** | fix resubmitted (in review) | b0aae37 | 1 |
 | S2.U4+U5 | Requests + split screens | designer | web/** | accepted | 1ef373b | 0 |
 
 ## Stage 2 decisions
