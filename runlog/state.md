@@ -38,7 +38,8 @@ Last accepted revision: none (stage 1 is the first).
 | S1.12 | Import timestamp validation | designer | transfer_io.py | accepted | 2b73788 | 0 |
 | S1.AH | Hidden-requirement sweep (73/79 confirmed) | analyst | stage-1/acceptance/ | done | 2200e4a | 0 |
 | S1.14 | Hidden-sweep fixes H1-H4 (regex \n, long query int, surrogates, exponent in canonical) | builder | validation, http_util, server, auth | built with S1.11 (in review) | 2e25cdb | 0 |
-| S1.15 | Import huge-number guard | designer | transfer_io.py | in review | 97a2879 | 0 |
+| S1.15 | Import huge-number guard | designer | transfer_io.py | accepted | 97a2879 | 0 |
+| S1.17 | Lowercase t/z RFC 3339 (verifier note) | builder | store.py | built (review at gate) | 7a9d1cf | 0 |
 
 ## Open rejections
 
