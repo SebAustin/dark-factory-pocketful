@@ -9,7 +9,7 @@ from decimal import Decimal
 
 from . import errors
 from .routes import route
-from .store import REQUEST_STATUSES, STORE, empty_state
+from .store import REQUEST_STATUSES, STORE, empty_state, parse_rfc3339
 from .validation import BALANCE_LIMIT, HANDLE_RE, MAX_ID, VISIBILITIES, integral
 
 TRACK = "pocketful"
@@ -78,6 +78,18 @@ def _opt_str(value, what: str):
         _bad(what + " must be a string or null")
 
 
+def _timestamp(value, what: str) -> None:
+    """RFC 3339 with an explicit offset, so every record sorts by its true instant."""
+    if parse_rfc3339(value) is None:
+        _bad(what + " must be an RFC 3339 timestamp with an offset")
+
+
+def _opt_timestamps(table: dict, key: str, what: str) -> None:
+    for rec in table.values():
+        if key in rec:
+            _timestamp(rec[key], what)
+
+
 def _user_ref(users: dict, value, what: str) -> str:
     if not isinstance(value, str) or value not in users:
         _bad(what + " references an unknown user")
@@ -141,7 +153,7 @@ def _check_payments(state: dict) -> int:
             _bad("payment visibility is invalid")
         _opt_str(p.get("request_id"), "payment request_id")
         _opt_str(p.get("settlement_id"), "payment settlement_id")
-        _str(p.get("created_at"), "payment created_at", True)
+        _timestamp(p.get("created_at"), "payment created_at")
         top = max(top, _int(p.get("seq"), 0, BALANCE_LIMIT, "payment seq"))
     order = _list(state["payment_order"], "payment_order")
     if any(not isinstance(i, str) for i in order) or sorted(order) != sorted(state["payments"]):
@@ -161,7 +173,7 @@ def _check_requests(state: dict) -> int:
         if r.get("status") not in REQUEST_STATUSES:
             _bad("request status is invalid")
         _opt_str(r.get("payment_id"), "request payment_id")
-        _str(r.get("created_at"), "request created_at", True)
+        _timestamp(r.get("created_at"), "request created_at")
         top = max(top, _int(r.get("seq"), 0, BALANCE_LIMIT, "request seq"))
     return top
 
@@ -196,8 +208,9 @@ def validated_state(submitted) -> dict:
     _check_users(state)
     _check_sessions(state)
     top = max(_check_payments(state), _check_requests(state))
-    _table(state, "splits")
-    _table(state, "settlements")
+    _opt_timestamps(_table(state, "splits"), "created_at", "split created_at")
+    _opt_timestamps(_table(state, "settlements"), "committed_at", "settlement committed_at")
+    _opt_timestamps(state["users"], "created_at", "user created_at")
     _check_idempotency(state)
     _check_counters(state, top)
     return state

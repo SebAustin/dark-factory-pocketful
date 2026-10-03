@@ -302,6 +302,24 @@ class InvalidImportTest(unittest.TestCase):
                    {"payment_id": 5}, {"id": "rq_other"}):
             self.rejects(edit(**kw))
 
+    def test_timestamps_must_be_rfc3339_with_an_offset(self):
+        bad = ("yesterday", "", 5, None, "2026-02-30T00:00:00+00:00", "2026-02-10T00:00:00",
+               "2026-02-10", "2026-02-10 00:00:00+00:00", "2026-02-10T25:00:00+00:00", "10/02/2026")
+        for value in bad:
+            self.rejects(lambda b, v=value: next(iter(b["state"]["payments"].values())).update(created_at=v))
+            self.rejects(lambda b, v=value: next(iter(b["state"]["requests"].values())).update(created_at=v))
+        self.rejects(lambda b: next(iter(b["state"]["users"].values())).update(created_at="soon"))
+
+    def test_other_valid_offsets_and_forms_are_accepted(self):
+        for value in ("2026-02-10T08:00:00+02:00", "2026-02-10T06:00:00Z", "2026-02-10T06:00:00.123456-05:30"):
+            body = copy.deepcopy(self.snap)
+            next(iter(body["state"]["payments"].values())).update(created_at=value)
+            self.assertEqual(call("POST", "/_test/import", body).status, 204, value)
+
+    def test_settlement_and_split_timestamps_when_present(self):
+        self.rejects(lambda b: b["state"]["settlements"].update(st_x={"id": "st_x", "committed_at": "later"}))
+        self.rejects(lambda b: b["state"]["splits"].update(sp_x={"id": "sp_x", "created_at": 7}))
+
     def test_counters_and_seq(self):
         self.rejects(lambda b: b["state"].update(seq="9"))
         self.rejects(lambda b: b["state"].update(seq=-1))
