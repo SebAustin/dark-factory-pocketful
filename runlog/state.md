@@ -35,7 +35,7 @@ Last accepted revision: none (stage 1 is the first).
 | S1.10 | Early event-checker signal | builder | (own paths for fixes) | assigned | - | 0 |
 | S1.A | Acceptance suite (400 tests) | analyst | stage-1/acceptance/ | built; 385/400 on c19a2b7, failures -> S1.11 | 1a37936 | 0 |
 | S1.11 | Crash probes, numbers, lock scope, RUN.md | builder | validation, http_util, routes, store, server, RUN.md | assigned (top priority) | - | 0 |
-| S1.12 | Import timestamp validation | designer | transfer_io.py | assigned (after S1.9) | - | 0 |
+| S1.12 | Import timestamp validation | designer | transfer_io.py | accepted | 2b73788 | 0 |
 | S1.AH | Hidden-requirement sweep | analyst | stage-1/acceptance/ | assigned | - | 0 |
 
 ## Open rejections

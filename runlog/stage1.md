@@ -29,6 +29,7 @@ Round 1 (analyst, 22:3x): PLAN FINDINGS 1-6 against ledger 9bdc486. Lead decisio
 | S1.5 | Splits | designer | 21:55 | yes | ACCEPT 8f88f60 |
 | S1.6 | Settlements | designer | 21:33 | yes | ACCEPT 0b87d7f |
 | S1.7 | Export/import | designer | 21:45 | yes | REJECT 52bf3ed, ACCEPT af5270c |
+| S1.12 | Import timestamp validation | designer | 22:4x | yes | ACCEPT 2b73788 |
 | S1.8 | Load and limits | builder | 21:24 (plan) | yes | ACCEPT ef350b3 |
 
 ## Rejections and what they caught
