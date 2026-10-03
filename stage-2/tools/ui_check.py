@@ -52,9 +52,10 @@ class Page:
         self.ctx = browser.new_context(viewport={"width": width, "height": height})
         self.page = self.ctx.new_page()
         self.problems = []
-        # Chromium logs every 4xx fetch as a console error; refusals are expected, so only other errors count.
+        # Chromium logs every 4xx fetch, and every deliberately aborted one (net::ERR_FAILED), as a console error;
+        # refusals and the chaos check's dropped responses are expected, so only other errors count.
         self.page.on("console", lambda m: self.problems.append(f"console {m.type}: {m.text}")
-                     if m.type in ("error", "warning") and "status of 4" not in m.text else None)
+                     if m.type in ("error", "warning") and "status of 4" not in m.text and "net::ERR_FAILED" not in m.text else None)
         self.page.on("pageerror", lambda e: self.problems.append(f"pageerror: {e}"))
         self.page.on("response", lambda r: self.problems.append(f"{r.status} {r.url}") if r.status >= 500 else None)
         self.width = width
@@ -601,7 +602,163 @@ def check_holds(browser):
         pg.done("holds-empty")
 
 
-CHECKS = {"auth": check_auth, "units": check_units, "wallet": check_wallet, "requests": check_requests, "split": check_split, "holds": check_holds}
+def base_users(**balances):
+    return [
+        {"id": "u_ada", "email": "ada@example.com", "password": PASSWORD, "display_name": "Ada", "handle": "ada", "balance": balances.get("ada", 10000)},
+        {"id": "u_bob", "email": "bob@example.com", "password": PASSWORD, "display_name": "Bob", "handle": "bob", "balance": balances.get("bob", 2500)},
+        {"id": "u_cy", "email": "cy@example.com", "password": PASSWORD, "display_name": "Cy", "handle": "cy", "balance": 0},
+    ]
+
+
+def fill_pay(pg, note="late dinner"):
+    pg.t("pay-handle").fill("bob")
+    pg.t("pay-amount").fill("15.00")
+    pg.t("pay-note").fill(note)
+
+
+def balance_of(email):
+    return api_json("/me", token=token_for(email))[1]["balance"]
+
+
+def check_chaos(browser):
+    for width in WIDTHS:
+        # ---- lost response after the payment committed -> pay-uncertain, retry with the same key and body
+        reset(base_users())
+        pg = Page(browser, width)
+        page = pg.page
+        seen = []
+        page.on("request", lambda r: seen.append((r.headers.get("idempotency-key"), r.post_data)) if r.method == "POST" and r.url.endswith("/payments") else None)
+        state = {"drop": True}
+
+        def drop_once(route):
+            if state["drop"]:
+                state["drop"] = False
+                route.fetch()          # the server commits the payment ...
+                route.abort()          # ... and the browser never sees the answer
+            else:
+                route.continue_()
+        page.route("**/payments", drop_once)
+        login(pg)
+        pg.t("wallet-balance").wait_for()
+        fill_pay(pg)
+        pg.t("pay-submit").click()
+        pg.t("pay-uncertain").wait_for()
+        check(pg.t("pay-uncertain").inner_text().strip() != "", "pay-uncertain has text")
+        check(pg.t("pay-error").count() == 0, "an unknown outcome is not pay-error")
+        check(pg.t("pay-handle").input_value() == "bob" and pg.t("pay-amount").input_value() == "15.00", "inputs kept while uncertain")
+        pg.shot("chaos", "pay-uncertain")
+        pg.t("pay-submit").click()
+        pg.t("pay-success").wait_for()
+        check(pg.t("pay-uncertain").count() == 0 and pg.t("pay-error").count() == 0, "both elements gone after the retry")
+        check(len(seen) == 2 and seen[0] == seen[1] and seen[0][0], f"retry reuses key and body: {seen}")
+        check(balance_of("ada@example.com") == 10000 - 1500, "money moved exactly once")
+        pg.wait_text("wallet-balance", "85.00 EUR")
+        check(page.locator("[data-testid=activity-list] > li").count() == 1, "one feed row")
+
+        # ---- editing after an unknown outcome is a new payment (new key), with a warning note
+        state["drop"] = True
+        pg.t("pay-note").fill("second")
+        pg.t("pay-submit").click()
+        pg.t("pay-uncertain").wait_for()
+        pg.t("pay-note").fill("third")
+        check(pg.t("pay-uncertain").count() == 0, "pay-uncertain leaves once the form is a different request")
+        pg.t("pay-submit").click()
+        pg.t("pay-success").wait_for()
+        check(seen[-1][0] != seen[-2][0], "a changed form uses a new key")
+        pg.done("chaos-lost")
+
+        # ---- another client spends the balance after this browser read it
+        reset(base_users())
+        pg = Page(browser, width)
+        page = pg.page
+        login(pg)
+        pg.t("wallet-balance").wait_for()
+        ada = token_for("ada@example.com")
+        st, _ = api_json("/payments", token=ada, method="POST", body={"to_handle": "cy", "amount": 9900}, key="other-client")
+        check(st == 201, "other client spends 99.00")
+        check(pg.t("wallet-balance").text_content() == "100.00 EUR", "this browser still shows the stale balance")
+        fill_pay(pg, "stale")
+        pg.t("pay-submit").click()
+        pg.t("pay-error").wait_for()
+        pg.wait_text("wallet-balance", "1.00 EUR")
+        check(pg.t("pay-handle").input_value() == "bob" and pg.t("pay-amount").input_value() == "15.00" and pg.t("pay-note").input_value() == "stale", "inputs preserved after the refusal")
+        pg.shot("chaos", "stale-balance-refused")
+        pg.done("chaos-competing")
+
+        # ---- latest refresh wins when responses arrive out of order
+        reset(base_users())
+        pg = Page(browser, width)
+        page = pg.page
+        held = []
+        gate = {"hold": False}
+
+        def hold_first(route):
+            if gate["hold"]:
+                held.append((route, route.fetch()))     # an old read, answered later
+            else:
+                route.continue_()
+        page.route("**/me", hold_first)
+        page.route("**/activity*", hold_first)
+        login(pg)
+        pg.t("wallet-balance").wait_for()
+        gate["hold"] = True
+        pg.t("wallet-refresh").click()          # refresh A: its answers are held
+        page.wait_for_timeout(300)
+        gate["hold"] = False
+        bob = token_for("bob@example.com")
+        api_json("/payments", token=bob, method="POST", body={"to_handle": "ada", "amount": 500, "note": "newer"}, key="newer")
+        pg.t("wallet-refresh").click()          # refresh B: the newer state
+        pg.wait_text("wallet-balance", "105.00 EUR")
+        for route, response in held:            # now the old answers arrive
+            route.fulfill(response=response)
+        page.wait_for_timeout(500)
+        check(pg.t("wallet-balance").text_content() == "105.00 EUR", f"a late older refresh must not overwrite: {pg.t('wallet-balance').text_content()!r}")
+        check(len(held) == 2, f"held {len(held)} old reads")
+        pg.done("chaos-order")
+
+        # ---- request-row pay and the upgrade (export/import between browser requests)
+        reset(base_users(), requests=[{"id": "rq_up", "requester_id": "u_bob", "payer_id": "u_ada", "amount": 700, "note": "taxi", "status": "pending"},
+                                      {"id": "rq_up2", "requester_id": "u_bob", "payer_id": "u_ada", "amount": 100, "note": "tea", "status": "pending"}])
+        pg = Page(browser, width)
+        page = pg.page
+        state = {"drop": True}
+        page.route("**/payments", lambda route: (route.fetch(), route.abort()) if state["drop"] else route.continue_())
+        login(pg)
+        pg.t("wallet-balance").wait_for()
+        page.evaluate("window.__marker = 'same-page'")
+        fill_pay(pg, "before upgrade")
+        pg.t("pay-submit").click()
+        pg.t("pay-uncertain").wait_for()
+        st, exported = api_json("/_test/export")
+        check(st == 200, "export")
+        reset(base_users(ada=1, bob=1))             # a different service state: the upgrade target
+        assert post("/_test/import", exported) == 204
+        state["drop"] = False
+        pg.t("pay-submit").click()
+        pg.t("pay-success").wait_for()
+        check(pg.t("pay-uncertain").count() == 0 and pg.t("pay-error").count() == 0, "recovered after import")
+        pg.wait_text("wallet-balance", "85.00 EUR")
+        check(page.evaluate("window.__marker") == "same-page", "no page reload")
+        check(balance_of("ada@example.com") == 8500, "the imported payment was not repeated")
+        check(page.locator("[data-testid=activity-list] > li").count() == 1, "still one payment in the feed")
+        pg.shot("chaos", "after-import")
+        # still signed in, the pending request is payable, and a lost response on it is recoverable
+        page.route("**/requests/rq_up/pay", lambda route: (route.fetch(), route.abort()) if state.setdefault("rq", True) and state.update(rq=False) is None else route.continue_())
+        page.goto(BASE + "/requests")
+        pg.t("request-pay-rq_up").wait_for()
+        pg.t("request-pay-rq_up").click()
+        pg.t("request-uncertain").wait_for()
+        check(pg.t("request-error").count() == 0, "unknown outcome on a request is not request-error")
+        pg.shot("chaos", "request-uncertain")
+        pg.t("request-pay-rq_up").click()
+        pg.wait_attr("request-item-rq_up", "data-status", "paid")
+        check(balance_of("ada@example.com") == 8500 - 700, "request moved money once")
+        pg.t("request-pay-rq_up2").click()
+        pg.wait_attr("request-item-rq_up2", "data-status", "paid")
+        pg.done("chaos-upgrade")
+
+
+CHECKS = {"auth": check_auth, "units": check_units, "wallet": check_wallet, "requests": check_requests, "split": check_split, "holds": check_holds, "chaos": check_chaos}
 
 
 def main():
