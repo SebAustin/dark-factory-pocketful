@@ -16,6 +16,10 @@
 
 - Event checker run 1 (builder, isolated, rev 3dbd491): stage 1 pass; stage 2 33/35 — 2 failures: /signup and /login redirect a signed-in user (UI) -> S2.U9.
 
+## Plan gate
+
+Round 1 (analyst): 1 blocking (D-22 browser session across stage-1 import -> lead ruling L5) + 5 minor. Lead decision L6: gate closed; findings -> S2.8 (builder), S2.U10 (designer), or already satisfied.
+
 ## Work items
 
 | Id | Title | Owner | Assigned | Accepted | Verdicts |

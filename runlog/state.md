@@ -8,9 +8,9 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 ## Stage 2 phase
 
 - [x] Carry forward 10e5b5e
-- [ ] Ledger (analyst) S2.L
-- [ ] API/model plan (builder) S2.P ; UI plan (designer) S2.U
-- [ ] Plan gate
+- [x] Ledger f146c3b
+- [x] Plans 0cfc980 / 624aa75
+- [x] Plan gate: closed L6 after one round
 - [ ] Work items split
 - [ ] Item reviews
 - [ ] Stage gate
@@ -36,14 +36,16 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 | S2.U9 | /signup,/login reachable while signed in | designer | web/** | accepted | 77250c4 | 0 |
 | S2.U6 | Authorizations screen | designer | web/** | accepted | 3dbd491 | 0 |
 | S2.U7 | Competing clients / uncertain / upgrade | designer | web/** | accepted | 46b6e6f | 0 |
-| S2.PG | Plan gate | analyst | - | assigned (after ledger) | - | 0 |
-| S2.A | Acceptance (stage1 carried + stage2 API + screens) | analyst | stage-2/acceptance/ | assigned | - | 0 |
+| S2.PG | Plan gate | analyst | - | done: 1 blocking (D-22 -> L5) + 5 minor -> S2.8, S2.U10 (L6) | - | 0 |
+| S2.A | Acceptance (stage1 carried 425 + stage2 264) | analyst | stage-2/acceptance/ | built; re-run on current main requested | 16f5866 | 0 |
+| S2.U10 | Plan-gate UI fixes (dirty key, split parse, list DOM) | designer | web/** | assigned | - | 0 |
 | S2.U1 | Shell, visual system, nav, auth screens | designer | web/** | accepted (F1/F2 closed in U2-U3 review) | 773f649 | 1 |
 | S2.U2+U3 | Client core + wallet screen | designer | web/** | fix resubmitted (in review) | b0aae37 | 1 |
 | S2.U4+U5 | Requests + split screens | designer | web/** | accepted | 1ef373b | 0 |
 
 ## Stage 2 decisions
 
+- L6 (23:5x): plan gate closed after one round; analyst findings F1-F6 converted to S2.8 (builder) and S2.U10 (designer) or shown already done (F5 Vary accepted ef17a11; F2 375 px walked).
 - L5 (23:4x): D-22 ruled as analyst recommends. Stage 2 'A browser signed in before that export/import upgrade must remain signed in afterwards' overrides stage 1 §10 'Import removes all previous destination ... credentials' for the upgrade path only: tokens in the export survive import; additionally a STAGE-1-format import keeps any destination token whose user (same id, email and handle) exists in the imported state. A stage-2-format import stays pure replacement (R-10.16 holds).
 - L4 (23:0x): designer starts U1 and builder the S2.1 seam before the plan gate closes (as L1 in stage 1); critiques return as fix notes.
 
