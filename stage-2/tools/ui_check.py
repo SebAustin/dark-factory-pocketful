@@ -8,6 +8,7 @@ horizontal page scrolling, and saves screenshots under reviews/stage2/shots/<che
 """
 import json
 import os
+from datetime import datetime, timedelta, timezone
 import sys
 import urllib.request
 from pathlib import Path
@@ -494,7 +495,113 @@ def check_split(browser):
         pg.done("split")
 
 
-CHECKS = {"auth": check_auth, "units": check_units, "wallet": check_wallet, "requests": check_requests, "split": check_split}
+def iso(hours):
+    return (datetime.now(timezone.utc) + timedelta(hours=hours)).replace(microsecond=0).isoformat()
+
+
+def check_holds(browser):
+    users = [
+        {"id": "u_ada", "email": "ada@example.com", "password": PASSWORD, "display_name": "Ada", "handle": "ada", "balance": 10000},
+        {"id": "u_bob", "email": "bob@example.com", "password": PASSWORD, "display_name": "Bob", "handle": "bob", "balance": 2500},
+        {"id": "u_cy", "email": "cy@example.com", "password": PASSWORD, "display_name": "Cy", "handle": "cy", "balance": 0},
+    ]
+    def hold(i, frm, to, amount, status="open", hours=3, note=""):
+        return {"id": i, "from_user_id": frm, "to_user_id": to, "amount": amount, "note": note, "visibility": "public", "status": status, "expires_at": iso(hours)}
+    holds = [hold("a_out", "u_ada", "u_bob", 2000, note="deposit"), hold("a_in", "u_bob", "u_ada", 500, note="rental"), hold("a_in2", "u_bob", "u_ada", 400),
+             hold("a_exp", "u_bob", "u_ada", 100, "open", -3), dict(hold("a_cap", "u_bob", "u_ada", 300, "captured", 3), captured_amount=300)]
+    for width in WIDTHS:
+        reset(users, authorizations=holds)
+        pg = Page(browser, width)
+        page = pg.page
+        login(pg)
+        pg.t("wallet-available").wait_for()
+        check(pg.t("wallet-available").text_content() == "80.00 EUR" and pg.t("wallet-available").get_attribute("data-amount") == "8000", f"available right after reset {pg.t('wallet-available').text_content()!r}")
+        check(pg.t("wallet-balance").text_content() == "100.00 EUR", "total unchanged by holds")
+        check(pg.t("wallet-held").text_content() == "20.00 EUR" and pg.t("wallet-held").get_attribute("data-amount") == "2000", "held shown")
+        pg.shot("holds", "wallet-with-hold")
+        page.goto(BASE + "/authorizations")
+        pg.t("authorization-list").wait_for()
+        pg.t("authorization-item-a_out").wait_for()
+        for tid in ("authorization-item-a_out", "authorization-amount-a_out", "authorization-expires-a_out", "authorization-void-a_out", "authorization-capture-amount-a_in",
+                    "authorization-capture-a_in", "authorization-item-a_cap", "authorization-captured-a_cap", "authorize-handle", "authorize-amount", "authorize-note", "authorize-visibility", "authorize-submit"):
+            check(pg.t(tid).count() == 1, f"holds @{width}: {tid} once")
+        for tid in ("authorization-capture-a_out", "authorization-void-a_in", "authorization-capture-a_exp", "authorization-void-a_exp", "authorization-captured-a_out", "authorization-captured-a_in",
+                    "authorization-capture-a_cap", "authorization-error", "empty-authorizations", "authorize-error"):
+            check(pg.t(tid).count() == 0 or not pg.t(tid).is_visible(), f"holds @{width}: {tid} absent")
+        check(pg.t("authorization-item-a_out").get_attribute("data-status") == "open", "open status")
+        check(pg.t("authorization-item-a_exp").get_attribute("data-status") == "expired", "expired by the clock")
+        check(pg.t("authorization-item-a_cap").get_attribute("data-status") == "captured", "captured status")
+        check(pg.t("authorization-amount-a_out").text_content() == "20.00 EUR", "amount exact")
+        check(pg.t("authorization-captured-a_cap").text_content() == "3.00 EUR", f"captured amount exact {pg.t('authorization-captured-a_cap').text_content()!r}")
+        check(pg.t("authorization-capture-amount-a_in").input_value() == "5.00", f"prefilled with the remaining amount: {pg.t('authorization-capture-amount-a_in').input_value()!r}")
+        api_exp = api_json("/authorizations?direction=outgoing", token=token_for("ada@example.com"))[1]["authorizations"][0]["expires_at"]
+        check(pg.t("authorization-expires-a_out").text_content() == api_exp, "expires text equals the API's expires_at")
+        pg.no_hscroll("holds")
+        pg.shot("holds", "list")
+
+        # refusals first: too much, invalid; nothing changes
+        pg.t("authorization-capture-amount-a_in").fill("9.00")
+        pg.t("authorization-capture-a_in").click()
+        pg.t("authorization-error").wait_for()
+        check("more than" in pg.t("authorization-error").inner_text(), f"capture_exceeds message {pg.t('authorization-error').inner_text()!r}")
+        pg.t("authorization-capture-amount-a_in").fill("1.005")
+        pg.t("authorization-capture-a_in").click()
+        pg.t("authorization-error").wait_for()
+        pg.shot("holds", "capture-refused")
+
+        # partial final capture closes the hold and releases the rest
+        pg.t("authorization-capture-amount-a_in").fill("3.00")
+        pg.t("authorization-capture-a_in").click()
+        pg.wait_attr("authorization-item-a_in", "data-status", "captured")
+        pg.wait_text("authorization-captured-a_in", "3.00 EUR")
+        check(pg.t("authorization-capture-a_in").count() == 0, "no capture button once captured")
+        # non-final capture keeps the remainder held
+        pg.t("authorization-keep-open-a_in2").check()
+        pg.t("authorization-capture-amount-a_in2").fill("1.00")
+        pg.t("authorization-capture-a_in2").click()
+        pg.wait_text("authorization-capture-amount-a_in2", "")
+        page.wait_for_timeout(300)
+        check(pg.t("authorization-item-a_in2").get_attribute("data-status") == "open", "keep-open capture leaves it open")
+        check(pg.t("authorization-capture-amount-a_in2").input_value() == "3.00", f"prefill follows the remaining amount {pg.t('authorization-capture-amount-a_in2').input_value()!r}")
+        ada = token_for("ada@example.com")
+        me = api_json("/me", token=ada)[1]
+        bob_me = api_json("/me", token=token_for("bob@example.com"))[1]
+        check(me["total"] == 10400 and me["held"] == 2000, f"receiver: money moved once: {me}")
+        check(bob_me["total"] == 2500 - 400 and bob_me["held"] == 300, f"payer: released the remainder, kept 3.00 held: {bob_me}")
+        pg.shot("holds", "after-captures")
+
+        # authorise from this page, void from the payer side
+        pg.t("authorize-handle").fill("bob")
+        pg.t("authorize-amount").fill("1.00")
+        pg.t("authorize-submit").click()
+        pg.t("authorize-success").wait_for()
+        pg.t("authorize-amount").fill("9999.00")
+        pg.t("authorize-submit").click()
+        pg.t("authorize-error").wait_for()
+        check("Not enough" in pg.t("authorize-error").inner_text(), "insufficient available funds")
+        pg.shot("holds", "authorize-refused")
+        pg.t("authorization-void-a_out").click()
+        pg.wait_attr("authorization-item-a_out", "data-status", "voided")
+        check(pg.t("authorization-void-a_out").count() == 0, "no void button once voided")
+        page.goto(BASE + "/")
+        pg.t("wallet-available").wait_for()
+        me = api_json("/me", token=ada)[1]
+        check(pg.t("wallet-available").get_attribute("data-amount") == str(me["available"]), "wallet-available follows the API")
+        check(pg.t("wallet-held").count() == 1 and pg.t("wallet-held").get_attribute("data-amount") == str(me["held"]), "wallet-held shows the remaining holds")
+        pg.focus_visible("holds")
+        pg.done("holds")
+
+        reset([users[2]])
+        pg = Page(browser, width)
+        login(pg, "cy@example.com")
+        pg.page.goto(BASE + "/authorizations")
+        pg.t("empty-authorizations").wait_for()
+        pg.t("wallet-held").count()
+        pg.shot("holds", "empty")
+        pg.done("holds-empty")
+
+
+CHECKS = {"auth": check_auth, "units": check_units, "wallet": check_wallet, "requests": check_requests, "split": check_split, "holds": check_holds}
 
 
 def main():
