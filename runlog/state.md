@@ -23,9 +23,16 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 | S2.0 | Carry forward copy | builder | stage-2/ (whole copy) | accepted | 10e5b5e | 0 |
 | S2.V | Screen walker tooling | verifier | reviews/stage2/tools/ | done (375/390/1280) | 1275ada | 0 |
 | S2.L | Ledger + glossary | analyst | stage-2/docs/ledger.md, glossary.md | assigned | - | 0 |
-| S2.P | API/model plan | builder | stage-2/docs/plan.md | assigned | - | 0 |
+| S2.P | API/model plan | builder | stage-2/docs/plan.md | built (to critique) | 0cfc980 | 0 |
 | S2.U | UI plan | designer | stage-2/docs/ui-plan.md | built (to critique) | 624aa75 | 0 |
-| S2.1 | HTML/static seam | builder | app/ web serving, Dockerfile | assigned | - | 0 |
+| S2.1 | HTML/static seam | builder | app/ web serving, Dockerfile | in review | ea8913c | 0 |
+| S2.2 | Holds model | builder | store, me, fixture | assigned | - | 0 |
+| S2.3 | Authorize + list | builder | authorizations.py | assigned | - | 0 |
+| S2.4 | Capture + void | builder | authorizations.py, store | assigned | - | 0 |
+| S2.5 | Export/import migration | builder | transfer_io.py | assigned | - | 0 |
+| S2.6 | Concurrency/load | builder | tests, tools | assigned | - | 0 |
+| S2.PG | Plan gate | analyst | - | assigned (after ledger) | - | 0 |
+| S2.A | Acceptance (stage1 carried + stage2 API + screens) | analyst | stage-2/acceptance/ | assigned | - | 0 |
 | S2.U1 | Shell, visual system, nav, auth screens | designer | web/** | assigned | - | 0 |
 
 ## Stage 2 decisions
