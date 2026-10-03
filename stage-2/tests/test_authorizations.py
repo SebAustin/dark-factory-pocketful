@@ -177,5 +177,194 @@ class ListTest(Base):
                          {"a_1": "open", "a_2": "voided"})
 
 
+class CaptureTest(Base):
+    def capture(self, aid, body=None, tok=None, k=None):
+        return call("POST", "/authorizations/%s/capture" % aid, {} if body is None else body,
+                    token=tok or self.bob, key=k or key())
+
+    def view(self, aid, tok=None):
+        for a in self.listing(tok or self.ada)["authorizations"]:
+            if a["authorization_id"] == aid:
+                return a
+        raise AssertionError("not listed")
+
+    def test_default_full_capture(self):
+        aid = self.new(2000, note="deposit", visibility="private")["authorization_id"]
+        r = self.capture(aid)
+        self.assertEqual(r.status, 201, r.raw)
+        p = r.body
+        self.assertEqual(len(p), 13)
+        self.assertEqual((p["from_user_id"], p["to_user_id"], p["amount"], p["note"],
+                          p["visibility"], p["authorization_id"], p["request_id"]),
+                         ("u_ada", "u_bob", 2000, "deposit", "private", aid, None))
+        a = self.view(aid)
+        self.assertEqual((a["status"], a["captured_amount"], a["remaining_amount"],
+                          a["payment_id"], a["payment_ids"]),
+                         ("captured", 2000, 0, p["payment_id"], [p["payment_id"]]))
+        ada, bob = me(self.ada), me(self.bob)
+        self.assertEqual((ada["total"], ada["held"], ada["available"]), (8000, 0, 8000))
+        self.assertEqual(bob["total"], 4500)
+        feed = call("GET", "/activity", token=self.bob).body["payments"]
+        self.assertEqual(feed[0], p)
+        cy_feed = call("GET", "/activity", token=self.cy).body["payments"]
+        self.assertNotIn(p["payment_id"], [x["payment_id"] for x in cy_feed])
+
+    def test_partial_final_capture_releases_remainder_in_same_step(self):
+        aid = self.new(2000)["authorization_id"]
+        r = self.capture(aid, {"amount": 1500})
+        self.assertEqual(r.body["amount"], 1500)
+        ada = me(self.ada)
+        self.assertEqual((ada["total"], ada["held"], ada["available"]), (8500, 0, 8500))
+        a = self.view(aid)
+        self.assertEqual((a["status"], a["captured_amount"], a["remaining_amount"]),
+                         ("captured", 1500, 0))
+        r = self.capture(aid, {"amount": 1})
+        self.assertEqual((r.status, r.code), (409, "authorization_not_open"))
+
+    def test_extended_capture_chain(self):
+        aid = self.new(2000)["authorization_id"]
+        p1 = self.capture(aid, {"amount": 700, "final": False}).body
+        a = self.view(aid)
+        self.assertEqual((a["status"], a["captured_amount"], a["remaining_amount"]),
+                         ("open", 700, 1300))
+        self.assertEqual(me(self.ada)["held"], 1300)
+        r = self.capture(aid, {"amount": 1301, "final": False})
+        self.assertEqual((r.status, r.code), (422, "capture_exceeds_authorization"))
+        p2 = self.capture(aid, {"amount": 300, "final": False}).body
+        p3 = self.capture(aid, {"final": False}).body  # omitted amount = the remainder (1000)
+        self.assertEqual(p3["amount"], 1000)
+        a = self.view(aid)
+        self.assertEqual((a["status"], a["captured_amount"], a["remaining_amount"],
+                          a["payment_ids"], a["payment_id"]),
+                         ("captured", 2000, 0,
+                          [p1["payment_id"], p2["payment_id"], p3["payment_id"]],
+                          p3["payment_id"]))
+        ada = me(self.ada)
+        self.assertEqual((ada["total"], ada["held"]), (8000, 0))
+
+    def test_nonfinal_then_final_releases_rest(self):
+        aid = self.new(2000)["authorization_id"]
+        self.capture(aid, {"amount": 500, "final": False})
+        self.capture(aid, {"amount": 200, "final": True})
+        a = self.view(aid)
+        self.assertEqual((a["status"], a["captured_amount"]), ("captured", 700))
+        self.assertEqual(me(self.ada)["available"], 9300)
+
+    def test_error_table(self):
+        aid = self.new(2000)["authorization_id"]
+        for body in ({"amount": 0}, {"amount": -5}, {"amount": 1.5}, {"amount": "5"},
+                     {"amount": True}, {"amount": None}):
+            r = self.capture(aid, body)
+            self.assertEqual((r.status, r.code), (422, "validation_failed"), body)
+        for final in ("yes", 1, None, [True]):
+            r = self.capture(aid, {"final": final})
+            self.assertEqual((r.status, r.code), (400, "malformed_request"), final)
+        r = self.capture(aid, {"amount": 2001})
+        self.assertEqual((r.status, r.code), (422, "capture_exceeds_authorization"))
+        self.assertEqual(self.capture(aid, tok=self.ada).code, "forbidden")  # payer
+        self.assertEqual(self.capture(aid, tok=self.cy).code, "forbidden")   # neither party
+        r = self.capture("a_nope")
+        self.assertEqual((r.status, r.code), (404, "not_found"))
+        self.assertEqual(me(self.ada)["held"], 2000)
+        r = call("POST", "/authorizations/%s/capture" % aid, {}, token=self.bob)
+        self.assertEqual(r.code, "missing_idempotency_key")
+
+    def test_expired_capture_is_409_expired(self):
+        aid = self.new(2000)["authorization_id"]
+        self.capture(aid, {"amount": 500, "final": False})
+        self.advance(600)
+        r = self.capture(aid)
+        self.assertEqual((r.status, r.code), (409, "authorization_expired"))
+        a = self.view(aid)
+        self.assertEqual((a["status"], a["captured_amount"], a["remaining_amount"],
+                          len(a["payment_ids"])), ("expired", 500, 0, 1))
+        ada = me(self.ada)
+        self.assertEqual((ada["total"], ada["held"], ada["available"]), (9500, 0, 9500))
+
+    def test_seeded_open_with_nothing_left_is_not_open(self):
+        reset(fixture(hold("a_9", amount=500, captured_amount=500)))
+        r = call("POST", "/authorizations/a_9/capture", {}, token=token("bob@example.com"),
+                 key=key())
+        self.assertEqual((r.status, r.code), (409, "authorization_not_open"))
+
+    def test_replay_rules(self):
+        aid = self.new(2000)["authorization_id"]
+        k = key()
+        first = self.capture(aid, {}, k=k)
+        again = self.capture(aid, {}, k=k)
+        self.assertEqual((first.status, again.status), (201, 200))
+        self.assertEqual(first.body, again.body)
+        self.assertEqual(self.capture(aid, {"amount": 2000}, k=k).code, "idempotency_key_reuse")
+        self.assertEqual(me(self.bob)["total"], 4500)
+        self.assertEqual(self.capture(aid, {}, k=key()).code, "authorization_not_open")
+
+    def test_concurrent_captures_never_exceed(self):
+        aid = self.new(2000)["authorization_id"]
+        results = []
+
+        def go():
+            results.append(self.capture(aid, {"amount": 300, "final": False}))
+        threads = [threading.Thread(target=go) for _ in range(30)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        ok = [r for r in results if r.status == 201]
+        self.assertEqual(len(ok), 6)
+        self.assertTrue(all(r.code == "capture_exceeds_authorization"
+                            for r in results if r.status != 201))
+        a = self.view(aid)
+        self.assertEqual((a["status"], a["captured_amount"], a["remaining_amount"]),
+                         ("open", 1800, 200))
+        ada, bob = me(self.ada), me(self.bob)
+        self.assertEqual((ada["total"], ada["held"], bob["total"]), (8200, 200, 4300))
+        self.assertEqual(ada["total"] + bob["total"] + me(self.cy)["total"], 12500)
+
+
+class VoidTest(Base):
+    def void(self, aid, tok=None):
+        return call("POST", "/authorizations/%s/void" % aid, token=tok or self.ada)
+
+    def test_void_releases_and_repeats(self):
+        aid = self.new(2000)["authorization_id"]
+        self.assertEqual(self.void(aid, tok=self.bob).code, "forbidden")
+        self.assertEqual(self.void(aid, tok=self.cy).code, "forbidden")
+        r = self.void(aid)
+        self.assertEqual((r.status, r.body["status"], r.body["remaining_amount"]),
+                         (200, "voided", 0))
+        self.assertEqual(set(r.body), VIEW_KEYS)
+        self.assertEqual(me(self.ada)["available"], 10000)
+        again = self.void(aid)
+        self.assertEqual((again.status, again.body), (200, r.body))
+        c = call("POST", "/authorizations/%s/capture" % aid, {}, token=self.bob, key=key())
+        self.assertEqual((c.status, c.code), (409, "authorization_not_open"))
+
+    def test_void_after_partial_capture_keeps_captures(self):
+        aid = self.new(2000)["authorization_id"]
+        p = call("POST", "/authorizations/%s/capture" % aid, {"amount": 400, "final": False},
+                 token=self.bob, key=key()).body
+        r = self.void(aid)
+        self.assertEqual((r.body["status"], r.body["captured_amount"], r.body["payment_ids"]),
+                         ("voided", 400, [p["payment_id"]]))
+        ada = me(self.ada)
+        self.assertEqual((ada["total"], ada["held"]), (9600, 0))
+
+    def test_captured_or_expired_is_not_open(self):
+        aid = self.new(2000)["authorization_id"]
+        call("POST", "/authorizations/%s/capture" % aid, {}, token=self.bob, key=key())
+        self.assertEqual(self.void(aid).code, "authorization_not_open")
+        aid2 = self.new(100)["authorization_id"]
+        self.advance(600)
+        r = self.void(aid2)
+        self.assertEqual((r.status, r.code), (409, "authorization_not_open"))
+
+    def test_unknown_and_body(self):
+        self.assertEqual(self.void("a_nope").code, "not_found")
+        aid = self.new(1)["authorization_id"]
+        r = call("POST", "/authorizations/%s/void" % aid, raw="{bad", token=self.ada)
+        self.assertEqual(r.code, "malformed_request")
+        self.assertEqual(call("POST", "/authorizations/%s/void" % aid).status, 401)
+
+
 if __name__ == "__main__":
     unittest.main()

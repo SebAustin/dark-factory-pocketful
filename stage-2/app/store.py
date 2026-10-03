@@ -227,6 +227,23 @@ def place_hold(state, from_id, to_id, amount, note, visibility):
     return a
 
 
+def apply_capture(state: dict, a: dict, amount: int, final: bool) -> dict:
+    """Move amount from the payer's hold to the receiver, as a payment. Caller holds
+    STORE.hold() and has checked the hold is open, unexpired and amount <= remaining.
+    A final capture, or one that exhausts the hold, closes it and releases the rest."""
+    payer, payee = state["users"][a["from"]], state["users"][a["to"]]
+    payer["balance"] -= amount
+    payer["held"] -= amount
+    payee["balance"] += amount
+    a["captured"] += amount
+    payment = _make_payment(state, a["from"], a["to"], amount, a["note"], a["visibility"],
+                            now_ts(), None, None, authorization_id=a["id"])
+    a["payment_ids"].append(payment["id"])
+    if final or a["captured"] == a["amount"]:
+        _close(state, a, "captured")
+    return payment
+
+
 def is_expired(a: dict) -> bool:
     return a["status"] == "expired" or (a["status"] == "open"
                                         and instant(a["expires_at"]) <= clock())
