@@ -25,8 +25,13 @@
 | S2.2 | Holds model | builder | 23:05 | yes | ACCEPT c0df3c8 |
 | S2.3 | Authorize + list | builder | 23:05 | yes | ACCEPT 3facf62 |
 | S2.4 | Capture + void | builder | 23:05 | yes | ACCEPT 3d926ec |
+| S2.5 | Export/import upgrade | builder | 23:05 | yes | ACCEPT 4e4559c |
+| S2.U1 | Shell, auth screens | designer | 23:03 | yes | REJECT b776a89, F1/F2 closed at 773f649 |
+| S2.U4+U5 | Requests + split | designer | 23:03 | yes | ACCEPT 1ef373b |
 
 ## Rejections and what they caught
+
+- S2.U2+U3 @0fa1361 REJECT (verifier): signed-in header overflowed horizontally between 641 px and ~1030 px (Log out off-screen / over the name at 1024) — spec '375 CSS-pixel viewport and at conventional desktop widths, without horizontal page scrolling'. Verifier now walks 768 and 1024 too.
 
 - S2.U1 @b776a89 REJECT (verifier, from screenshots then measured): 'Log out' wrapped to two lines at 375 and 1280 px; brand icon squeezed to 7x22 at 1280 — product/visual direction 'presentation-ready', 'consistent visual system'.
 

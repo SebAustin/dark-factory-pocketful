@@ -29,7 +29,7 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 | S2.2 | Holds model | builder | store, me, fixture | accepted | c0df3c8 | 0 |
 | S2.3 | Authorize + list | builder | authorizations.py | accepted | 3facf62 | 0 |
 | S2.4 | Capture + void | builder | authorizations.py, store | accepted | 3d926ec | 0 |
-| S2.5 | Export/import migration | builder | transfer_io.py | in review | 4e4559c | 0 |
+| S2.5 | Export/import migration | builder | transfer_io.py | accepted (eab708e hold check pending review) | 4e4559c | 0 |
 | S2.6 | Concurrency/load | builder | tests, tools | in review | 0c72f1f | 0 |
 | S2.7 | Import hold check + early checker signal | builder | transfer_io.py | (a) in review eab708e; (b) checker run on 3dbd491: stage 2 33/35, 2 UI fails -> S2.U9 | eab708e | 0 |
 | S2.U9 | /signup,/login reachable while signed in | designer | web/** | in review | 77250c4 | 0 |
@@ -37,9 +37,9 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 | S2.U7 | Competing clients / uncertain / upgrade | designer | web/** | in review | 46b6e6f | 0 |
 | S2.PG | Plan gate | analyst | - | assigned (after ledger) | - | 0 |
 | S2.A | Acceptance (stage1 carried + stage2 API + screens) | analyst | stage-2/acceptance/ | assigned | - | 0 |
-| S2.U1 | Shell, visual system, nav, auth screens | designer | web/** | fix resubmitted | 773f649 | 1 |
-| S2.U2+U3 | Client core + wallet screen | designer | web/** | in review | 0fa1361 | 0 |
-| S2.U4+U5 | Requests + split screens | designer | web/** | built | 1ef373b | 0 |
+| S2.U1 | Shell, visual system, nav, auth screens | designer | web/** | accepted (F1/F2 closed in U2-U3 review) | 773f649 | 1 |
+| S2.U2+U3 | Client core + wallet screen | designer | web/** | rejected R1 (F3 header overflow 641-1030 px) -> designer fixing | 0fa1361 | 1 |
+| S2.U4+U5 | Requests + split screens | designer | web/** | accepted | 1ef373b | 0 |
 
 ## Stage 2 decisions
 
