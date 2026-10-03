@@ -3,7 +3,7 @@ from playwright.sync_api import sync_playwright
 B=sys.argv[1]
 with sync_playwright() as p:
     b=p.chromium.launch()
-    for w in (375,390,768,1024,1280,1440):
+    for w in [int(x) for x in (sys.argv[2] if len(sys.argv)>2 else "375,390,768,1024,1280,1440").split(",")]:
         pg=b.new_page(viewport={"width":w,"height":900})
         pg.goto(B+"/login"); pg.fill('[data-testid=login-email]',"ada@example.com"); pg.fill('[data-testid=login-password]',"correct horse"); pg.click('[data-testid=login-submit]'); pg.wait_for_selector('[data-testid=wallet-available]')
         m=pg.evaluate("""()=>{const r=t=>document.querySelector(`[data-testid=${t}]`).getBoundingClientRect();
