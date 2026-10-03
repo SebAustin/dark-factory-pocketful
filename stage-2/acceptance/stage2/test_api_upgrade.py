@@ -111,3 +111,32 @@ def test_R2_UPG_7_EXP_7_stage2_export_import_preserves_holds_and_receipts(make_w
     n = api.authorize(w.tok["ada"], "cy", 1).json()
     assert parse_ts(n["expires_at"]) - parse_ts(n["created_at"]) == timedelta(seconds=1234)
     w.assert_invariants()
+
+
+# ---------------------------------------------------------------- D-22 / lead decision L5
+
+def test_R2_UPG_2_D22_stage1_import_drops_tokens_of_mismatched_users(s1, api):
+    """Kept only when the same id, email AND handle exist in the imported state."""
+    api.reset(fixture(users=[user("u_ada", "ada", 10000),       # same id/email/handle: kept
+                             user("u_bob", "bobby", 2500),       # same id, other handle
+                             user("u_cy", "cy", 0, email="cy@other.org"),  # other email
+                             user("u_zed", "zed", 0)],           # not in the import
+                      settlement_operator_ids=[]))
+    toks = {h: api.login(e) for h, e in (("ada", "ada@example.com"), ("bobby", "bobby@example.com"),
+                                         ("cy", "cy@other.org"), ("zed", "zed@example.com"))}
+    rec = build_stage1_state(s1)
+    assert api.import_(rec["export"]).status_code == 204
+    assert api.me(toks["ada"])["user_id"] == "u_ada"
+    for h in ("bobby", "cy", "zed"):
+        assert_error(api.get("/me", toks[h]), 401, "unauthenticated")
+    for t in rec["tok"].values():                      # the export's own tokens survive
+        assert api.get("/me", t).status_code == 200
+
+
+def test_R2_UPG_2_D22_stage2_import_is_pure_replacement(make_world, api):
+    w = make_world(fixture())
+    exported = api.export()
+    late = api.login("ada@example.com")                # minted after the export
+    assert api.import_(exported).status_code == 204
+    assert_error(api.get("/me", late), 401, "unauthenticated")
+    assert api.get("/me", w.tok["ada"]).status_code == 200   # exported token survives

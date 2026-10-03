@@ -182,3 +182,29 @@ def test_R2_UPG_2_UPG_3_browser_stays_signed_in_and_pays_imported_request(api, s
     expect(tid(page, f"request-item-{rid}")).to_have_attribute("data-status", "paid")
     page.locator('a[href="/"]:visible').first.click()
     expect(tid(page, "wallet-balance")).to_have_text("88.00 EUR")
+
+
+def test_R2_RACE_2_delayed_refresh_does_not_overwrite_later_payment_refresh(world, api, page):
+    """Variant: the later read is the refresh that follows this browser's own payment."""
+    open_wallet(page, "ada@example.com")
+    held, mode = [], {"hold": True}
+
+    def handler(route):
+        if mode["hold"]:
+            held.append((route, route.fetch()))
+        else:
+            route.continue_()
+
+    page.route(lambda url: path_of(url) in ("/me", "/activity"), handler)
+    tid(page, "wallet-refresh").click()              # earlier read, answered late
+    page.wait_for_timeout(600)
+    assert held
+    mode["hold"] = False
+    fill_pay(page, "bob", "15.00")
+    tid(page, "pay-submit").click()                  # later read after the write
+    expect(tid(page, "wallet-balance")).to_have_text("85.00 EUR")
+    for route, resp in held:
+        route.fulfill(response=resp)
+    page.wait_for_timeout(800)
+    expect(tid(page, "wallet-balance")).to_have_text("85.00 EUR")
+    expect(page.locator('[data-testid^="activity-item-"]')).to_have_count(1)
