@@ -7,7 +7,7 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 
 ## Stage 2 phase
 
-- [ ] Carry forward (builder copies stage-1 -> stage-2, commits unchanged)
+- [x] Carry forward 10e5b5e
 - [ ] Ledger (analyst) S2.L
 - [ ] API/model plan (builder) S2.P ; UI plan (designer) S2.U
 - [ ] Plan gate
@@ -20,7 +20,7 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 
 | Id | Title | Owner | Paths | State | Last rev | Rejections |
 |---|---|---|---|---|---|---|
-| S2.0 | Carry forward copy | builder | stage-2/ (whole copy) | assigned | - | 0 |
+| S2.0 | Carry forward copy | builder | stage-2/ (whole copy) | built, in review (verifier) | 10e5b5e | 0 |
 | S2.L | Ledger + glossary | analyst | stage-2/docs/ledger.md, glossary.md | assigned | - | 0 |
 | S2.P | API/model plan | builder | stage-2/docs/plan.md | assigned | - | 0 |
 | S2.U | UI plan | designer | stage-2/docs/ui-plan.md | assigned | - | 0 |

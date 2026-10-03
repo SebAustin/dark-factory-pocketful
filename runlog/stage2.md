@@ -9,6 +9,8 @@
 | Time (UTC) | Event |
 |---|---|
 | 22:54 | Dispatch received; seats present from stage 1 |
+| 22:56 | S2.0 carry-forward -> builder; stage 2 spec (3 parts) + S2.L ledger -> analyst, S2.P API plan -> builder, S2.U UI plan -> designer |
+| 22:58 | S2.0 committed 10e5b5e; review + screen tooling -> verifier |
 
 ## Work items
 
