@@ -330,6 +330,13 @@ class InstantOrderTest(unittest.TestCase):
             r = call("POST", "/_test/reset", f)
             self.assertEqual((r.status, r.code), (422, "validation_failed"), bad)
 
+    def test_lowercase_t_and_z_accepted(self):
+        f = self.fixture()
+        f["payments"][1]["created_at"] = "2026-09-24t18:30:00z"
+        reset(f)
+        feed = call("GET", "/activity", token=token("cy@example.com")).body["payments"]
+        self.assertEqual(feed[1]["created_at"], "2026-09-24T18:30:00+00:00")
+
     def test_z_suffix_accepted_and_rendered_with_offset(self):
         f = self.fixture()
         f["payments"][1]["created_at"] = "2026-09-24T18:30:00Z"
