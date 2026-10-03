@@ -22,19 +22,19 @@ Last accepted revision: none (stage 1 is the first).
 | S1.L | Ledger + glossary (228 reqs, D-01..D-17) | analyst | stage-1/docs/ledger.md, glossary.md, decisions/D-* | built | 9bdc486 | 0 |
 | S1.P | Implementation plan | builder | stage-1/docs/plan.md | built, in plan gate (S1.PG -> analyst) | 3fb74d0 | 0 |
 | S1.D0 | Stress tool | designer | stage-1/tools/stress.py, README.md | built (validated vs stub) | bb8918a | 0 |
-| S1.1 | Skeleton | builder | server, routes, store, testctl, Dockerfile, RUN.md | in review (builder -> verifier) | 0fa1f0b | 0 |
-| S1.2 | Auth | builder | auth.py, passwords.py | assigned | - | 0 |
+| S1.1 | Skeleton | builder | server, routes, store, testctl, Dockerfile, RUN.md | rejected R1 (F1 HEAD/OPTIONS 501 html, no envelope) -> fix assigned | 0fa1f0b | 1 |
+| S1.2 | Auth | builder | auth.py, passwords.py | accepted 21:5x | dfd7dc3 | 0 |
 | S1.3 | Idempotency + payments + activity | builder | idempotency.py, payments.py | assigned | - | 0 |
 | S1.4 | Requests | builder | requests_.py | planned (after S1.3) | - | 0 |
 | S1.5 | Splits | designer | splits.py, tests/test_splits.py | planned (needs create_request) | - | 0 |
-| S1.6 | Settlements | designer | settlements.py, tests/test_settlements.py | assigned | - | 0 |
-| S1.7 | Export/import | designer | transfer_io.py, tests/test_transfer_io.py | planned | - | 0 |
+| S1.6 | Settlements | designer | settlements.py, tests/test_settlements.py | built (review waits on S1.3) | 0b87d7f | 0 |
+| S1.7 | Export/import | designer | transfer_io.py, tests/test_transfer_io.py | assigned 21:45 | - | 0 |
 | S1.8 | Load and limits | builder | tests/soak.py | planned | - | 0 |
 | S1.A | Acceptance suite | analyst | stage-1/acceptance/ | assigned | - | 0 |
 
 ## Open rejections
 
-none
+- S1.1 R1 @0fa1f0b: F1 non-JSON 501/400 for HEAD/OPTIONS/bad request line. Lead promoted note: MAX_BODY 1 MiB too small for reset/import.
 
 ## Decisions
 

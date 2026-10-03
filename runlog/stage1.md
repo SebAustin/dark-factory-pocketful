@@ -18,8 +18,12 @@
 
 | Id | Title | Owner | Assigned | Accepted | Verdicts |
 |---|---|---|---|---|---|
+| S1.1 | Skeleton | builder | 21:24 | | REJECT 0fa1f0b |
+| S1.2 | Auth | builder | 21:33 | yes | ACCEPT dfd7dc3 |
 
 ## Rejections and what they caught
+
+- S1.1 @0fa1f0b REJECT (verifier): HEAD/OPTIONS returned 501 text/html and a malformed request line returned stdlib HTML 400 — violates §5 envelope and no-5xx. Note promoted by lead: 1 MiB body cap would break large fixtures/imports (§3.3, §10).
 
 ## Gate table at acceptance
 
