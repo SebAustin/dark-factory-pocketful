@@ -34,10 +34,9 @@ function userArea(me) {
   return h("div", { class: "user-area" },
     balanceChip(me),
     h("div", { class: "user-chip" },
-      h("span", { "data-testid": "current-user", text: me.display_name }),
+      h("span", { "data-testid": "current-user", title: me.display_name, text: me.display_name }),
       h("span", { "data-testid": "current-handle", text: me.handle })),
-    h("button", { class: "btn btn--quiet btn--small", type: "button", "data-testid": "logout-button",
-      style: "color:var(--paper);border-color:rgb(245 242 235 / .5)",
+    h("button", { class: "btn btn--quiet btn--small btn--on-dark", type: "button", "data-testid": "logout-button",
       onclick: () => { clearSession(); go("/login", { replace: true }); } }, "Log out"));
 }
 

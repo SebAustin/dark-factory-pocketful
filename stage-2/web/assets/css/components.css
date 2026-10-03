@@ -13,7 +13,8 @@
   font: 600 var(--t-lg)/1 var(--font-display); letter-spacing: -.01em;
   color: var(--paper); text-decoration: none; min-height: var(--tap);
 }
-.brand svg { width: 22px; height: 22px; }
+.brand { flex: none; white-space: nowrap; }
+.brand svg { width: 22px; height: 22px; flex: none; }
 .brand:hover { text-decoration: none; }
 .nav-main { display: flex; gap: var(--s1); margin-left: var(--s4); }
 .nav-main a, .tabbar a {
@@ -27,6 +28,8 @@
 .app-header :focus-visible, .tabbar :focus-visible { outline-color: #9CC2FF; }
 
 .user-area { margin-left: auto; display: flex; align-items: center; gap: var(--s3); min-width: 0; }
+.user-area > * { flex: none; }
+.user-area > .user-chip { flex: 0 1 auto; }
 .user-chip { display: grid; line-height: 1.2; min-width: 0; text-align: right; }
 .user-chip [data-testid="current-user"] {
   font-weight: 600; font-size: var(--t-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 22ch;
@@ -72,6 +75,7 @@
   border: 1.5px solid var(--accent); border-radius: var(--r-sm);
   background: var(--accent); color: var(--accent-ink);
   font-weight: 600; cursor: pointer; text-decoration: none; transition: transform .15s, opacity .15s;
+  white-space: nowrap; flex: none;
 }
 .btn:hover { background: #0B4A44; border-color: #0B4A44; }
 .btn:active { transform: translateY(1px); }
@@ -80,7 +84,9 @@
 .btn--danger { background: transparent; color: var(--refused); border-color: var(--refused); }
 .btn--danger:hover { background: var(--refused-bg); border-color: var(--refused); }
 .btn--small { min-height: 36px; padding: 0 var(--s3); font-size: var(--t-sm); }
-.btn--block { width: 100%; }
+.btn--block { width: 100%; flex: 1 1 auto; }
+.btn--on-dark { color: var(--paper); border-color: rgb(245 242 235 / .5); }
+.btn--on-dark:hover { background: rgb(245 242 235 / .1); border-color: var(--paper); }
 .btn[disabled], .btn[aria-disabled="true"] { opacity: .6; cursor: not-allowed; transform: none; }
 .link-btn { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; min-height: var(--tap); }
 .spinner {
