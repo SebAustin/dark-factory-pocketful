@@ -26,8 +26,8 @@ class SignupTest(unittest.TestCase):
         me = call("GET", "/me", token=r.body["token"])
         self.assertEqual(me.status, 200)
         self.assertEqual(me.body, {"user_id": r.body["user_id"], "display_name": "Dee",
-                                   "handle": "dee", "balance": 0, "currency": "EUR",
-                                   "minor_units": 2})
+                                   "handle": "dee", "balance": 0, "total": 0, "available": 0,
+                                   "held": 0, "currency": "EUR", "minor_units": 2})
 
     def test_handle_derivation(self):
         cases = {

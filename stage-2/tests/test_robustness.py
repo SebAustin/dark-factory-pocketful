@@ -171,7 +171,7 @@ class PaymentShapeTest(unittest.TestCase):
         reset()
         r = call("POST", "/payments", {"to_handle": "bob", "amount": 1},
                  token=token("ada@example.com"), key=uuid.uuid4().hex)
-        self.assertEqual(set(r.body), {
+        self.assertEqual(set(r.body) - {"authorization_id"}, {
             "payment_id", "from_user_id", "from_handle", "to_user_id", "to_handle", "amount",
             "currency", "note", "visibility", "request_id", "settlement_id", "created_at"})
         self.assertIsNone(r.body["settlement_id"])

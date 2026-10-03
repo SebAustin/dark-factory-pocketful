@@ -231,8 +231,21 @@ class InvalidImportTest(unittest.TestCase):
         self.assertEqual(dump_state(), self.before)
 
     def test_every_missing_state_key(self):
+        from app.transfer_io import STAGE2_DEFAULTS
         for key in self.snap["state"]:
+            if key in STAGE2_DEFAULTS:  # optional: a stage-1 export lacks them (plan D10)
+                continue
             self.rejects(lambda b, key=key: b["state"].pop(key))
+
+    def test_missing_stage2_keys_take_defaults(self):
+        body = json.loads(json.dumps(self.snap))
+        body["state"].pop("authorizations")
+        body["state"].pop("settings")
+        r = call("POST", "/_test/import", body)
+        self.assertEqual(r.status, 204, r.raw)
+        with STORE.lock:
+            self.assertEqual(STORE.state["authorizations"], {})
+            self.assertEqual(STORE.state["settings"], {"authorization_ttl_seconds": 600})
 
     def test_wrong_type_for_every_state_key(self):
         for key in self.snap["state"]:

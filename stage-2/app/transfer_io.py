@@ -9,14 +9,18 @@ from decimal import Decimal
 
 from . import errors
 from .routes import route
-from .store import REQUEST_STATUSES, STORE, empty_state, parse_rfc3339
+from . import store
+from .store import (AUTH_STATUSES, DEFAULT_TTL, MAX_TTL, REQUEST_STATUSES, STORE, empty_state,
+                    parse_rfc3339)
 from .validation import BALANCE_LIMIT, HANDLE_RE, MAX_ID, VISIBILITIES, integral
 
 TRACK = "pocketful"
 FORMAT_VERSION = 1
 MINOR_UNITS = (0, 2, 3)
 COUNTER_KINDS = ("p", "rq", "sp", "st", "u")
-STATE_KEYS = tuple(empty_state())
+# Stage 2 keys a stage-1 export does not have: filled with these defaults on import (D10).
+STAGE2_DEFAULTS = {"authorizations": {}, "settings": {"authorization_ttl_seconds": DEFAULT_TTL}}
+STATE_KEYS = tuple(k for k in empty_state() if k not in STAGE2_DEFAULTS)
 MAX_EXPONENT = 18  # 2^53 has 16 digits; anything past 1e18 can never be a valid state value
 
 
@@ -28,7 +32,7 @@ def _bad(message: str):
 
 @route("GET", "/_test/export", auth=False, locked=False)
 def export_state(ctx, state, user):
-    with STORE.lock:
+    with STORE.hold():
         snapshot = json.loads(json.dumps(STORE.state))
     return 200, {"track": TRACK, "format_version": FORMAT_VERSION, "state": snapshot}
 
@@ -198,25 +202,63 @@ def _check_counters(state: dict, top_seq: int) -> None:
     counters = _dict(state["counters"], "counters")
     for kind in COUNTER_KINDS:
         _int(counters.get(kind), 0, BALANCE_LIMIT, "counter " + kind)
+    counters["a"] = _int(counters.get("a", 0), 0, BALANCE_LIMIT, "counter a")
+
+
+def _check_settings(state: dict) -> None:
+    settings = _dict(state["settings"], "settings")
+    ttl = _int(settings.get("authorization_ttl_seconds", DEFAULT_TTL), 1, MAX_TTL,
+               "authorization_ttl_seconds")
+    state["settings"] = {"authorization_ttl_seconds": ttl}
+
+
+def _check_authorizations(state: dict) -> int:
+    users, top = state["users"], 0
+    for aid, a in _table(state, "authorizations").items():
+        if a.get("id") != aid or len(aid) > MAX_ID:
+            _bad("authorization id is missing")
+        _user_ref(users, a.get("from"), "authorization from")
+        _user_ref(users, a.get("to"), "authorization to")
+        if a["from"] == a["to"]:
+            _bad("authorization parties must differ")
+        amount = _int(a.get("amount"), 1, BALANCE_LIMIT, "authorization amount")
+        _int(a.get("captured"), 0, amount, "authorization captured")
+        _str(a.get("note"), "authorization note")
+        if a.get("visibility") not in VISIBILITIES or a.get("status") not in AUTH_STATUSES:
+            _bad("authorization visibility or status is invalid")
+        _timestamp(a.get("expires_at"), "authorization expires_at")
+        _timestamp(a.get("created_at"), "authorization created_at")
+        ids = _list(a.get("payment_ids"), "authorization payment_ids")
+        if any(not isinstance(i, str) for i in ids):
+            _bad("authorization payment_ids must be strings")
+        top = max(top, _int(a.get("seq"), 0, BALANCE_LIMIT, "authorization seq"))
+    return top
 
 
 def validated_state(submitted) -> dict:
     """Return a fresh, checked copy of an exported state, or raise 422."""
-    state = _native(_dict(submitted, "state"))
-    if any(key not in state for key in STATE_KEYS):
+    full = _native(_dict(submitted, "state"))
+    if any(key not in full for key in STATE_KEYS):
         _bad("a required key is missing")
-    state = {key: state[key] for key in STATE_KEYS}  # unknown keys are ignored
+    state = {key: full[key] for key in STATE_KEYS}  # unknown keys are ignored
+    for key, default in STAGE2_DEFAULTS.items():  # a stage-1 export lacks these
+        state[key] = full[key] if key in full else json.loads(json.dumps(default))
     _str(state["currency"], "currency", True)
     if _int(state["minor_units"], 0, 3, "minor_units") not in MINOR_UNITS:
         _bad("minor_units must be 0, 2 or 3")
     _check_users(state)
     _check_sessions(state)
-    top = max(_check_payments(state), _check_requests(state))
+    _check_settings(state)
+    top = max(_check_payments(state), _check_requests(state), _check_authorizations(state))
     _opt_timestamps(_table(state, "splits"), "created_at", "split created_at")
     _opt_timestamps(_table(state, "settlements"), "committed_at", "settlement committed_at")
     _opt_timestamps(state["users"], "created_at", "user created_at")
     _check_idempotency(state)
     _check_counters(state, top)
+    for p in state["payments"].values():
+        p.setdefault("authorization_id", None)
+        _opt_str(p["authorization_id"], "payment authorization_id")
+    store.recompute_held(state, store.clock())  # held is derived, never trusted (plan §5)
     return state
 
 

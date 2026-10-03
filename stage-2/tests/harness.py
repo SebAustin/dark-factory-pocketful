@@ -37,8 +37,18 @@ class Resp:
         return (self.body or {}).get("error", {}).get("code")
 
 
+_local = threading.local()
+
+
+def _connection():
+    """One keep-alive connection per thread: a new socket per call exhausts macOS client ports."""
+    conn = getattr(_local, "conn", None)
+    if conn is None:
+        conn = _local.conn = http.client.HTTPConnection("127.0.0.1", port(), timeout=10)
+    return conn
+
+
 def call(method, path, body=None, token=None, key=None, raw=None, headers=None):
-    conn = http.client.HTTPConnection("127.0.0.1", port(), timeout=10)
     hdrs = {"Content-Type": "application/json"}
     if token is not None:
         hdrs["Authorization"] = "Bearer " + token
@@ -48,10 +58,22 @@ def call(method, path, body=None, token=None, key=None, raw=None, headers=None):
     data = raw if raw is not None else (None if body is None else json.dumps(body))
     if isinstance(data, str):
         data = data.encode("utf-8")
-    conn.request(method, path, body=data, headers=hdrs)
-    r = conn.getresponse()
-    out = Resp(r.status, r.read().decode("utf-8"), dict(r.getheaders()))
-    conn.close()
+    for attempt in (1, 2):
+        conn = _connection()
+        reused = conn.sock is not None
+        try:
+            conn.request(method, path, body=data, headers=hdrs)
+            r = conn.getresponse()
+            out = Resp(r.status, r.read().decode("utf-8"), dict(r.getheaders()))
+            break
+        except (http.client.RemoteDisconnected, BrokenPipeError, ConnectionResetError):
+            conn.close()
+            _local.conn = None
+            if not reused or attempt == 2:  # only a stale keep-alive socket is retried
+                raise
+    if out.headers.get("Connection", "").lower() == "close":
+        conn.close()
+        _local.conn = None
     return out
 
 

@@ -75,7 +75,7 @@ def dispatch(ctx):
     if not r["locked"]:
         return r["handler"](ctx, None, None)
     # One hold: auth 401 -> operator 403 -> body 400 -> key 400/422 -> replay -> effect.
-    with STORE.lock:
+    with STORE.hold():
         state = STORE.state
         user = authenticate(ctx, state) if r["auth"] else None
         if r["operator"] and user["id"] not in state["operators"]:

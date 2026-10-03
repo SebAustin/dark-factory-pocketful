@@ -4,19 +4,28 @@ State holds JSON-native values only (dicts, lists, str, int, bool, None) so that
 exported as-is. Every function here that reads or writes `state` expects the caller to hold
 `STORE.lock`, except `load_fixture`, which builds a fresh state off to the side.
 """
+import heapq
 import re
 import secrets
 import threading
-from datetime import datetime, timezone
+import time
+from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 
 from . import errors, passwords
 from .validation import BALANCE_LIMIT, HANDLE_RE, MAX_ID, VISIBILITIES, integral
 
 REQUEST_STATUSES = ("pending", "paid", "declined", "cancelled")
-ID_PREFIX = {"p": "p_", "rq": "rq_", "sp": "sp_", "st": "st_", "u": "u_"}
+AUTH_STATUSES = ("open", "captured", "voided", "expired")
+DEFAULT_TTL = 600
+MAX_TTL = 10 ** 9   # D9: keeps created_at + ttl inside datetime's range
+MAX_AMOUNT = 1_000_000_000
+ID_PREFIX = {"p": "p_", "rq": "rq_", "sp": "sp_", "st": "st_", "u": "u_", "a": "a_"}
 TABLE_FOR_KIND = {"p": "payments", "rq": "requests", "sp": "splits", "st": "settlements",
-                  "u": "users"}
+                  "u": "users", "a": "authorizations"}
+
+clock = time.time  # seconds since the epoch; tests may replace it
 
 
 def empty_state(currency: str = "EUR", minor_units: int = 2) -> dict:
@@ -26,17 +35,47 @@ def empty_state(currency: str = "EUR", minor_units: int = 2) -> dict:
         "payments": {}, "payment_order": [], "requests": {}, "splits": {},
         "settlements": {}, "idem": {}, "seq": 0,
         "counters": {k: 0 for k in ID_PREFIX},
+        "authorizations": {}, "settings": {"authorization_ttl_seconds": DEFAULT_TTL},
     }
 
 
 class Store:
+    """The state, its lock, and the expiry queue of open holds (not part of the state)."""
+
     def __init__(self) -> None:
         self.lock = threading.Lock()
         self.state = empty_state()
+        self._due: list = []  # heap of (expires instant, authorization id)
 
     def replace_state(self, state: dict) -> None:
+        due = [(instant(a["expires_at"]), aid)
+               for aid, a in state.get("authorizations", {}).items() if a["status"] == "open"]
+        heapq.heapify(due)
         with self.lock:
             self.state = state
+            self._due = due
+
+    def schedule(self, authorization: dict) -> None:
+        """Queue an open hold for expiry. Caller holds the lock."""
+        heapq.heappush(self._due, (instant(authorization["expires_at"]), authorization["id"]))
+
+    @contextmanager
+    def hold(self):
+        """The lock, with every hold whose expires_at is at or before now expired first.
+
+        Every read and write of the state goes through here, so expiry is visible at every read
+        even if no request happened at the deadline.
+        """
+        with self.lock:
+            self._sweep(clock())
+            yield self.state
+
+    def _sweep(self, now: float) -> None:
+        while self._due and self._due[0][0] <= now:
+            _, aid = heapq.heappop(self._due)
+            a = self.state["authorizations"].get(aid)
+            if a is not None and a["status"] == "open" and instant(a["expires_at"]) <= now:
+                expire_authorization(self.state, a)
 
 
 STORE = Store()
@@ -93,6 +132,11 @@ def new_token(state: dict, user_id: str) -> str:
     return token
 
 
+def available(user: dict) -> int:
+    """available = total - held (stage 2). total is the stage 1 `balance`."""
+    return user["balance"] - user.get("held", 0)
+
+
 def user_by_handle(state: dict, handle: str):
     user_id = state["handles"].get(handle)
     return state["users"].get(user_id) if user_id else None
@@ -100,11 +144,13 @@ def user_by_handle(state: dict, handle: str):
 
 # ---------------------------------------------------------------- money movement
 
-def _make_payment(state, from_id, to_id, amount, note, visibility, ts, request_id, settlement_id):
+def _make_payment(state, from_id, to_id, amount, note, visibility, ts, request_id, settlement_id,
+                  authorization_id=None):
     payment = {
         "id": new_id(state, "p"), "from": from_id, "to": to_id, "amount": amount,
         "note": note, "visibility": visibility, "request_id": request_id,
-        "settlement_id": settlement_id, "created_at": ts, "seq": next_seq(state),
+        "settlement_id": settlement_id, "authorization_id": authorization_id,
+        "created_at": ts, "seq": next_seq(state),
     }
     state["payments"][payment["id"]] = payment
     state["payment_order"].append(payment["id"])
@@ -113,10 +159,10 @@ def _make_payment(state, from_id, to_id, amount, note, visibility, ts, request_i
 
 def apply_transfer(state, from_id, to_id, amount, note="", visibility="public",
                    request_id=None, ts=None):
-    """Debit and credit in one step. Caller holds the lock. 409 if the payer is short."""
+    """Debit and credit in one step. Caller holds the lock. 409 if available is short."""
     users = state["users"]
-    if users[from_id]["balance"] < amount:
-        raise errors.conflict("insufficient_funds", "balance is below amount")
+    if available(users[from_id]) < amount:
+        raise errors.conflict("insufficient_funds", "available balance is below amount")
     users[from_id]["balance"] -= amount
     users[to_id]["balance"] += amount
     return _make_payment(state, from_id, to_id, amount, note, visibility, ts or now_ts(),
@@ -124,7 +170,7 @@ def apply_transfer(state, from_id, to_id, amount, note="", visibility="public",
 
 
 def apply_batch(state, transfers, settlement_id, ts):
-    """All-or-nothing batch: every wallet's net result must be >= 0. Caller holds the lock.
+    """All-or-nothing batch: every wallet's available + net must be >= 0. Caller holds the lock.
 
     transfers: list of dicts {from, to, amount, note, visibility}.
     """
@@ -133,12 +179,68 @@ def apply_batch(state, transfers, settlement_id, ts):
     for t in transfers:
         net[t["from"]] = net.get(t["from"], 0) - t["amount"]
         net[t["to"]] = net.get(t["to"], 0) + t["amount"]
-    if any(users[uid]["balance"] + delta < 0 for uid, delta in net.items()):
+    if any(available(users[uid]) + delta < 0 for uid, delta in net.items()):
         raise errors.conflict("insufficient_funds", "settlement is not affordable")
     for uid, delta in net.items():
         users[uid]["balance"] += delta
     return [_make_payment(state, t["from"], t["to"], t["amount"], t["note"], t["visibility"],
                           ts, None, settlement_id) for t in transfers]
+
+
+# ---------------------------------------------------------------- holds (stage 2)
+# held changes only here: create (+amount), capture (-captured, -remainder if final),
+# void and expiry (-remainder). Reset and import recompute it from the table.
+
+def remaining(a: dict) -> int:
+    return a["amount"] - a["captured"] if a["status"] == "open" else 0
+
+
+def _close(state: dict, a: dict, status: str) -> None:
+    state["users"][a["from"]]["held"] -= remaining(a)
+    a["status"] = status
+
+
+def expire_authorization(state: dict, a: dict) -> None:
+    _close(state, a, "expired")
+
+
+def void_authorization(state: dict, a: dict) -> None:
+    _close(state, a, "voided")
+
+
+def place_hold(state, from_id, to_id, amount, note, visibility):
+    """Reserve amount of from_id's available funds. Caller holds STORE.hold(). 409 if short."""
+    payer = state["users"][from_id]
+    if available(payer) < amount:
+        raise errors.conflict("insufficient_funds", "available balance is below amount")
+    created = datetime.fromtimestamp(int(clock()), timezone.utc)
+    ttl = state["settings"]["authorization_ttl_seconds"]
+    a = {
+        "id": new_id(state, "a"), "from": from_id, "to": to_id, "amount": amount,
+        "captured": 0, "note": note, "visibility": visibility, "status": "open",
+        "expires_at": (created + timedelta(seconds=ttl)).isoformat(),
+        "created_at": created.isoformat(), "seq": next_seq(state), "payment_ids": [],
+    }
+    state["authorizations"][a["id"]] = a
+    payer["held"] = payer.get("held", 0) + amount
+    STORE.schedule(a)
+    return a
+
+
+def is_expired(a: dict) -> bool:
+    return a["status"] == "expired" or (a["status"] == "open"
+                                        and instant(a["expires_at"]) <= clock())
+
+
+def recompute_held(state: dict, now: float) -> None:
+    """Derive every user's held from the open holds; open holds already past expire here."""
+    for u in state["users"].values():
+        u["held"] = 0
+    for a in state["authorizations"].values():
+        if a["status"] == "open" and instant(a["expires_at"]) <= now:
+            a["status"] = "expired"
+        if a["status"] == "open":
+            state["users"][a["from"]]["held"] += remaining(a)
 
 
 # ---------------------------------------------------------------- views
@@ -151,7 +253,8 @@ def payment_view(state: dict, p: dict) -> dict:
         "to_user_id": p["to"], "to_handle": users[p["to"]]["handle"],
         "amount": p["amount"], "currency": state["currency"], "note": p["note"],
         "visibility": p["visibility"], "request_id": p["request_id"],
-        "settlement_id": p["settlement_id"], "created_at": p["created_at"],
+        "settlement_id": p["settlement_id"], "authorization_id": p.get("authorization_id"),
+        "created_at": p["created_at"],
     }
 
 
@@ -229,7 +332,8 @@ def _load_users(state, users, ts):
             _fail("duplicate user id, handle or email for " + uid)
         state["users"][uid] = {
             "id": uid, "email": email, "password_hash": None,
-            "display_name": display, "handle": handle, "balance": balance, "created_at": ts,
+            "display_name": display, "handle": handle, "balance": balance, "held": 0,
+            "created_at": ts,
         }
         state["handles"][handle] = uid
         state["emails"][email.lower()] = uid
@@ -256,7 +360,8 @@ def _load_payments(state, payments, ts):
             "amount": _need_int(p, "amount", pid, 1, BALANCE_LIMIT),
             "note": _opt_str(p, "note", "", pid), "visibility": vis,
             "request_id": p.get("request_id") if isinstance(p.get("request_id"), str) else None,
-            "settlement_id": None, "created_at": _opt_ts(p, ts, pid), "seq": next_seq(state),
+            "settlement_id": None, "authorization_id": None,
+            "created_at": _opt_ts(p, ts, pid), "seq": next_seq(state),
         }
         state["payment_order"].append(pid)
 
@@ -281,6 +386,56 @@ def _load_requests(state, requests, ts):
         }
 
 
+def _need_ts(obj: dict, name: str, where: str) -> str:
+    parsed = parse_rfc3339(obj.get(name)) if isinstance(obj, dict) else None
+    if parsed is None:
+        _fail("{} needs {} as RFC 3339 with an offset".format(where, name))
+    return parsed.isoformat()
+
+
+def _load_ttl(state, fixture):
+    if "authorization_ttl_seconds" not in fixture:
+        return
+    ttl = integral(fixture["authorization_ttl_seconds"])
+    if ttl is None or not 1 <= ttl <= MAX_TTL:
+        _fail("authorization_ttl_seconds must be a positive integer number of seconds")
+    state["settings"]["authorization_ttl_seconds"] = ttl
+
+
+def _load_authorizations(state, authorizations, ts):
+    if not isinstance(authorizations, list):
+        _fail("authorizations must be a list")
+    for a in authorizations:
+        aid = _need_id(a, "id", "authorization")
+        src, dst = _need(a, "from_user_id", str, aid), _need(a, "to_user_id", str, aid)
+        if aid in state["authorizations"] or src not in state["users"] \
+                or dst not in state["users"] or src == dst:
+            _fail("authorization {} is duplicate or has invalid parties".format(aid))
+        amount = _need_int(a, "amount", aid, 1, MAX_AMOUNT)
+        captured = _need_int(a, "captured_amount", aid, 0, amount) \
+            if a.get("captured_amount") is not None else 0
+        status = _need(a, "status", str, aid)
+        vis = _opt_str(a, "visibility", "public", aid)
+        note = _opt_str(a, "note", "", aid)
+        if status not in AUTH_STATUSES or vis not in VISIBILITIES or len(note) > 200:
+            _fail("authorization {} has an invalid status, visibility or note".format(aid))
+        ids = a.get("payment_ids")
+        if ids is None:
+            ids = [a["payment_id"]] if isinstance(a.get("payment_id"), str) else []
+        if not isinstance(ids, list) or any(not isinstance(i, str) for i in ids):
+            _fail("authorization {} has invalid payment_ids".format(aid))
+        state["authorizations"][aid] = {
+            "id": aid, "from": src, "to": dst, "amount": amount, "captured": captured,
+            "note": note, "visibility": vis, "status": status,
+            "expires_at": _need_ts(a, "expires_at", aid), "created_at": _opt_ts(a, ts, aid),
+            "seq": next_seq(state), "payment_ids": list(ids),
+        }
+    recompute_held(state, clock())
+    for u in state["users"].values():
+        if u["held"] > u["balance"]:
+            _fail("open holds of {} exceed its balance".format(u["id"]))
+
+
 def load_fixture(fixture: dict) -> dict:
     """Validate a reset fixture (spec §4) into a fresh state. Raises 422 on any problem."""
     currency = fixture.get("currency")
@@ -294,6 +449,8 @@ def load_fixture(fixture: dict) -> dict:
     _load_users(state, fixture.get("users", []), ts)
     _load_payments(state, fixture.get("payments", []), ts)
     _load_requests(state, fixture.get("requests", []), ts)
+    _load_ttl(state, fixture)
+    _load_authorizations(state, fixture.get("authorizations", []), ts)
     operators = fixture.get("settlement_operator_ids", [])
     if not isinstance(operators, list) or any(
             not isinstance(o, str) or o not in state["users"] for o in operators):

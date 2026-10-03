@@ -3,7 +3,7 @@ import re
 
 from . import errors, passwords
 from .routes import route
-from .store import STORE, new_id, new_token, now_ts
+from .store import STORE, available, new_id, new_token, now_ts
 from .validation import req_str
 
 EMAIL_RE = re.compile(r"\A[^@\s]+@[^@\s]+\Z")
@@ -44,15 +44,15 @@ def signup(ctx, state, user):
     if len(password) < MIN_PASSWORD:
         raise errors.validation("password must be at least 8 characters")
     handle = derive_handle(email)
-    with STORE.lock:
+    with STORE.hold():
         _check_free(STORE.state, email, handle)  # fail fast before the slow hash
     password_hash = passwords.hash_password(password)  # slow: outside the lock
-    with STORE.lock:
+    with STORE.hold():
         state = STORE.state
         _check_free(state, email, handle)  # re-check: the state may have changed meanwhile
         uid = new_id(state, "u")
         created = {"id": uid, "email": email, "password_hash": password_hash,
-                   "display_name": display_name, "handle": handle, "balance": 0,
+                   "display_name": display_name, "handle": handle, "balance": 0, "held": 0,
                    "created_at": now_ts()}
         state["users"][uid] = created
         state["handles"][handle] = uid
@@ -63,13 +63,13 @@ def signup(ctx, state, user):
 @route("POST", "/auth/login", auth=False, locked=False)
 def login(ctx, state, user):
     email, password = _credentials(ctx.json_object())
-    with STORE.lock:
+    with STORE.hold():
         state = STORE.state
         uid = state["emails"].get(email.lower())
         stored = state["users"][uid]["password_hash"] if uid else None
     if stored is None or not passwords.verify_password(password, stored):
         raise errors.unauthenticated("wrong email or password")
-    with STORE.lock:
+    with STORE.hold():
         state = STORE.state
         found = state["users"].get(uid)
         # A reset between the two holds may have replaced this account.
@@ -82,4 +82,6 @@ def login(ctx, state, user):
 def me(ctx, state, user):
     return 200, {"user_id": user["id"], "display_name": user["display_name"],
                  "handle": user["handle"], "balance": user["balance"],
+                 "total": user["balance"], "available": available(user),
+                 "held": user.get("held", 0),
                  "currency": state["currency"], "minor_units": state["minor_units"]}
