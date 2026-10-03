@@ -12,6 +12,10 @@
 | 22:56 | S2.0 carry-forward -> builder; stage 2 spec (3 parts) + S2.L ledger -> analyst, S2.P API plan -> builder, S2.U UI plan -> designer |
 | 22:58 | S2.0 committed 10e5b5e; review + screen tooling -> verifier |
 
+## Early signals
+
+- Event checker run 1 (builder, isolated, rev 3dbd491): stage 1 pass; stage 2 33/35 — 2 failures: /signup and /login redirect a signed-in user (UI) -> S2.U8.
+
 ## Work items
 
 | Id | Title | Owner | Assigned | Accepted | Verdicts |

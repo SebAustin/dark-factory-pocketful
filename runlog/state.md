@@ -31,7 +31,8 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 | S2.4 | Capture + void | builder | authorizations.py, store | accepted | 3d926ec | 0 |
 | S2.5 | Export/import migration | builder | transfer_io.py | in review | 4e4559c | 0 |
 | S2.6 | Concurrency/load | builder | tests, tools | in review | 0c72f1f | 0 |
-| S2.7 | Import hold check + early checker signal | builder | transfer_io.py | assigned | - | 0 |
+| S2.7 | Import hold check + early checker signal | builder | transfer_io.py | (a) in review eab708e; (b) checker run on 3dbd491: stage 2 33/35, 2 UI fails -> S2.U8 | eab708e | 0 |
+| S2.U8 | /signup,/login reachable while signed in | designer | web/** | assigned | - | 0 |
 | S2.PG | Plan gate | analyst | - | assigned (after ledger) | - | 0 |
 | S2.A | Acceptance (stage1 carried + stage2 API + screens) | analyst | stage-2/acceptance/ | assigned | - | 0 |
 | S2.U1 | Shell, visual system, nav, auth screens | designer | web/** | fix resubmitted | 773f649 | 1 |
