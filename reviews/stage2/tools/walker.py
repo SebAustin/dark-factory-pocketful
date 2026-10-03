@@ -27,7 +27,8 @@ Plan format (JSON):
      "steps": [{"fill": "pay-handle", "value": "bob"}, {"click": "pay-submit"},
                {"wait": "pay-error"}, {"press": "Tab"}, {"route": {"url": "**/payments",
                 "abort": true}}],
-     "fixture": {...} | null, "login": false, "hidden_ok": []}
+     "fixture": {...} | null, "login": false, "hidden_ok": [],
+     "allow_console": ["status of 4\\d\\d"]}     # regexes for expected console lines (refusal states)
   ]
 }
 Steps address elements by data-testid. "route" steps intercept network calls (abort or delay ms) so
@@ -35,6 +36,7 @@ loading, refused and uncertain states can be staged deterministically.
 """
 import argparse
 import json
+import re
 import sys
 import time
 import urllib.request
@@ -133,6 +135,8 @@ def run_step(page, step):
         spec = step["route"]
         if spec.get("abort"):
             page.route(spec["url"], lambda route: route.abort())
+        elif spec.get("hold"):  # never answered while the walk lasts: a frozen in-flight state
+            page.route(spec["url"], lambda route: None)
         else:
             delay_s = spec.get("delay_ms", 0) / 1000
             page.route(spec["url"], lambda route: (time.sleep(delay_s), route.continue_()))
@@ -207,7 +211,9 @@ def walk_state(browser, base, plan, state, width, shot):
             page.screenshot(path=str(shot), full_page=True)
         except Exception:
             pass
-    result["events"] = events
+    allowed = [re.compile(p) for p in state.get("allow_console", [])]
+    result["events"] = [e for e in events if not any(p.search(e) for p in allowed)]
+    result["allowed_events"] = [e for e in events if any(p.search(e) for p in allowed)]
     context.close()
     return result
 
