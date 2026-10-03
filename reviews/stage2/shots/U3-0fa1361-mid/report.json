@@ -1,0 +1,62 @@
+[
+  {
+    "state": "shell-requests",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U3-0fa1361-mid/768/01-shell-requests.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/U3-0fa1361-mid/768/02-wallet.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 768
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "shell-requests",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U3-0fa1361-mid/1024/01-shell-requests.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 1024
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/U3-0fa1361-mid/1024/02-wallet.png",
+    "missing_testids": [],
+    "overflow": {
+      "scrollWidth": 1029,
+      "innerWidth": 1024
+    },
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  }
+]
