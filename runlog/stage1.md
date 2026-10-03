@@ -18,6 +18,8 @@
 
 - Event checker run 1 (analyst, isolated, rev 5619099): stage 1 pass 147/147, "claimed stage: 1". Own acceptance suite still red on crash/hidden findings (S1.11, S1.14, S1.15).
 
+- Acceptance re-run (analyst, image from 76515c2 incl. 2e25cdb; test change 6a73e1f per L3): 422 passed, 0 failed, 3 skipped (docker-only). Event checker run 2 (rev 6a73e1f): 147/147, claimed stage 1.
+
 ## Plan gate
 
 Round 1 (analyst, 22:3x): PLAN FINDINGS 1-6 against ledger 9bdc486. Lead decision L2: gate closed; findings converted to fix packet S1.11 (builder) or shown satisfied by verifier accepts on S1.6/S1.7.
