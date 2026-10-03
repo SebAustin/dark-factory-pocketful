@@ -23,7 +23,7 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 | S2.0 | Carry forward copy | builder | stage-2/ (whole copy) | accepted | 10e5b5e | 0 |
 | S2.V | Screen walker tooling | verifier | reviews/stage2/tools/ | done (375/390/1280) | 1275ada | 0 |
 | S2.L | Ledger + glossary (182 new rows, D-21..D-38) | analyst | stage-2/docs/ledger.md, glossary.md | done | f146c3b | 0 |
-| S2.8 | Upgrade keeps destination sessions (D-22 / L5) | builder | transfer_io.py | assigned | - | 0 |
+| S2.8 | Upgrade keeps destination sessions (D-22 / L5) + ttl + pay replay | builder | transfer_io.py, store | in review | bf2e57d | 0 |
 | S2.P | API/model plan | builder | stage-2/docs/plan.md | built (to critique) | 0cfc980 | 0 |
 | S2.U | UI plan | designer | stage-2/docs/ui-plan.md | built (to critique) | 624aa75 | 0 |
 | S2.1 | HTML/static seam | builder | app/ web serving, Dockerfile | accepted | ea8913c | 0 |
@@ -38,7 +38,7 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 | S2.U7 | Competing clients / uncertain / upgrade | designer | web/** | accepted | 46b6e6f | 0 |
 | S2.PG | Plan gate | analyst | - | done: 1 blocking (D-22 -> L5) + 5 minor -> S2.8, S2.U10 (L6) | - | 0 |
 | S2.A | Acceptance (stage1 carried 425 + stage2 264) | analyst | stage-2/acceptance/ | re-run on 79a7bf6: stage1 422/0/3, stage2 262/268 (4 = S2.8, 2 = refresh button -> S2.U10) | 29db0cd | 0 |
-| S2.U10 | Plan-gate UI fixes (dirty key, split parse, list DOM) | designer | web/** | assigned | - | 0 |
+| S2.U10 | Plan-gate UI fixes (dirty key, split parse, list DOM, refresh enabled) | designer | web/** | in review | 74d83a5 | 0 |
 | S2.U1 | Shell, visual system, nav, auth screens | designer | web/** | accepted (F1/F2 closed in U2-U3 review) | 773f649 | 1 |
 | S2.U2+U3 | Client core + wallet screen | designer | web/** | accepted (F3 closed; 0259400 nowrap included) | b0aae37 | 1 |
 | S2.U4+U5 | Requests + split screens | designer | web/** | accepted | 1ef373b | 0 |
