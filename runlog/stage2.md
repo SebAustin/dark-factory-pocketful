@@ -26,6 +26,7 @@
 | S2.3 | Authorize + list | builder | 23:05 | yes | ACCEPT 3facf62 |
 | S2.4 | Capture + void | builder | 23:05 | yes | ACCEPT 3d926ec |
 | S2.5 | Export/import upgrade | builder | 23:05 | yes | ACCEPT 4e4559c |
+| S2.6 | Holds concurrency/load | builder | 23:05 | yes | ACCEPT 0c72f1f |
 | S2.U1 | Shell, auth screens | designer | 23:03 | yes | REJECT b776a89, F1/F2 closed at 773f649 |
 | S2.U4+U5 | Requests + split | designer | 23:03 | yes | ACCEPT 1ef373b |
 
