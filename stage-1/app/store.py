@@ -47,7 +47,7 @@ def now_ts() -> str:
 
 
 RFC3339_RE = re.compile(
-    r"^\d{4}-\d\d-\d\d[Tt]\d\d:\d\d:\d\d(\.\d+)?([Zz]|[+-]\d\d:\d\d)$")
+    r"\A\d{4}-\d\d-\d\d[Tt]\d\d:\d\d:\d\d(\.\d+)?([Zz]|[+-]\d\d:\d\d)\Z")
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 

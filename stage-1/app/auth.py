@@ -6,7 +6,7 @@ from .routes import route
 from .store import STORE, new_id, new_token, now_ts
 from .validation import req_str
 
-EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+$")
+EMAIL_RE = re.compile(r"\A[^@\s]+@[^@\s]+\Z")
 NON_HANDLE_RE = re.compile(r"[^a-z0-9_]")
 MIN_PASSWORD = 8
 MAX_HANDLE = 20

@@ -2,6 +2,7 @@
 import importlib
 import os
 import sys
+import threading
 import traceback
 from urllib.parse import urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -16,6 +17,9 @@ MAX_BODY = 1024 * 1024                 # ordinary API bodies
 MAX_STATE_BODY = 64 * 1024 * 1024      # reset fixtures and import snapshots
 STATE_PATHS = ("/_test/reset", "/_test/import")
 DRAIN_CHUNK = 64 * 1024
+# musl (python:3.12-alpine) gives threads a tiny C stack; C-level recursion (json, re) needs room.
+THREAD_STACK = 16 * 1024 * 1024
+INTERNAL_ERROR = {"error": {"code": "internal_error", "message": "internal error"}}
 
 
 def _load_route_modules():
@@ -39,9 +43,14 @@ class Handler(BaseHTTPRequestHandler):
             status, body = err.status, err.envelope()
         except Exception:  # never drop a connection or leak a traceback to the client
             traceback.print_exc(file=sys.stderr)
-            status, body = 500, {"error": {"code": "internal_error",
-                                           "message": "internal error"}}
-        self._send(status, body)
+            status, body = 500, INTERNAL_ERROR
+        try:
+            self._send(status, body)
+        except (BrokenPipeError, ConnectionResetError):
+            self.close_connection = True
+        except Exception:
+            traceback.print_exc(file=sys.stderr)
+            self.close_connection = True
 
     def _dispatch(self):
         length = self.headers.get("Content-Length")
@@ -119,6 +128,7 @@ class Server(ThreadingHTTPServer):
 
 
 def make_server(host: str, port: int) -> Server:
+    threading.stack_size(THREAD_STACK)  # applies to every request thread created later
     _load_route_modules()
     return Server((host, port), Handler)
 

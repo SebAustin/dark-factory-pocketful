@@ -58,8 +58,10 @@ def _idempotency_key(ctx):
 
 def dispatch(ctx):
     r = _match(ctx)
+    ctx.preparse()  # parse outside the lock; a parse error is raised later, in D-01 order
     if not r["locked"]:
         return r["handler"](ctx, None, None)
+    # One hold: auth 401 -> operator 403 -> body 400 -> key 400/422 -> replay -> effect.
     with STORE.lock:
         state = STORE.state
         user = authenticate(ctx, state) if r["auth"] else None
