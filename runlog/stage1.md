@@ -14,6 +14,10 @@
 | ~21:30 | S1.P plan committed 3fb74d0; S1.1 skeleton 0fa1f0b (builder sent to verifier); S1.D0 stress tool bb8918a; S1.L ledger 9bdc486 (228 reqs) |
 | 21:33 | S1.PG plan gate -> analyst; S1.A acceptance -> analyst; S1.2+S1.3 -> builder; S1.6 -> designer (decision L1) |
 
+## Early signals
+
+- Event checker run 1 (analyst, isolated, rev 5619099): stage 1 pass 147/147, "claimed stage: 1". Own acceptance suite still red on crash/hidden findings (S1.11, S1.14, S1.15).
+
 ## Plan gate
 
 Round 1 (analyst, 22:3x): PLAN FINDINGS 1-6 against ledger 9bdc486. Lead decision L2: gate closed; findings converted to fix packet S1.11 (builder) or shown satisfied by verifier accepts on S1.6/S1.7.
