@@ -253,3 +253,31 @@ def test_R2_AMT_8_same_rule_on_request_split_authorize_forms(world, page):
     expect(tid(page, "split-error")).to_be_visible()
     page.wait_for_timeout(400)
     assert wire.writes == []
+
+
+@pytest.mark.parametrize("form,fields,path", [
+    ("request", {"request-handle": "ada", "request-amount": "12.00"}, "/requests"),
+    ("pay", {"pay-handle": "ada", "pay-amount": "1.00"}, "/payments"),
+])
+def test_R2_PAY_8_edit_during_inflight_then_submit_sends_new_request(world, page, form, fields,
+                                                                     path):
+    """A field changed while the previous submission is in flight makes the next click a new
+    request (R2-PAY.8); the click must not be lost."""
+    wire = Wire(page)
+    open_wallet(page, "bob@example.com")
+    for k, v in fields.items():
+        tid(page, k).fill(v)
+    held = []
+    page.route(lambda url: url.endswith(path), lambda route: held.append(route))
+    tid(page, f"{form}-submit").click()
+    page.wait_for_timeout(300)
+    assert len(held) == 1
+    tid(page, f"{form}-handle").fill("dee")          # edited while the first is in flight
+    page.unroute(lambda url: url.endswith(path))
+    held[0].continue_()
+    page.wait_for_timeout(1200)                      # first submission done and refreshed
+    tid(page, f"{form}-submit").click()
+    page.wait_for_timeout(1500)
+    handles = [w["body"].get("payer_handle") or w["body"].get("to_handle")
+               for w in wire.to(path)]
+    assert handles == ["ada", "dee"], handles
