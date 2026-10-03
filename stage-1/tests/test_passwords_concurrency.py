@@ -81,7 +81,9 @@ class HashConcurrencyTest(unittest.TestCase):
     def test_format_and_results_unchanged(self):
         stored = passwords.hash_password("correct horse")
         parts = stored.split("$")
-        self.assertEqual(parts[:4], ["scrypt", str(2 ** 14), "8", "1"])
+        self.assertEqual(parts[:4], ["scrypt", str(passwords.N), "8", "1"])
+        self.assertEqual(passwords.N, 2 ** 13)
+        self.assertLessEqual(passwords.SEED_N, passwords.N)
         self.assertTrue(passwords.verify_password("correct horse", stored))
         self.assertFalse(passwords.verify_password("wrong horse", stored))
         self.assertTrue(passwords.verify_password("correct horse", self.stored))  # lighter seeded cost

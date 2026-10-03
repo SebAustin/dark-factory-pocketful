@@ -5,13 +5,15 @@ import secrets
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
-N, R, P = 2 ** 14, 8, 1
-# Seeded fixture users: a lighter cost keeps a large reset inside its 10 s budget (plan D7).
-SEED_N = 2 ** 11
+# Interactive (signup) cost. 2^13 keeps a 50-signup burst near 1 s on a 2 vCPU quota (D-19).
+N, R, P = 2 ** 13, 8, 1
+# Seeded fixture users: a lighter cost keeps a 2000-user reset near 2 s (limit 10 s, plan D7).
+# Each stored hash carries its own parameters, so any cost verifies.
+SEED_N = 2 ** 9
 MAXMEM = 64 * 1024 * 1024
 # One interactive hash at a time. Parallel scrypt threads burn the container's 2 CPU quota in a
 # few milliseconds, the cgroup then throttles every thread, and unrelated requests stall
-# (decision D-19). Queueing 50 callers costs 50 x ~44 ms, well inside the 5 s request limit.
+# (decision D-19). Queueing 50 callers costs 50 x ~22 ms, well inside the 5 s request limit.
 _HASH_SLOT = threading.BoundedSemaphore(1)
 
 

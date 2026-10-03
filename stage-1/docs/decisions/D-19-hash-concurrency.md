@@ -25,3 +25,21 @@ Soak 60 s with 1 at a time: PASS, 28405 requests, 0 5xx, 0 over 5 s, non-auth p5
 **Effect on acceptance tests.** None: the stored hash format and parameters are unchanged; seeded users keep verifying with their stored n.
 
 **Constraining text.** §2 "Per-request timeout | 5 s", "CPU | 2 vCPU"; §6 password hashing function.
+
+## Revision S1.13-R1: cost and slot count (verifier F7, lead guidance)
+
+The one-slot, n=2^14 build bursts 50 signups + 50 logins in 2.2 s on a quiet host but 5.1-5.9 s on the verifier's busy one (a single n=2^14 hash took 104 ms there). Candidates, measured in the container (`--cpus 2 --memory 2g`) with `reviews/stage1/tools/burst_auth.py` (50 signups, then 50 logins, 3 runs per round, 2 rounds, host load about 8):
+
+| candidate | burst max signup / login | throttled periods (burst runs) |
+|---|---|---|
+| slots=1, n=2^14 (5ff293a) | 2.16-2.22 s / 2.12-2.41 s | 0 |
+| (a) slots=2, n=2^14 | 1.05-1.24 s / 1.06-1.14 s | 42 of 75, 83 of 154 |
+| (b) slots=1, n=2^13 | 1.06-1.20 s / 1.07-1.22 s | 0 |
+| (c) slots=2, n=2^13 | 0.54-0.56 s / 0.53-0.56 s | 25 of 48, 45 of 92 |
+| (d) slots=1, n=2^12 | 0.51-0.56 s / 0.52-0.55 s | 0 |
+
+Soak 60 s (2 rounds each): (a) PASS, 0 calls over 5 s, throttled 101 and 133 of about 610 periods; (b) PASS, 0 over 5 s, throttled 0 and 0. Two slots plus the interpreter thread exceed the 2 CPU quota during a burst, so (a) and (c) still throttle.
+
+**Choice: (b) one slot, n=2^13, r=8, p=1.** It meets burst <= 2.5 s with margin on this host and still under 2.5 s if the host is 2x slower, and never throttles. n=2^14 with two slots meets the burst limit but throttles in about a fifth of the soak's periods, which the guidance rules out.
+
+Seeded fixture users: `SEED_N` goes from 2^11 to 2^9 so a 2000-distinct-password reset stays well under its limit (reset timings, 5 runs each, quiet host): n=2^11 3.0 s (1000) / 6.0-6.2 s (2000); n=2^10 1.5 s / 3.1 s; n=2^9 0.8 s / 1.5-1.6 s. Stored hashes carry their parameters, so seeded and older users still verify. Final build: reset 1000 users 0.9 s, 2000 users 1.6-1.7 s; burst_auth max 1.10 s signup, 1.08-1.24 s login, 0 calls over 5 s.
