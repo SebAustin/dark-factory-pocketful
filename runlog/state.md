@@ -7,9 +7,9 @@ Last accepted revision: none (stage 1 is the first).
 
 ## Stage 1 phase
 
-- [ ] Ledger (analyst) — packet S1.L sent
-- [ ] Plan (builder) — packet S1.P sent
-- [ ] Plan gate
+- [x] Ledger (analyst) 9bdc486
+- [x] Plan (builder) 3fb74d0
+- [x] Plan gate: closed by lead decision L2 after round 1
 - [ ] Work items split
 - [ ] Item reviews
 - [ ] Stage gate
@@ -32,7 +32,10 @@ Last accepted revision: none (stage 1 is the first).
 | S1.8 | Load and limits (builder delivered before re-plan; designer copy cancelled) | builder | tests/soak.py | accepted | ef350b3 | 0 |
 | S1.9 | Diagnose >5 s tail under auth-heavy load | designer | tools/soak.py | assigned | - | 0 |
 | S1.10 | Early event-checker signal | builder | (own paths for fixes) | assigned | - | 0 |
-| S1.A | Acceptance suite | analyst | stage-1/acceptance/ | assigned | - | 0 |
+| S1.A | Acceptance suite (400 tests) | analyst | stage-1/acceptance/ | built; 385/400 on c19a2b7, failures -> S1.11 | 1a37936 | 0 |
+| S1.11 | Crash probes, numbers, lock scope, RUN.md | builder | validation, http_util, routes, store, server, RUN.md | assigned (top priority) | - | 0 |
+| S1.12 | Import timestamp validation | designer | transfer_io.py | assigned (after S1.9) | - | 0 |
+| S1.AH | Hidden-requirement sweep | analyst | stage-1/acceptance/ | assigned | - | 0 |
 
 ## Open rejections
 
@@ -43,5 +46,7 @@ Last accepted revision: none (stage 1 is the first).
 - S1.3 R1 @7e7c5c1: F2 activity sorted by created_at string, wrong with mixed offsets.
 
 ## Decisions
+
+- L2 (22:3x): plan gate (G2) closed after one critique round. Analyst found 6 plan findings; code already existed, so each became a fix packet or was shown already satisfied by a verifier ACCEPT: P1,P2,P5,P6 -> S1.11 builder; P3 proven by S1.7 snapshot isolation probe; P4 proven by S1.6 precedence probes. Why: re-planning written code wastes a round; findings are fully covered by fix packets with DONE WHEN.
 
 - L1 (21:33): builder starts S1.2/S1.3 and designer S1.6 before the plan gate closes, to keep lanes busy; plan-gate findings return as fix packets. Plan risk judged low (analyst's independent ledger decisions D-01..D-17 agree with plan D1-D7 on order, scoping, number handling).
