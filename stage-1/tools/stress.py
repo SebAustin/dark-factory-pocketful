@@ -18,6 +18,7 @@ import asyncio
 import json
 import os
 import random
+import re
 import sys
 import time
 import uuid
@@ -62,6 +63,7 @@ class Api:
         self.rng = random.Random()
         self.five_xx, self.bad_envelope, self.transport = [], [], []
         self.count = 0
+        self.latency = {}  # "METHOD /route/{id}" -> seconds per call
 
     async def call(self, method, path, *, token=None, body=None, key=None,
                    shuffle=False, raw=None, timeout=REQ_TIMEOUT):
@@ -83,12 +85,15 @@ class Api:
             headers["Idempotency-Key"] = key
         async with self.sem:
             self.count += 1
+            began = time.monotonic()
             try:
                 r = await self.client.request(method, path, headers=headers,
                                               content=content, timeout=timeout)
             except Exception as exc:  # timeout (>5 s) or connection failure
                 self.transport.append(f"{method} {path}: {exc!r}")
                 return Resp(0, None, repr(exc))
+        label = f"{method} " + re.sub(r"/(rq|p|sp|st|u)_\w+", "/{id}", path.split("?")[0])
+        self.latency.setdefault(label, []).append(time.monotonic() - began)
         try:
             data = r.json()
         except ValueError:
