@@ -112,6 +112,61 @@ class ResetTest(unittest.TestCase):
         self.assertEqual(r.status, 400)
 
 
+def raw_request(data: bytes) -> bytes:
+    import socket
+    from harness import port
+    with socket.create_connection(("127.0.0.1", port()), timeout=5) as s:
+        s.sendall(data)
+        chunks = []
+        while True:
+            chunk = s.recv(65536)
+            if not chunk:
+                break
+            chunks.append(chunk)
+    return b"".join(chunks)
+
+
+class OddRequestTest(unittest.TestCase):
+    """Spec §5: every 4xx/5xx carries the JSON envelope; no request produces a 5xx."""
+
+    def assert_envelope(self, response: bytes, status: int, code: str):
+        import json
+        head, _, body = response.partition(b"\r\n\r\n")
+        self.assertTrue(head.startswith(("HTTP/1.1 %d " % status).encode()), head)
+        self.assertIn(b"application/json; charset=utf-8", head)
+        self.assertEqual(json.loads(body)["error"]["code"], code)
+
+    def test_unsupported_methods_are_405_envelope(self):
+        for method in ("OPTIONS", "TRACE", "CONNECT", "FOO"):
+            out = raw_request(("%s /health HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n"
+                               % method).encode())
+            self.assert_envelope(out, 405, "method_not_allowed")
+
+    def test_head_is_get_without_body(self):
+        out = raw_request(b"HEAD /health HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n")
+        head, _, body = out.partition(b"\r\n\r\n")
+        self.assertTrue(head.startswith(b"HTTP/1.1 200 "), head)
+        self.assertEqual(body, b"")
+
+    def test_malformed_request_line_is_400_envelope(self):
+        for line in (b"GET GET /health HTTP/1.1\r\n\r\n", b"GET /health HTTP/9.9\r\n\r\n",
+                     b"garbage\r\n\r\n"):
+            out = raw_request(line)
+            self.assert_envelope(out, 400, "malformed_request")
+
+    def test_bad_content_length_is_400_envelope(self):
+        out = raw_request(b"POST /_test/reset HTTP/1.1\r\nHost: x\r\nContent-Length: abc\r\n"
+                          b"Connection: close\r\n\r\n")
+        self.assert_envelope(out, 400, "malformed_request")
+
+    def test_fixture_over_one_mib_accepted(self):
+        users = [{"id": "u%d" % i, "email": "u%d@e.com" % i, "password": "same password",
+                  "display_name": "U" * 200, "handle": "h%d" % i, "balance": 1}
+                 for i in range(6000)]
+        reset({"currency": "EUR", "minor_units": 2, "users": users})
+        self.assertEqual(total(), 6000)
+
+
 class RoutingTest(unittest.TestCase):
     def test_unknown_route_is_404_envelope(self):
         r = call("GET", "/nope")

@@ -187,6 +187,7 @@ def _opt_ts(obj: dict, default: str) -> str:
 def _load_users(state, users, ts):
     if not isinstance(users, list):
         _fail("users must be a list")
+    plaintext: dict = {}  # user id -> password, only until hashed below
     for u in users:
         uid = _need_id(u, "id", "user")
         email = _need(u, "email", str, "user")
@@ -199,15 +200,16 @@ def _load_users(state, users, ts):
         if uid in state["users"] or handle in state["handles"] or email.lower() in state["emails"]:
             _fail("duplicate user id, handle or email for " + uid)
         state["users"][uid] = {
-            "id": uid, "email": email, "password_hash": password,
+            "id": uid, "email": email, "password_hash": None,
             "display_name": display, "handle": handle, "balance": balance, "created_at": ts,
         }
         state["handles"][handle] = uid
         state["emails"][email.lower()] = uid
+        plaintext[uid] = password
     # Hash only after the whole list validated, so a bad fixture costs no hashing.
-    hashed = passwords.hash_many(u["password_hash"] for u in state["users"].values())
-    for u in state["users"].values():
-        u["password_hash"] = hashed[u["password_hash"]]
+    hashed = passwords.hash_many(plaintext.values())
+    for uid, password in plaintext.items():
+        state["users"][uid]["password_hash"] = hashed[password]
 
 
 def _load_payments(state, payments, ts):

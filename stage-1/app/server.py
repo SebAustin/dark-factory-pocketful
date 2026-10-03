@@ -11,7 +11,7 @@ from .http_util import CONTENT_TYPE, Ctx, encode
 # Route modules register themselves on import. Modules not built yet are skipped.
 ROUTE_MODULES = ("testctl", "auth", "payments", "requests_", "splits", "settlements",
                  "transfer_io")
-MAX_BODY = 1024 * 1024
+MAX_BODY = 64 * 1024 * 1024  # large reset/import fixtures
 
 
 def _load_route_modules():
@@ -48,7 +48,8 @@ class Handler(BaseHTTPRequestHandler):
         if n < 0 or n > MAX_BODY:
             raise errors.malformed("invalid Content-Length")
         raw = self.rfile.read(n) if n else b""
-        return routes.dispatch(Ctx(self.command, self.path, self.headers, raw))
+        method = "GET" if self.command == "HEAD" else self.command
+        return routes.dispatch(Ctx(method, self.path, self.headers, raw))
 
     def _send(self, status, body):
         data = b"" if status == 204 or body is None else encode(body)
@@ -57,10 +58,36 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", CONTENT_TYPE)
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
-        if data:
+        if data and self.command != "HEAD":
             self.wfile.write(data)
 
-    do_GET = do_POST = do_PUT = do_PATCH = do_DELETE = _handle
+    def __getattr__(self, name):
+        # Every method reaches the router, which answers 404 or 405 with the envelope.
+        if name.startswith("do_"):
+            return self._handle
+        raise AttributeError(name)
+
+    def send_error(self, code, message=None, explain=None):
+        """Replace the stdlib HTML error page: protocol-level failures get the envelope too."""
+        if code in (405, 501):
+            status, err = 405, "method_not_allowed"
+        elif code == 404:
+            status, err = 404, "not_found"
+        elif 400 <= code < 500:
+            status, err = code, "malformed_request"
+        else:
+            status, err = 400, "malformed_request"
+        if self.request_version == "HTTP/0.9" or not self.request_version.startswith("HTTP/1."):
+            self.request_version = "HTTP/1.1"  # always emit a status line and headers
+        data = encode({"error": {"code": err, "message": message or "malformed request"}})
+        self.close_connection = True
+        self.send_response(status)
+        self.send_header("Content-Type", CONTENT_TYPE)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Connection", "close")
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(data)
 
     def log_message(self, fmt, *args):
         pass

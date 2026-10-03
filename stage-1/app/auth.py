@@ -3,7 +3,7 @@ import re
 
 from . import errors, passwords
 from .routes import route
-from .store import STORE, new_id, new_token
+from .store import STORE, new_id, new_token, now_ts
 from .validation import req_str
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+$")
@@ -23,6 +23,13 @@ def _credentials(body: dict):
     return email, password
 
 
+def _check_free(state: dict, email: str, handle: str) -> None:
+    if email.lower() in state["emails"]:
+        raise errors.conflict("email_taken", "email already registered")
+    if handle in state["handles"]:
+        raise errors.conflict("handle_taken", "derived handle already taken")
+
+
 def _session(user: dict, token: str) -> dict:
     return {"user_id": user["id"], "display_name": user["display_name"], "token": token}
 
@@ -37,16 +44,16 @@ def signup(ctx, state, user):
     if len(password) < MIN_PASSWORD:
         raise errors.validation("password must be at least 8 characters")
     handle = derive_handle(email)
+    with STORE.lock:
+        _check_free(STORE.state, email, handle)  # fail fast before the slow hash
     password_hash = passwords.hash_password(password)  # slow: outside the lock
     with STORE.lock:
         state = STORE.state
-        if email.lower() in state["emails"]:
-            raise errors.conflict("email_taken", "email already registered")
-        if handle in state["handles"]:
-            raise errors.conflict("handle_taken", "derived handle already taken")
+        _check_free(state, email, handle)  # re-check: the state may have changed meanwhile
         uid = new_id(state, "u")
         created = {"id": uid, "email": email, "password_hash": password_hash,
-                   "display_name": display_name, "handle": handle, "balance": 0}
+                   "display_name": display_name, "handle": handle, "balance": 0,
+                   "created_at": now_ts()}
         state["users"][uid] = created
         state["handles"][handle] = uid
         state["emails"][email.lower()] = uid
