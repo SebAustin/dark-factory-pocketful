@@ -36,7 +36,9 @@ Last accepted revision: none (stage 1 is the first).
 | S1.A | Acceptance suite (400 tests) | analyst | stage-1/acceptance/ | built; 385/400 on c19a2b7, failures -> S1.11 | 1a37936 | 0 |
 | S1.11 | Crash probes, numbers, lock scope, RUN.md | builder | validation, http_util, routes, store, server, RUN.md | assigned (top priority) | - | 0 |
 | S1.12 | Import timestamp validation | designer | transfer_io.py | accepted | 2b73788 | 0 |
-| S1.AH | Hidden-requirement sweep | analyst | stage-1/acceptance/ | assigned | - | 0 |
+| S1.AH | Hidden-requirement sweep (73/79 confirmed) | analyst | stage-1/acceptance/ | done | 2200e4a | 0 |
+| S1.14 | Hidden-sweep fixes H1-H4 (regex \n, long query int, surrogates, exponent in canonical) | builder | validation, http_util, server, auth | assigned | - | 0 |
+| S1.15 | Import huge-number guard | designer | transfer_io.py | assigned (after S1.13) | - | 0 |
 
 ## Open rejections
 
