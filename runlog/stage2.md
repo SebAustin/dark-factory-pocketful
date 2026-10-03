@@ -14,7 +14,7 @@
 
 ## Early signals
 
-- Event checker run 1 (builder, isolated, rev 3dbd491): stage 1 pass; stage 2 33/35 — 2 failures: /signup and /login redirect a signed-in user (UI) -> S2.U8.
+- Event checker run 1 (builder, isolated, rev 3dbd491): stage 1 pass; stage 2 33/35 — 2 failures: /signup and /login redirect a signed-in user (UI) -> S2.U9.
 
 ## Work items
 
