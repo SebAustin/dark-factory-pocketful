@@ -24,6 +24,8 @@ RFC3339 = re.compile(
 PAYMENT_KEYS = {
     "payment_id", "from_user_id", "from_handle", "to_user_id", "to_handle", "amount",
     "currency", "note", "visibility", "request_id", "created_at", "settlement_id",
+    # stage 2 (R2-CAP.6, decision D-39): every payment object carries authorization_id
+    "authorization_id",
 }
 REQUEST_KEYS = {
     "request_id", "requester_id", "requester_handle", "payer_id", "payer_handle", "amount",

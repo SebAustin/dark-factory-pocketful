@@ -143,8 +143,10 @@ def test_R4_1_R4_28_me_currency_from_fixture(make_world, api, currency, minor):
 
 def test_R8_1_R4_7_me_shape_seeded(world, api):
     me = api.me(world.tok["ada"])
+    # stage 2 (R2-ME.1, decision D-40): /me adds total, available, held
     assert me == {"user_id": "u_ada", "display_name": "Ada", "handle": "ada",
-                  "balance": 10000, "currency": "EUR", "minor_units": 2}
+                  "balance": 10000, "total": 10000, "available": 10000, "held": 0,
+                  "currency": "EUR", "minor_units": 2}
 
 
 def test_R4_24_large_balance_exact(make_world, api):

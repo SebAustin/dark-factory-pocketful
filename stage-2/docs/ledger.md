@@ -15,6 +15,9 @@ changes are listed in **Part B** with the new rule. Part A holds the new stage 2
 - **proof**: planned acceptance test in `stage-2/acceptance/` (`api_*` = httpx, `ui_*` =
   playwright at 390 px and 1280 px), or `untestable: <reason>`, or `review:` (judged by the
   verifier's screen review, partly automatable).
+- Committed suite (S2.A): `stage-2/acceptance/stage2/test_api_*.py` and `test_ui_*.py`; every test
+  is named `test_R2_<AREA>_<n>_...` with the ids it proves, so `grep -n R2_CAP_12` finds it. The proof
+  column gives the intent and planned grouping.
 - **H** marks hidden requirements (unlikely to be probed by a quick reading or a sample check).
 - Open readings are settled in `docs/decisions/D-21`… and cited as `D-nn`.
 

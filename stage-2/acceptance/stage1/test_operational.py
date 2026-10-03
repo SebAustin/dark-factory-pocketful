@@ -12,7 +12,7 @@ import uuid
 import httpx
 import pytest
 
-STAGE = pathlib.Path(__file__).resolve().parent.parent
+STAGE = pathlib.Path(__file__).resolve().parent.parent.parent
 DOCKER = os.environ.get("ACCEPTANCE_DOCKER") == "1"
 
 

@@ -1,19 +1,31 @@
-# Stage 1 acceptance suite
+# Stage 2 acceptance suites
 
-Black-box tests written from `stage-1/docs/ledger.md`. Every test name begins with the ledger id(s) it
-proves (`test_R7_13_...` → R-7.13). Each test resets the service with its own fixture.
+Two black-box suites, one command each (from the repository root). Test names carry the ledger
+ids: `test_R2_CAP_12_...` → R2-CAP.12 (`stage-2/docs/ledger.md`), `test_R8_5_...` → stage-1 row
+R-8.5 (`stage-1/docs/ledger.md`).
 
 ```sh
-# from the repository root, against a running service
-TARGET_URL=http://127.0.0.1:18100 \
-  /Users/sebastienhenry/dark-factory/dark-factory-wearedevs/.venv/bin/python -m pytest stage-1/acceptance -q
+PY=/Users/sebastienhenry/dark-factory/dark-factory-wearedevs/.venv/bin/python
 
-# also build and start the image for the §2 container checks (ports 18190-18199)
-ACCEPTANCE_DOCKER=1 TARGET_URL=... python -m pytest stage-1/acceptance -q
+# 1. carried stage-1 suite (unchanged except rows stage 2 changes: D-39, D-40)
+TARGET_URL=http://127.0.0.1:18100 $PY -m pytest stage-2/acceptance/stage1 -q
+
+# 2. stage 2 suite: API (httpx, test_api_*) and screens (playwright chromium, test_ui_*,
+#    each screen test at 390 px and 1280 px; quality checks also at 375 px)
+TARGET_URL=http://127.0.0.1:18100 STAGE1_URL=http://127.0.0.1:18101 \
+  $PY -m pytest stage-2/acceptance/stage2 -q
 ```
 
-`test_zz_crash_probes.py` runs last on purpose: its probes (deep nesting, huge exponents) may
-crash or wedge a fragile service, and every earlier file should still report first.
+`STAGE1_URL` is the team's frozen stage-1 image, used as the source of a real stage-1 export
+for the upgrade rows (R2-UPG.*):
 
+```sh
+docker build -t analyst-s1img stage-1 && docker run -d --rm --name analyst-s1img -e PORT=18101 -p 18101:18101 analyst-s1img
+docker build -t analyst-s2 stage-2   && docker run -d --rm --name analyst-s2   -e PORT=18100 -p 18100:18100 analyst-s2
+```
+
+Run the two suites separately (each folder has its own `conftest.py`). API-only:
+`-k test_api`; screens only: `-k test_ui`. Expiry tests wait a few seconds of real time
+(`authorization_ttl_seconds` 2–3 s); that is the behaviour under test, not synchronisation.
 Where the specification is open, tests accept each defensible answer and cite the decision
-record (`docs/decisions/D-nn`); everywhere else the expected values are the specification's.
+record (`stage-2/docs/decisions/D-21`…`D-40`).
