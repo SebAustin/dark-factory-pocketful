@@ -21,6 +21,8 @@
 
 ## Rejections and what they caught
 
+- S2.U1 @b776a89 REJECT (verifier, from screenshots then measured): 'Log out' wrapped to two lines at 375 and 1280 px; brand icon squeezed to 7x22 at 1280 — product/visual direction 'presentation-ready', 'consistent visual system'.
+
 ## Gate table at acceptance
 
 | Gate | Result | Evidence |

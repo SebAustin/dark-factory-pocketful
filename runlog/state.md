@@ -33,7 +33,7 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 | S2.6 | Concurrency/load | builder | tests, tools | assigned | - | 0 |
 | S2.PG | Plan gate | analyst | - | assigned (after ledger) | - | 0 |
 | S2.A | Acceptance (stage1 carried + stage2 API + screens) | analyst | stage-2/acceptance/ | assigned | - | 0 |
-| S2.U1 | Shell, visual system, nav, auth screens | designer | web/** | assigned | - | 0 |
+| S2.U1 | Shell, visual system, nav, auth screens | designer | web/** | rejected R1 (header wraps, icon squeezed) -> designer fixing | b776a89 | 1 |
 
 ## Stage 2 decisions
 
