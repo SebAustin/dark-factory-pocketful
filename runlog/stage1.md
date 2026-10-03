@@ -18,13 +18,13 @@
 
 | Id | Title | Owner | Assigned | Accepted | Verdicts |
 |---|---|---|---|---|---|
-| S1.1 | Skeleton | builder | 21:24 | | REJECT 0fa1f0b |
+| S1.1 | Skeleton | builder | 21:24 | yes | REJECT 0fa1f0b, ACCEPT 58c09cc |
 | S1.2 | Auth | builder | 21:33 | yes | ACCEPT dfd7dc3 |
 | S1.3 | Idempotency, payments, activity | builder | 21:33 | | REJECT 7e7c5c1 |
 | S1.4 | Requests | builder | 21:40 | yes | ACCEPT 9407192 |
 | S1.5 | Splits | designer | 21:55 | yes | ACCEPT 8f88f60 |
 | S1.6 | Settlements | designer | 21:33 | yes | ACCEPT 0b87d7f |
-| S1.7 | Export/import | designer | 21:45 | | REJECT 52bf3ed |
+| S1.7 | Export/import | designer | 21:45 | yes | REJECT 52bf3ed, ACCEPT af5270c |
 | S1.8 | Load and limits | builder | 21:24 (plan) | yes | ACCEPT ef350b3 |
 
 ## Rejections and what they caught

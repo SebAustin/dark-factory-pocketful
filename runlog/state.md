@@ -22,15 +22,16 @@ Last accepted revision: none (stage 1 is the first).
 | S1.L | Ledger + glossary (228 reqs, D-01..D-17) | analyst | stage-1/docs/ledger.md, glossary.md, decisions/D-* | built | 9bdc486 | 0 |
 | S1.P | Implementation plan | builder | stage-1/docs/plan.md | built, in plan gate (S1.PG -> analyst) | 3fb74d0 | 0 |
 | S1.D0 | Stress tool | designer | stage-1/tools/stress.py, README.md | built (validated vs stub) | bb8918a | 0 |
-| S1.1 | Skeleton | builder | server, routes, store, testctl, Dockerfile, RUN.md | fix resubmitted (in review) | 58c09cc | 1 |
+| S1.1 | Skeleton | builder | server, routes, store, testctl, Dockerfile, RUN.md | accepted (58c09cc; 38bd922 body-cap change rides with S1.3-R1 review) | 58c09cc | 1 |
 | S1.2 | Auth | builder | auth.py, passwords.py | accepted 21:5x | dfd7dc3 | 0 |
-| S1.3 | Idempotency + payments + activity | builder | idempotency.py, payments.py | rejected R1 (F2 created_at ordering by string) -> fix assigned | 7e7c5c1 | 1 |
+| S1.3 | Idempotency + payments + activity | builder | idempotency.py, payments.py | fix resubmitted (in review) | 38bd922 | 1 |
 | S1.4 | Requests | builder | requests_.py | accepted (F2 sort tracked under S1.3) | 9407192 | 0 |
 | S1.5 | Splits | designer | splits.py, tests/test_splits.py | accepted | 8f88f60 | 0 |
 | S1.6 | Settlements | designer | settlements.py, tests/test_settlements.py | accepted | 0b87d7f | 0 |
-| S1.7 | Export/import | designer | transfer_io.py, tests/test_transfer_io.py | fix resubmitted (in review) | af5270c | 1 |
+| S1.7 | Export/import | designer | transfer_io.py, tests/test_transfer_io.py | accepted | af5270c | 1 |
 | S1.8 | Load and limits (builder delivered before re-plan; designer copy cancelled) | builder | tests/soak.py | accepted | ef350b3 | 0 |
 | S1.9 | Diagnose >5 s tail under auth-heavy load | designer | tools/soak.py | assigned | - | 0 |
+| S1.10 | Early event-checker signal | builder | (own paths for fixes) | assigned | - | 0 |
 | S1.A | Acceptance suite | analyst | stage-1/acceptance/ | assigned | - | 0 |
 
 ## Open rejections
