@@ -1,0 +1,11 @@
+{
+  "fixture": null,
+  "login": {"email": "ada@example.com", "password": "correct horse"},
+  "states": [
+    {"name": "good-initial", "route": "/", "expect": ["current-user", "wallet-balance", "pay-handle"]},
+    {"name": "good-refused", "route": "/",
+     "steps": [{"fill": "pay-handle", "value": "bob"}, {"click": "pay-submit"}, {"wait": "pay-error"}],
+     "expect": ["pay-error"]},
+    {"name": "bad-planted", "route": "/bad", "expect": ["current-user", "wallet-balance"]}
+  ]
+}
