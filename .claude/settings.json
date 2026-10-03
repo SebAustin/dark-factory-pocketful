@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Edit",
+      "Write",
+      "Read",
+      "Glob",
+      "Grep",
+      "Skill",
+      "WebFetch"
+    ],
+    "deny": [
+      "Bash(git commit --amend:*)",
+      "Bash(git * --amend*)",
+      "Bash(git rebase:*)",
+      "Bash(git * rebase *)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git stash:*)",
+      "Bash(git clean:*)",
+      "Bash(band ask:*)",
+      "Bash(* band ask *)"
+    ]
+  }
+}
