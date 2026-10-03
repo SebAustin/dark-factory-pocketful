@@ -32,6 +32,7 @@ FIXTURE = {
     "settlement_operator_ids": ["u_cy"],
 }
 failures = []
+PRE_UPGRADE_PAY: dict = {}  # path, body and receipt of a request paid on stage 1
 
 
 def call(base, method, path, body=None, token=None, key=None):
@@ -69,12 +70,20 @@ def drive_stage1(s1):
     check(status == 201, "stage 1: the 'lost' payment commits")
     call(s1, "POST", "/requests", {"payer_handle": "ada", "amount": 300, "note": "lunch"},
          bob, "req-key")
+    status, settled = call(s1, "POST", "/requests", {"payer_handle": "ada", "amount": 250,
+                                                     "note": "paid before the upgrade"},
+                           bob, "req-key-2")
+    pay_path = "/requests/%s/pay" % settled["request_id"]
+    pay_body = {"visibility": "private"}
+    status, pay_receipt = call(s1, "POST", pay_path, pay_body, ada, "pay-before")
+    check(status == 201, "stage 1: a request paid before the upgrade")
     call(s1, "POST", "/splits", {"amount": 900, "participant_handles": ["ada", "bob", "cy"],
                                  "note": "dinner"}, ada, "split-key")
     call(s1, "POST", "/settlements", {"transfers": [
         {"from_handle": "ada", "to_handle": "cy", "amount": 100}]}, cy, "settle-key")
     status, export = call(s1, "GET", "/_test/export")
     check(status == 200 and export.get("format_version") == 1, "stage 1: export 200 v1")
+    PRE_UPGRADE_PAY.update(path=pay_path, body=pay_body, receipt=pay_receipt)
     return export, {"ada": ada, "bob": bob, "cy": cy, "dee": signup["token"]}, lost, lost_receipt
 
 
@@ -88,6 +97,10 @@ def check_stage2(s2, export, tokens, lost, lost_receipt):
     status, again = call(s2, "POST", "/payments", lost, tokens["ada"], "lost-key")
     check(status == 200 and again == lost_receipt,
           "lost payment replays 200 with the original stage-1 body (D11)")
+    pay = PRE_UPGRADE_PAY
+    status, again = call(s2, "POST", pay["path"], pay["body"], tokens["ada"], "pay-before")
+    check(status == 200 and again == pay["receipt"],
+          "pre-upgrade POST /requests/{id}/pay replays 200 with its original body")
     status, _ = call(s2, "POST", "/payments", dict(lost, amount=701), tokens["ada"], "lost-key")
     check(status == 409, "same key, different body -> 409 after the upgrade")
     status, listed = call(s2, "GET", "/requests?direction=incoming&status=pending",

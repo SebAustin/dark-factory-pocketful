@@ -122,8 +122,8 @@ newest first via `store.newest_first`. Body `{"authorizations": [...], "has_more
 
 ## 4. Fixture validation (reset)
 
-- `authorization_ttl_seconds`: absent → 600; else integral (bool excluded), 1 ≤ n ≤ 10⁹
-  (an upper bound keeps datetime arithmetic finite; D9), else 422.
+- `authorization_ttl_seconds`: absent → 600; else integral (bool excluded), n ≥ 1 and
+  now + n within year 9999 (D9), else 422.
 - `authorizations`: absent → `[]`; each entry: unique `id` (≤64 chars), `from_user_id` and
   `to_user_id` known and different, `amount` 1..10⁹, optional `captured_amount` 0..amount
   (default 0), `note` string ≤200 (default ""), `visibility` public|private (default public),
@@ -206,12 +206,16 @@ stage 1 API at once; `/authorizations` screens need S2.3/S2.4.
 
 - D8 capture of a clock-expired authorization → 409 `authorization_expired`; void of it → 409
   `authorization_not_open` (spec: "A captured or expired one is 409 authorization_not_open").
-- D9 `authorization_ttl_seconds` upper bound 10⁹ → otherwise 422.
+- D9 `authorization_ttl_seconds`: any positive integer for which now + ttl stays a representable
+  timestamp (up to 9999-12-31T23:59:59Z); beyond that 422 (S2.8, analyst finding 6).
 - D10 export `format_version` stays 1; stage-2 state keys are optional on import.
 - D11 pre-upgrade replays return the stored body unchanged (no `authorization_id`).
 - D12 `final` of the wrong JSON type → 400 `malformed_request`; invalid `amount` → 422.
 - D13 `Accept` negotiation: HTML only when `text/html` is listed with q > 0; `*/*` alone → JSON.
 - D14 seeded `captured_amount` > `amount`, or `from == to`, → 422.
+- L5 (lead, on analyst D-22): importing a **stage-1** state keeps each destination token whose
+  user exists in the import with the same id, email (case-insensitive) and handle; export tokens
+  always survive; a stage-2 import stays pure replacement. Done inside the one swap hold.
 
 ## 9. Risks
 

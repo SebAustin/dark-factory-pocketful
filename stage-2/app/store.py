@@ -19,7 +19,7 @@ from .validation import BALANCE_LIMIT, HANDLE_RE, MAX_ID, VISIBILITIES, integral
 REQUEST_STATUSES = ("pending", "paid", "declined", "cancelled")
 AUTH_STATUSES = ("open", "captured", "voided", "expired")
 DEFAULT_TTL = 600
-MAX_TTL = 10 ** 9   # D9: keeps created_at + ttl inside datetime's range
+LAST_INSTANT = datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)  # datetime's range
 MAX_AMOUNT = 1_000_000_000
 ID_PREFIX = {"p": "p_", "rq": "rq_", "sp": "sp_", "st": "st_", "u": "u_", "a": "a_"}
 TABLE_FOR_KIND = {"p": "payments", "rq": "requests", "sp": "splits", "st": "settlements",
@@ -47,11 +47,15 @@ class Store:
         self.state = empty_state()
         self._due: list = []  # heap of (expires instant, authorization id)
 
-    def replace_state(self, state: dict) -> None:
+    def replace_state(self, state: dict, carry=None) -> None:
+        """Swap in a new state in one lock hold. carry(old, new), if given, runs inside that
+        same hold just before the swap (used to keep sessions across an upgrade import)."""
         due = [(instant(a["expires_at"]), aid)
                for aid, a in state.get("authorizations", {}).items() if a["status"] == "open"]
         heapq.heapify(due)
         with self.lock:
+            if carry is not None:
+                carry(self.state, state)
             self.state = state
             self._due = due
 
@@ -208,6 +212,13 @@ def void_authorization(state: dict, a: dict) -> None:
     _close(state, a, "voided")
 
 
+def _expiry(created: datetime, ttl: int) -> datetime:
+    try:
+        return min(created + timedelta(seconds=ttl), LAST_INSTANT)
+    except OverflowError:  # the ttl was valid when stored; time has moved on since
+        return LAST_INSTANT
+
+
 def place_hold(state, from_id, to_id, amount, note, visibility):
     """Reserve amount of from_id's available funds. Caller holds STORE.hold(). 409 if short."""
     payer = state["users"][from_id]
@@ -218,7 +229,7 @@ def place_hold(state, from_id, to_id, amount, note, visibility):
     a = {
         "id": new_id(state, "a"), "from": from_id, "to": to_id, "amount": amount,
         "captured": 0, "note": note, "visibility": visibility, "status": "open",
-        "expires_at": (created + timedelta(seconds=ttl)).isoformat(),
+        "expires_at": _expiry(created, ttl).isoformat(),
         "created_at": created.isoformat(), "seq": next_seq(state), "payment_ids": [],
     }
     state["authorizations"][a["id"]] = a
@@ -242,6 +253,18 @@ def apply_capture(state: dict, a: dict, amount: int, final: bool) -> dict:
     if final or a["captured"] == a["amount"]:
         _close(state, a, "captured")
     return payment
+
+
+def max_ttl() -> int:
+    """Largest ttl (seconds) for which now + ttl is still a representable timestamp (D9)."""
+    return int((LAST_INSTANT - datetime.fromtimestamp(int(clock()), timezone.utc))
+               .total_seconds())
+
+
+def valid_ttl(value):
+    """A positive integer number of seconds within max_ttl(), else None."""
+    ttl = integral(value)
+    return ttl if ttl is not None and 1 <= ttl <= max_ttl() else None
 
 
 def is_expired(a: dict) -> bool:
@@ -413,8 +436,8 @@ def _need_ts(obj: dict, name: str, where: str) -> str:
 def _load_ttl(state, fixture):
     if "authorization_ttl_seconds" not in fixture:
         return
-    ttl = integral(fixture["authorization_ttl_seconds"])
-    if ttl is None or not 1 <= ttl <= MAX_TTL:
+    ttl = valid_ttl(fixture["authorization_ttl_seconds"])
+    if ttl is None:
         _fail("authorization_ttl_seconds must be a positive integer number of seconds")
     state["settings"]["authorization_ttl_seconds"] = ttl
 

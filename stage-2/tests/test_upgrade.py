@@ -7,7 +7,7 @@ import time
 import unittest
 
 import upgrade_check
-from harness import call, port
+from harness import FIXTURE, call, port, reset
 
 STAGE1_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "stage-1")
 
@@ -49,6 +49,59 @@ class StageOneExportTest(unittest.TestCase):
         upgrade_check.check_stage2(s2, export, tokens, lost, receipt)
         self.assertEqual(upgrade_check.failures, [])
         self.assertEqual(call("GET", "/health").status, 200)
+
+
+@unittest.skipUnless(os.path.isdir(os.path.join(STAGE1_DIR, "app")), "stage-1 not present")
+class SessionAcrossUpgradeTest(StageOneExportTest):
+    """L5 (D-22): a stage-1 import keeps destination tokens of users it still contains."""
+
+    def stage1_export(self):
+        s1 = "http://127.0.0.1:%d" % self.port
+        assert upgrade_check.call(s1, "POST", "/_test/reset", upgrade_check.FIXTURE)[0] == 204
+        status, export = upgrade_check.call(s1, "GET", "/_test/export")
+        assert status == 200 and "authorizations" not in export["state"]
+        return export
+
+    def dest_token(self, email):
+        r = call("POST", "/auth/login", {"email": email, "password": "correct horse"})
+        self.assertEqual(r.status, 200, r.raw)
+        return r.body["token"]
+
+    test_upgrade_rules = None  # inherited check runs once, in StageOneExportTest
+
+    def test_destination_tokens_across_a_stage1_import(self):
+        export = self.stage1_export()
+        # destination: same u_ada; u_bob with a different email; u_cy with a different handle;
+        # plus a user the export does not have.
+        import copy
+        f = copy.deepcopy(FIXTURE)
+        f["users"][1]["email"] = "bob.other@example.com"
+        f["users"][2]["handle"] = "cy_other"
+        reset(f)
+        ada = self.dest_token("ada@example.com")
+        bob = self.dest_token("bob.other@example.com")
+        cy = self.dest_token("cy@example.com")
+        zed = call("POST", "/auth/signup", {"email": "zed@example.com",
+                                            "password": "correct horse",
+                                            "display_name": "Zed"}).body["token"]
+        self.assertEqual(call("POST", "/_test/import", export).status, 204)
+        self.assertEqual(call("GET", "/me", token=ada).status, 200)          # (1) same user
+        self.assertEqual(call("GET", "/me", token=zed).status, 401)          # (2) absent
+        self.assertEqual(call("GET", "/me", token=bob).status, 401)          # (3) other email
+        self.assertEqual(call("GET", "/me", token=cy).status, 401)           # (3) other handle
+        for tok in export["state"]["tokens"]:                                # (5) exported
+            self.assertEqual(call("GET", "/me", token=tok).status, 200)
+        me = call("GET", "/me", token=ada).body
+        self.assertEqual((me["user_id"], me["total"]), ("u_ada", 10000 - 0))
+
+    def test_stage2_import_stays_pure_replacement(self):
+        reset()
+        exported = call("GET", "/_test/export").body
+        later = self.dest_token("ada@example.com")                  # not in the export
+        self.assertEqual(call("POST", "/_test/import", exported).status, 204)
+        self.assertEqual(call("GET", "/me", token=later).status, 401)        # (4)
+        for tok in exported["state"]["tokens"]:
+            self.assertEqual(call("GET", "/me", token=tok).status, 200)
 
 
 if __name__ == "__main__":

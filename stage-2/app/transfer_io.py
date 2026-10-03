@@ -10,7 +10,7 @@ from decimal import Decimal
 from . import errors
 from .routes import route
 from . import store
-from .store import (AUTH_STATUSES, DEFAULT_TTL, MAX_TTL, REQUEST_STATUSES, STORE, empty_state,
+from .store import (AUTH_STATUSES, DEFAULT_TTL, REQUEST_STATUSES, STORE, empty_state,
                     parse_rfc3339)
 from .validation import BALANCE_LIMIT, HANDLE_RE, MAX_ID, VISIBILITIES, integral
 
@@ -207,8 +207,9 @@ def _check_counters(state: dict, top_seq: int) -> None:
 
 def _check_settings(state: dict) -> None:
     settings = _dict(state["settings"], "settings")
-    ttl = _int(settings.get("authorization_ttl_seconds", DEFAULT_TTL), 1, MAX_TTL,
-               "authorization_ttl_seconds")
+    ttl = store.valid_ttl(settings.get("authorization_ttl_seconds", DEFAULT_TTL))
+    if ttl is None:
+        _bad("authorization_ttl_seconds must be a positive integer within datetime's range")
     state["settings"] = {"authorization_ttl_seconds": ttl}
 
 
@@ -233,6 +234,24 @@ def _check_authorizations(state: dict) -> int:
             _bad("authorization payment_ids must be strings")
         top = max(top, _int(a.get("seq"), 0, BALANCE_LIMIT, "authorization seq"))
     return top
+
+
+def is_stage1_state(submitted) -> bool:
+    """A stage-1 export's state has none of the keys stage 2 added (the upgrade path)."""
+    return isinstance(submitted, dict) and not any(k in submitted for k in STAGE2_DEFAULTS)
+
+
+def carry_sessions(old: dict, new: dict) -> None:
+    """L5 (D-22): on a stage-1 upgrade import, keep each destination token whose user exists in
+    the imported state with the same id, email (case-insensitive) and handle. Tokens in the
+    export always win; every other destination token is dropped."""
+    for token, uid in old["tokens"].items():
+        if token in new["tokens"]:
+            continue
+        before, after = old["users"].get(uid), new["users"].get(uid)
+        if before and after and before["email"].lower() == after["email"].lower() \
+                and before["handle"] == after["handle"]:
+            new["tokens"][token] = uid
 
 
 def validated_state(submitted) -> dict:
@@ -275,5 +294,8 @@ def import_state(ctx, state, user):
     if "state" not in body:
         raise errors.validation("state is required")
     fresh = validated_state(body["state"])
-    STORE.replace_state(fresh)  # one lock hold: all of the old state goes, all of the new arrives
+    # One lock hold: all of the old state goes, all of the new arrives. A stage-1 state is the
+    # upgrade path, where signed-in browsers keep their destination sessions (L5).
+    carry = carry_sessions if is_stage1_state(body["state"]) else None
+    STORE.replace_state(fresh, carry=carry)
     return 204, None

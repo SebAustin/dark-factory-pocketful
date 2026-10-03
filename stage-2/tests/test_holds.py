@@ -110,7 +110,7 @@ class FixtureTest(unittest.TestCase):
         self.assertEqual(call("POST", "/_test/reset", f).status, 204)
 
     def test_ttl_rules(self):
-        for bad in (0, -1, 1.5, "600", True, None, 10 ** 9 + 1):
+        for bad in (0, -1, 1.5, "600", True, None, 10 ** 12, 10 ** 30):
             self.assert_rejected(fixture(authorization_ttl_seconds=bad))
         reset(fixture())
         with STORE.lock:
@@ -118,6 +118,18 @@ class FixtureTest(unittest.TestCase):
         reset(fixture(authorization_ttl_seconds=1.0))
         with STORE.lock:
             self.assertEqual(STORE.state["settings"]["authorization_ttl_seconds"], 1)
+
+    def test_large_ttl_up_to_year_9999(self):
+        reset(fixture(authorization_ttl_seconds=10 ** 9 + 1))
+        from datetime import datetime, timezone
+        limit = (datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+                 - datetime.now(timezone.utc)).total_seconds()
+        reset(fixture(authorization_ttl_seconds=int(limit) - 60))
+        r = call("POST", "/authorizations", {"to_handle": "bob", "amount": 1},
+                 token=token("ada@example.com"), key=uuid.uuid4().hex)
+        self.assertEqual(r.status, 201, r.raw)
+        self.assertTrue(r.body["expires_at"].startswith("9999-12-31T"))
+        self.assert_rejected(fixture(authorization_ttl_seconds=int(limit) + 3600))
 
     def test_authorization_entry_rules(self):
         for h in (hold(frm="u_nobody"), hold(to="u_ada"), hold(status="pending"),
