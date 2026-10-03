@@ -212,8 +212,10 @@ plus the test command.
    a list, size outside 1..32, entry not an object, entry handle of wrong type) are 422.
 6. D6 Generated ids use counters with prefixes `u_`, `p_`, `rq_`, `sp_`, `st_` and skip any id
    already present (seeded ids may collide).
-7. D7 Seeded passwords: scrypt (`n=2**14, r=8, p=1`) with a salt per distinct password per reset,
-   so a fixture of many users sharing one password resets fast; signup uses a fresh salt per user.
+7. D7 Passwords: scrypt, stored as `scrypt$n$r$p$salt$hash`. Signup uses `n=2**14, r=8, p=1`
+   with a fresh salt per user. Seeded fixture users use `n=2**11` (measured ~7 ms), hashed once
+   per distinct password with a fresh salt, on a 4-thread pool (scrypt releases the GIL), so a
+   1 000-user fixture with distinct passwords resets in about 2 s, inside the 10 s budget.
 
 ## 10. Risks
 
