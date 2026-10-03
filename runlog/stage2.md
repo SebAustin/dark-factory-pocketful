@@ -33,7 +33,7 @@ Round 1 (analyst): 1 blocking (D-22 browser session across stage-1 import -> lea
 | S2.4 | Capture + void | builder | 23:05 | yes | ACCEPT 3d926ec |
 | S2.5 | Export/import upgrade | builder | 23:05 | yes | ACCEPT 4e4559c |
 | S2.6 | Holds concurrency/load | builder | 23:05 | yes | ACCEPT 0c72f1f |
-| S2.U1 | Shell, auth screens | designer | 23:03 | yes | REJECT b776a89, F1/F2 closed at 773f649 |
+| S2.U1 | Shell, auth screens | designer | 23:03 | yes | REJECT b776a89, ACCEPT 773f649+b0aae37 |
 | S2.U2+U3 | Client core + wallet | designer | 23:03 | yes | REJECT 0fa1361, ACCEPT b0aae37 (+0259400) |
 | S2.U4+U5 | Requests + split | designer | 23:03 | yes | ACCEPT 1ef373b |
 | S2.U6 | Authorizations screen | designer | 23:03 | yes | ACCEPT 3dbd491 |
