@@ -31,6 +31,7 @@
 | S2.U4+U5 | Requests + split | designer | 23:03 | yes | ACCEPT 1ef373b |
 | S2.U6 | Authorizations screen | designer | 23:03 | yes | ACCEPT 3dbd491 |
 | S2.U7 | Competing clients, uncertain, upgrade | designer | 23:03 | yes | ACCEPT 46b6e6f |
+| S2.U9 | /signup,/login reachable while signed in | designer | 23:3x | yes | ACCEPT 77250c4 |
 | S2.5A | Import hold check | builder | 23:2x | yes | ACCEPT eab708e |
 
 ## Rejections and what they caught

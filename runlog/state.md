@@ -32,7 +32,7 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 | S2.5 | Export/import migration | builder | transfer_io.py | accepted (+ eab708e accepted) | 4e4559c | 0 |
 | S2.6 | Concurrency/load | builder | tests, tools | accepted | 0c72f1f | 0 |
 | S2.7 | Import hold check + early checker signal | builder | transfer_io.py | (a) in review eab708e; (b) checker run on 3dbd491: stage 2 33/35, 2 UI fails -> S2.U9 | eab708e | 0 |
-| S2.U9 | /signup,/login reachable while signed in | designer | web/** | in review | 77250c4 | 0 |
+| S2.U9 | /signup,/login reachable while signed in | designer | web/** | accepted | 77250c4 | 0 |
 | S2.U6 | Authorizations screen | designer | web/** | accepted | 3dbd491 | 0 |
 | S2.U7 | Competing clients / uncertain / upgrade | designer | web/** | accepted | 46b6e6f | 0 |
 | S2.PG | Plan gate | analyst | - | assigned (after ledger) | - | 0 |
