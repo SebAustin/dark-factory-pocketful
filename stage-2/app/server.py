@@ -8,11 +8,11 @@ from urllib.parse import urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import errors, routes
-from .http_util import CONTENT_TYPE, Ctx, encode
+from .http_util import CONTENT_TYPE, Ctx, Raw, encode
 
 # Route modules register themselves on import. Modules not built yet are skipped.
 ROUTE_MODULES = ("testctl", "auth", "payments", "requests_", "splits", "settlements",
-                 "transfer_io")
+                 "transfer_io", "web")
 MAX_BODY = 1024 * 1024                 # ordinary API bodies
 MAX_STATE_BODY = 64 * 1024 * 1024      # reset fixtures and import snapshots
 STATE_PATHS = ("/_test/reset", "/_test/import")
@@ -80,6 +80,8 @@ class Handler(BaseHTTPRequestHandler):
             n -= len(chunk)
 
     def _send(self, status, body):
+        if isinstance(body, Raw):
+            return self._send_raw(body)
         data = b"" if status == 204 or body is None else encode(body)
         self.send_response(status)
         if status != 204:
@@ -88,6 +90,15 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         if data and self.command != "HEAD":
             self.wfile.write(data)
+
+    def _send_raw(self, raw):
+        self.send_response(raw.status)
+        for name, value in raw.headers.items():
+            self.send_header(name, value)
+        self.send_header("Content-Length", str(len(raw.data)))
+        self.end_headers()
+        if raw.data and self.command != "HEAD" and raw.status != 304:
+            self.wfile.write(raw.data)
 
     def __getattr__(self, name):
         # Every method reaches the router, which answers 404 or 405 with the envelope.

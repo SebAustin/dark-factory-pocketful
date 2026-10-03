@@ -7,6 +7,7 @@ lock themselves (used for work that must stay outside the lock, e.g. password ha
 import re
 
 from . import errors, idempotency
+from .http_util import accepts_html
 from .store import STORE
 
 _ROUTES = []
@@ -15,7 +16,10 @@ IDEMPOTENCY_HEADER = "Idempotency-Key"
 
 def route(method: str, pattern: str, auth: bool = True, idempotent: bool = False,
           operator: bool = False, locked: bool = True):
-    regex = re.compile("^" + re.sub(r"\{(\w+)\}", r"(?P<\1>[^/]+)", pattern) + "$")
+    # {name} matches one path segment; {name*} matches the rest of the path (static assets).
+    expr = re.sub(r"\{(\w+)\*\}", r"(?P<\1>.+)", pattern)
+    expr = re.sub(r"\{(\w+)\}", r"(?P<\1>[^/]+)", expr)
+    regex = re.compile(r"\A" + expr + r"\Z")
 
     def register(handler):
         _ROUTES.append({"method": method, "regex": regex, "handler": handler, "auth": auth,
@@ -56,7 +60,14 @@ def _idempotency_key(ctx):
     return key
 
 
+# Paths shared by the browser and the API: GET with Accept: text/html gets the page instead.
+HTML_ALTERNATES: dict = {}
+
+
 def dispatch(ctx):
+    page = HTML_ALTERNATES.get(ctx.path)
+    if page is not None and ctx.method == "GET" and accepts_html(ctx.header("Accept")):
+        return page(ctx, None, None)
     r = _match(ctx)
     ctx.preparse()  # parse outside the lock; a parse error is raised later, in D-01 order
     if not r["locked"]:

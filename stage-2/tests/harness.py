@@ -29,7 +29,8 @@ class Resp:
         self.status = status
         self.raw = raw
         self.headers = headers
-        self.body = json.loads(raw) if raw else None
+        is_json = headers.get("Content-Type", "").startswith("application/json")
+        self.body = json.loads(raw) if raw and is_json else None
 
     @property
     def code(self):

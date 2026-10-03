@@ -1,7 +1,8 @@
 FROM python:3.12-alpine
 
 WORKDIR /srv
-COPY app/ ./app/
+# app/ and the designer's web/ (if present); tests, docs and tools are in .dockerignore.
+COPY . ./
 
 ENV PORT=8080 \
     PYTHONUNBUFFERED=1 \

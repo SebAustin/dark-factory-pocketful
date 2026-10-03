@@ -119,3 +119,31 @@ def encode(obj) -> bytes:
         return json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     except UnicodeEncodeError:  # defence in depth: escape rather than fail to answer
         return json.dumps(obj, ensure_ascii=True, separators=(",", ":")).encode("ascii")
+
+
+class Raw:
+    """A non-JSON response (HTML page, static asset, 304): written as-is by the server."""
+
+    def __init__(self, status: int, data: bytes, headers: dict) -> None:
+        self.status = status
+        self.data = data
+        self.headers = headers
+
+
+def accepts_html(header) -> bool:
+    """True when the Accept header lists text/html with q > 0 (D13). */* alone is not enough."""
+    for part in (header or "").split(","):
+        media, *params = [p.strip() for p in part.split(";")]
+        if media.lower() != "text/html":
+            continue
+        q = 1.0
+        for param in params:
+            name, _, value = param.partition("=")
+            if name.strip().lower() == "q":
+                try:
+                    q = float(value)
+                except ValueError:
+                    q = 0.0
+        if q > 0:
+            return True
+    return False
