@@ -57,6 +57,7 @@
 .money-panel--primary { border-color: var(--accent); border-width: 1.5px; }
 .form-feedback { display: grid; gap: var(--s2); }
 .form-feedback:empty { display: none; }
+.money-panel .form-feedback, .form-stack > .form-feedback { margin-top: calc(var(--s2) * -1); }
 
 .feed-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; margin-bottom: var(--s3); }
 .feed-head__tools { display: flex; align-items: center; gap: var(--s3); }

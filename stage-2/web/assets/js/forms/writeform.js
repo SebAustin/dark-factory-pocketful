@@ -38,7 +38,7 @@ export function writeForm(config) {
   const { form, button, label, busyLabel, ids } = config;
   const attempt = config.attempt || new Attempt(config.path);
   const slot = config.slot || h("div", { class: "form-feedback", "aria-live": "polite" });
-  if (!config.slot) button.before(slot);
+  if (!config.slot) button.after(slot);   // below the button: feedback appearing or clearing never moves the button under the pointer
   let busy = false;
 
   const clearFeedback = () => slot.replaceChildren();
@@ -60,13 +60,15 @@ export function writeForm(config) {
 
   // Any edit makes the form a different request, even if the values are later put back (new key on the next send).
   const onEdit = () => {
+    attempt.markDirty();            // also while a submit is in flight: the next send is a new request
     if (busy) return;
-    attempt.markDirty();
     if (attempt.phase === "uncertain") { showStaleNote(); return; }
     if (slot.firstChild && slot.firstChild.getAttribute("data-testid") !== `${ids.uncertain}-note`) clearFeedback();
   };
   form.addEventListener("input", onEdit);
-  form.addEventListener("change", onEdit);
+  // `change` fires on blur, i.e. on mousedown of the button the user is about to press: it only records the edit,
+  // never touches the feedback, so nothing can move under the pointer.
+  form.addEventListener("change", () => attempt.markDirty());
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
