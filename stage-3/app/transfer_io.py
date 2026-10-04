@@ -308,11 +308,6 @@ def _check_events(state: dict) -> None:
         a.setdefault("closed_at", None)
 
 
-def is_stage1_state(submitted) -> bool:
-    """A stage-1 export's state has none of the keys stage 2 added."""
-    return isinstance(submitted, dict) and not any(k in submitted for k in STAGE2_DEFAULTS)
-
-
 def is_upgrade_state(submitted) -> bool:
     """A stage-1 or stage-2 export (no stage 3 ledger): the upgrade path (L5, D-52, L8)."""
     return isinstance(submitted, dict) and "user_payments" not in submitted

@@ -77,10 +77,6 @@ def from_micros(us: int) -> str:
     return (EPOCH + timedelta(microseconds=us)).isoformat(timespec="microseconds")
 
 
-def key_of_micros(us: int) -> Decimal:
-    return Decimal(us) / Decimal(1_000_000)
-
-
 def micros_floor(k: Decimal) -> int:
     with localcontext() as ctx:
         ctx.prec = 80
