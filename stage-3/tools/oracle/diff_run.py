@@ -566,12 +566,15 @@ class Run:
 
     def check_bad_instants(self):
         user = self.users[0]
+        paths = (("/me", "as_of"), ("/me", "known_at")) if "statement" in self.skip else (("/me", "as_of"), ("/me", "known_at"), ("/statement", "from"), ("/statement", "to"), ("/statement", "known_at"))
         bad = ["2026-09-24T10:00:00", "2026-09-24", "", "yesterday", "2026-13-01T00:00:00+00:00", "2026-02-30T00:00:00Z", "2026-09-24T10:00:60Z",
                "2026-09-24T10:00:00+24:00", "2026-09-24 10:00:00Z", "2026-09-24T10:00:00.1234567890Z", "1700000000", "2026-09-24T10:00:00 +00:00"]
         for value in bad:
-            for path, name in (("/me", "as_of"), ("/me", "known_at"), ("/statement", "from"), ("/statement", "to"), ("/statement", "known_at")):
+            for path, name in paths:
                 status, resp = self.call("GET", path, self.tokens[user], params={name: value})
                 self.expect(status == 422 and resp["error"]["code"] == "validation_failed", f"{path}?{name}={value!r} must be 422 validation_failed (D-42)", f"{status} {resp}")
+        if "statement" in self.skip:
+            return
         status, resp = self.call("GET", "/statement", self.tokens[user], params={"from": "2026-09-24T10:00:00Z", "to": "2026-09-24T09:00:00Z"})
         self.expect(status == 422, "from after to must be 422 (D-54)", f"{status} {resp}")
         same = "2026-09-24T10:00:00Z"
@@ -600,7 +603,7 @@ class Run:
             a = self.render(self.rng.choice(pool)) if self.rng.random() < 0.85 else None
             k = self.render(self.rng.choice(pool)) if self.rng.random() < 0.6 else None
             self.me_view(user, a, k)
-        for _ in range(count // 2):
+        for _ in range(0 if "statement" in self.skip else count // 2):
             user = self.rng.choice(users)
             lo, hi = sorted([self.rng.choice(pool), self.rng.choice(pool)])
             f = self.render(lo) if self.rng.random() < 0.6 else None
@@ -676,10 +679,15 @@ class Run:
                  {"id": "x_b", "email": "xb@example.com", "password": PASSWORD, "display_name": "B", "handle": "xb", "balance": 0}]
         cases = {"future created_at": [{"id": "p_f", "from_user_id": "x_a", "to_user_id": "x_b", "amount": 1, "created_at": fmt(start + timedelta(hours=1))}],
                  "negative opening": [{"id": "p_n", "from_user_id": "x_b", "to_user_id": "x_a", "amount": 50, "created_at": fmt(start - timedelta(hours=1))}]}
+        replaced = False
         for name, payments in cases.items():
             status, resp = self.call("POST", "/_test/reset", body={"currency": "EUR", "minor_units": 2, "users": users, "payments": payments}, timeout=20)
+            replaced = replaced or status == 204
             self.expect(status == 422 and resp["error"]["code"] == "validation_failed", f"reset with a {name} must be 422 validation_failed", f"{status} {resp}")
-        self.expect(self.call("GET", "/me", self.tokens["u_0"])[1]["balance"] == before, "a refused reset must change nothing", "")
+        if replaced:        # the service accepted a bad fixture and replaced the state: start over from a clean one
+            self.setup()
+            return
+        self.expect(self.call("GET", "/me", self.tokens["u_0"])[1].get("balance") == before, "a refused reset must change nothing", "")
 
     def check_snapshot_after_reset(self):
         if not self.snapshots:
@@ -695,10 +703,12 @@ class Run:
     def lockstep(self, ops):
         weights = [(self.op_payment, 5), (self.op_correction, 7), (self.op_authorize, 2), (self.op_capture, 2), (self.op_void, 1),
                    (self.op_settlement, 1), (self.op_request_pay, 1)]
-        names = {self.op_settlement: "settlement", self.op_request_pay: "request", self.op_capture: "capture", self.op_void: "void", self.op_authorize: "authorize"}
+        names = {self.op_settlement: "settlement", self.op_request_pay: "request", self.op_capture: "capture", self.op_void: "void", self.op_authorize: "authorize",
+                 self.op_correction: "correction"}
         pool = [fn for fn, w in weights for _ in range(w) if names.get(fn) not in self.skip]
         self.check_bad_instants()
-        self.scenario_overdraft()
+        if "correction" not in self.skip:
+            self.scenario_overdraft()
         for i in range(ops):
             self.rng.choice(pool)()
             if self.rng.random() < 0.15:
@@ -709,15 +719,19 @@ class Run:
             if i % 10 == 9:
                 self.check_snapshots()
                 self.check_query_forms()
-                self.check_old_replays()
+                if "correction" not in self.skip:
+                    self.check_old_replays()
         self.sync_auths()
         self.check_snapshots()
         self.all_nonnegative()
-        if self.protocol:
+        if self.protocol and "correction" not in self.skip:
             self.check_corrections_validation()
+        if self.protocol:
             self.check_feed_unchanged()
 
     def same_revision_race(self):
+        if "correction" in self.skip:
+            return
         pays = [p for p in self.model.payments.values() if p.kind == "plain" and p.current().amount >= 2]
         if not pays:
             return
@@ -772,7 +786,7 @@ class Run:
                         if s == 201:
                             with lock:
                                 collected["payments"].append((r, frm, to, body["amount"]))
-                    elif kind < 0.8:
+                    elif kind < 0.8 and "correction" not in self.skip:
                         with lock:
                             plain = [p for p in self.model.payments.values() if p.kind == "plain"]
                         pay = rng.choice(plain)
@@ -802,6 +816,8 @@ class Run:
                     got = {x: r.get(x) for x in ("balance", "total", "available", "held")}
                     if s != 200 or got != {x: want.get(x) for x in ("balance", "total", "available", "held")}:
                         bad.append(f"frozen view moved: {u} as_of={a} known_at={k}: {want} -> {s} {got}")
+                    if "statement" in self.skip:
+                        continue
                     s, r = self.call("GET", "/statement", self.tokens[u], params={"from": a, "to": fmt(known), "known_at": k, "limit": 200})
                     if s != 200:
                         bad.append(f"statement read failed {s}")
@@ -839,7 +855,7 @@ def main():
     ap.add_argument("--seed", type=int, default=int(os.environ.get("DIFF_SEED", random.randrange(1 << 30))))
     ap.add_argument("--concurrent", type=float, default=8, help="seconds of the 50-way concurrent phase (0 = skip)")
     ap.add_argument("--keep-going", action="store_true")
-    ap.add_argument("--skip", default="", help="operations to leave out: settlement,request,capture,void,authorize")
+    ap.add_argument("--skip", default="", help="parts to leave out: settlement,request,capture,void,authorize,correction,statement")
     ap.add_argument("--no-protocol", action="store_true", help="skip shape/validation checks (for stand-in services)")
     args = ap.parse_args()
     base = os.environ.get("TARGET_URL")
@@ -866,8 +882,8 @@ def main():
         print(str(d))
     run.http.close()
     elapsed = time.time() - began
-    for text in run.findings[1:]:
-        print("\n" + text.split("-- operations")[0])
+    for text in (run.findings if args.keep_going else run.findings[1:]):
+        print("\n" + (text if args.keep_going and text is run.findings[0] else text.split("-- operations")[0]))
     print("correction outcomes seen:", dict(sorted(run.outcomes.items())))
     print(f"\n{run.queries} historical reads, {len(run.log)} operations, {len(run.snapshots)} snapshots, {elapsed:.0f}s, seed {args.seed}: "
           f"{'FAIL (' + str(len(run.findings)) + ' divergences)' if run.findings else 'PASS no divergence'}")
