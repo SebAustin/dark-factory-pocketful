@@ -1,230 +1,255 @@
-# Stage 2 implementation plan — wallet screens and payment authorizations
+# Stage 3 implementation plan — statements and payment corrections
 
-Packet: S2.P. Sources: `runlog/stage2-spec.md` (stage 2) on top of `runlog/stage1-spec.md`
-(cited as §n). Author: Builder. Stage 1 (frozen at `9d7ab5e`) is the base: everything in its plan
-still holds — one process, Python 3.12 stdlib, `python:3.12-alpine`, JSON-native in-memory state
-behind **one** `threading.Lock`, the request pipeline (parse outside the lock, then auth → operator
-→ body → key → replay → effect → record in one hold), decisions D1–D7, no runtime network.
+Packet: S3.P. Sources: `runlog/stage3-spec.md` on top of `runlog/stage2-spec.md` and
+`runlog/stage1-spec.md` (§n = stage 1). Author: Builder. Base: `stage-3/` = stage 2 accepted at
+`6a3fd33` (copied unchanged at `1a674f4`). Everything in the stage 1 and stage 2 plans still holds:
+one process, Python 3.12 stdlib, `python:3.12-alpine`, JSON-native in-memory state behind **one**
+lock entered through `STORE.hold()` (which sweeps clock expiry first), parse outside the lock,
+pipeline auth → operator → body → key → replay → effect → record in one hold, D1–D14, L5.
 
-Lanes: **builder** = API, model, export/import, the HTML/static seam; **designer** = screens
-(`stage-2/web/**`); **analyst** = ledger and acceptance.
+Lanes: **builder** = API and model (`stage-3/app/**` except `web/` and `passwords.py`);
+**designer** = an independent reference model plus differential and stress tooling, and any user-
+visible history in existing screens; **analyst** = ledger and acceptance.
 
 ## 0. Shape in one paragraph
 
-Holds are a new table, `authorizations`, plus a per-user `held` counter that is changed only in
-`store.py`, in the same lock hold as the authorization's status change. Clock expiry is made
-observable by a **sweep** that runs at the start of every lock hold (and before export): every open
-authorization whose `expires_at` is at or before now becomes `expired` and its remainder is
-released. Because nothing reads or writes state except inside a lock hold that began with a sweep,
-"reads and writes reflect expiry even if no request occurred at the deadline" holds by
-construction. `available = total − held` is computed on read; every `insufficient_funds` check
-compares against it. Browser routes return files from `stage-2/web/` that the designer owns; the API
-stays JSON.
+The ledger becomes **bitemporal**. A payment keeps its stage 1 record (receipts, activity and
+idempotent responses never change) and gains an append-only list of **revisions**, each with
+`amount`, `effective_at` (when the money counts) and `recorded_at` (when the service learned it).
+Every user has an **opening balance**. Any historical view `(T = as_of, K = known_at)` is computed,
+never stored: for each of the user's payments take the latest revision recorded at or before K;
+apply those whose `effective_at` ≤ T (or inside a half-open window for statements) on top of the
+opening balance. Holds get an **event log** (created, capture, release) with event times, and
+`closed_at`, so `held` can be computed for the same view. Current balances stay materialised (as
+today) and every write keeps them equal to the view `(now, now)`. A statement result is frozen in
+memory under an opaque **snapshot** token.
 
-## 1. State additions (store.py) and derivation
+## 1. Data model
+
+### 1.1 Instants (decision S3-D1 — precision and representation)
+
+- **Parsing**: an input instant must be RFC 3339 *with an offset* (`Z`/`z` or `±HH:MM`, `T`/`t`,
+  any number of fractional digits). Anything else (naive time, bare date, empty, leap second
+  `:60`, out of range) → 422 `validation_failed`.
+- **Comparison key**: `ikey(s) -> Decimal` = exact seconds since the Unix epoch (integer part from
+  the calendar date/time minus the offset, plus the fractional digits **exactly**, computed in a
+  local `decimal` context with 60 digits of precision). No rounding anywhere; `19:00+02:00`
+  equals `17:00Z`; `.5` equals `.500`.
+- **Echo**: every *supplied* instant (`as_of`, `known_at`, a correction's `effective_at`) is
+  echoed exactly as given (string kept).
+- **Server-assigned instants** (new payments' `created_at`, `recorded_at`, hold events,
+  `committed_at`, `closed_at`): **microsecond precision**, UTC, rendered
+  `YYYY-MM-DDTHH:MM:SS.ffffff+00:00`, from one **service-wide monotonic clock**
+  `STORE.tick()` = `max(wall-clock µs, previous + 1 µs)` taken inside the lock. Every
+  server-assigned instant is therefore unique and strictly increasing, so "Recorded times for one
+  payment strictly increase" holds by construction and same-second ties among API-created
+  payments disappear (stage 1/2 used whole seconds; still valid RFC 3339).
+- **Seeded / imported** instants keep their string; the key is computed from it.
+
+### 1.2 Payments and revisions
 
 ```
-state += {
-  "settings": {"authorization_ttl_seconds": 600},
-  "authorizations": { auth_id: {
-      id, from, to, amount, captured, note, visibility,
-      status,               # open | captured | voided | expired
-      expires_at,           # RFC 3339 string, as given or created_at + ttl
-      created_at, seq,
-      payment_ids: [ ... ]  # every capture, in order
-  } },
-  "counters": {..., "a": int}
+payments[pid] += {
+  "revisions": [ {"revision": 1, "amount": int, "effective_at": str, "recorded_at": str,
+                  "reason": str}, ... ]         # append-only, revision = index + 1
 }
-users[uid] += {"held": int}            # sum of remaining amounts of this user's open holds
-payments[pid] += {"authorization_id": str | null}
 ```
+- Revision 1: `amount` = original amount, `effective_at = recorded_at = created_at`,
+  `reason ""`. Created with the payment in the same hold (payments, request pay, settlements —
+  members use the shared `committed_at`, which is their `created_at` — and captures).
+- The stage 1 fields (`amount`, `created_at`, …) never change: `GET /activity`, receipts and
+  stored idempotent responses keep showing the original payment (spec: "The original payment and
+  every original idempotent response remain unchanged").
+- `payment["latest"]` index and per-user index `state["user_payments"][uid]` (payment ids where
+  the user is a party, append order) are derived caches rebuilt on reset/import (not trusted from
+  input).
 
-- `remaining(a) = a.amount − a.captured` while `open`, else `0`.
-- `held(u)` = `users[u]["held"]`, maintained by the only four transitions that change it:
-  create (+amount), capture (−captured part, and −remainder if final), void (−remainder),
-  expire (−remainder). Reset and import **recompute** it from the authorizations table; an
-  imported `held` is never trusted.
-- `total(u) = balance(u)` (stage 1 field, unchanged meaning); `available(u) = total − held`.
-- **Sweep** `store.expire_due(state, now)`: a min-heap of `(expires_instant, auth_id)` lives on the
-  `Store` object (not in state; rebuilt by `replace_state`). Each lock hold pops every due entry;
-  an entry whose authorization is still `open` becomes `expired` and releases its remainder.
-  Cost: O(log n) per expiry, O(1) when nothing is due. `routes.dispatch`, the `locked=False`
-  handlers (signup/login/reset/import/export) and `GET /me` all go through `STORE.hold()`, a
-  context manager = `with lock: expire_due(...)`. That makes one place responsible for expiry.
-- Instants are compared with `store.instant()` (already used for ordering), so any RFC 3339
-  offset works. `expires_at` at or before now = expired (inclusive, per spec).
-- The clock is `store.now()` (UTC); tests may monkeypatch it in-process. Black-box tests use a
-  fixture `authorization_ttl_seconds: 1`.
+### 1.3 Opening balances
 
-Invariants and where each is enforced (one place each):
+`users[uid]["opening"]`: the balance before anything moved.
+- Reset: `opening = seeded balance − Σ signed seeded payment amounts` for that user. A negative
+  opening, or a seeded history whose running balance goes negative at any boundary, contradicts
+  "Seeded history is consistent and nonnegative" → 422 (decision S3-D2).
+- Signup: 0. Import: recomputed as `balance − Σ signed latest amounts` (balances in an export are
+  already net of everything), never trusted from input.
+- Corrections never change openings.
 
-| Invariant | Place |
-|---|---|
-| Σ total = seeded total | `apply_transfer`, `apply_batch`, `apply_capture` — the only balance writers |
-| available ≥ 0 | `place_hold` (checks `available ≥ amount`), `apply_transfer` and `apply_batch` (check against available); captures spend held money only |
-| Σ captures ≤ authorized; each capture once; closed hold never captured | `apply_capture`: status `open`, not expired, `amount ≤ remaining`, in one hold with the idempotency record |
-| Expiry visible on every read/write | `STORE.hold()` sweep |
+### 1.4 Holds — event log
 
-## 2. insufficient_funds against available
+```
+authorizations[aid] += {
+  "events": [ {"kind": "created"|"capture"|"release", "at": str, "held_delta": int,
+               "payment_id": str|null}, ... ],
+  "closed_at": str | null
+}
+```
+- created: `+amount` at `created_at`. Non-final capture: `−captured` at capture time (the capture
+  payment's `created_at`). Final capture: `−captured` then `−remainder` (release) at the same
+  instant. Void: release at void time. Expiry: release at `expires_at` (recorded when the sweep or
+  an import sees it; its **effective** time is `expires_at`).
+- `closed_at`: null while open; the closing event's time (expiry → `expires_at`). Exposed on every
+  authorization response (new field, additive).
+- Seeded **open** holds: created at their `created_at` if supplied, else reset time. Seeded
+  **closed** holds have no lifecycle: they contribute no held at any instant ("need not
+  reconstruct a prior lifecycle"); `closed_at` = supplied value or null-safe reset time.
 
-| Site | Stage 1 check | Stage 2 check |
-|---|---|---|
-| `POST /payments` (`apply_transfer`) | `balance ≥ amount` | `balance − held ≥ amount` |
-| `POST /requests/{id}/pay` (`apply_transfer`) | same | same |
-| `POST /settlements` (`apply_batch`, designer's handler unchanged) | `balance + net ≥ 0` per wallet | `balance − held + net ≥ 0` per wallet |
-| `POST /authorizations` (`place_hold`) | — | `balance − held ≥ amount` |
-| capture | — | none: it spends its own hold (`held` and `balance` drop together) |
+## 2. Read algorithm — `GET /me` and `GET /statement`
 
-With no open holds `held = 0`, so every stage 1 result is unchanged.
+Inputs: `T` (as_of; default = request start, `STORE.tick()` at the hold), `K` (known_at; default
+= the same request start). Both may be in the future.
 
-## 3. Authorization endpoints (new module `app/authorizations.py`, builder)
+**Selection** `sel(p, K)`: the last revision with `ikey(recorded_at) ≤ ikey(K)` (revisions are in
+recorded order, so a reverse scan stops at the first hit; usually 1–3 revisions). None → the
+payment contributes nothing.
 
-View (`store.authorization_view`): `authorization_id, from_user_id, from_handle, to_user_id,
-to_handle, amount, captured_amount, remaining_amount, currency, note, visibility, status,
-expires_at, payment_id (latest capture or null), payment_ids, created_at`.
-Payment view gains `authorization_id` (null unless a capture), so every payment body has 13 keys.
+**Total at T** for user u:
+`opening(u) + Σ_{p ∈ user_payments(u), r = sel(p,K), r ≠ None, ikey(r.effective_at) ≤ ikey(T)}
+ sign(u,p) · r.amount` — inclusive `≤` for `as_of` (spec: "A payment made at exactly as_of counts").
 
-**`POST /authorizations`** (idempotent; caller = payer). Order (D-01 extended): 401 → body 400 →
-key 400/422 → replay → `to_handle` type 400 / missing 422 → `amount` 422 → `note` 422 →
-`visibility` 422 → handle format 422 → `self_payment` 422 → 404 → `insufficient_funds` 409
-(available). Effect: `place_hold` creates the record, `held += amount`,
-`expires_at = created_at + ttl`, heap push. 201. Never a feed item (activity lists payments only).
+**Held at T** for user u (payer side of holds): for each hold of u whose creation is known and has
+happened (`created ≤ K` and `created ≤ T`): start at `amount`; apply each event with
+`at ≤ T` **and** (`at ≤ K` or kind is expiry); if `T ≥ expires_at` and still holding, release
+(the deadline is known once creation is known; "For queries beyond now, an open hold expires at
+its deadline"). Result ≥ 0. `available = total − held`.
 
-**`POST /authorizations/{id}/capture`** (idempotent; receiver only). Body `{amount?, final?}`.
-Order: 401 → body 400 → key → replay → `amount` present and invalid → 422 `validation_failed`
-(below 1, not integral, bool, string) → `final` present and not a boolean → 400
-`malformed_request` (wrong JSON type, §5) → 404 unknown → 403 caller is not the receiver (incl.
-non-parties) → 409 `authorization_expired` if status is `expired` (by sweep or clock) → 409
-`authorization_not_open` if `captured` or `voided` → 422 `capture_exceeds_authorization` if
-`amount > remaining` → effect. Decision **D8**: an authorization the clock has expired answers
-`authorization_expired`, never `authorization_not_open`, on capture, whether or not a sweep has
-already marked it.
+**/me response**: same shape as stage 2 plus, when supplied, `as_of` and `known_at` echoed
+exactly; `balance = total`. Without either parameter the existing fast path (materialised
+values) is used — equal to the view at (now, now) by invariant.
 
-Effect `apply_capture(a, amount, final)`: payer `balance −= amount`, receiver `balance += amount`,
-payer `held −= amount`; `captured += amount`; append payment id; if `final` or `captured ==
-amount`: status `captured`, payer `held −= remainder` (release). Payment: `amount`, `note` and
-`visibility` copied, `authorization_id` set, `request_id` null, appears in the feed by the
-ordinary rule. Returns 201 with the payment. Default `amount` = remaining; default `final` = true.
-Replay → 200 with the original body (stored response, §7), no further effect. `{}` and
-`{"amount": 2000}` canonicalise differently → 409 `idempotency_key_reuse`.
+**Statement** (`from` default −∞, `to` default request start; half-open `[from, to)`):
+1. For each of u's payments: `r = sel(p, K)`; skip None. Key `e = ikey(r.effective_at)`.
+2. `opening_balance = opening(u) + Σ delta for e < from`; window entries: `from ≤ e < to`,
+   sorted by `(e, payment id)` ascending (string order of ids); `balance_after` = running sum from
+   `opening_balance` over **all** window entries; `closing_balance = opening_balance + Σ window
+   deltas` (= balance immediately before `to`).
+3. Entry = `{"payment": payment_view with amount = r.amount, "delta", "balance_after",
+   "revision", "effective_at", "recorded_at"}`. Zero amounts give zero-delta entries.
+4. The full result (window, `known_at`, resolved default `to`, balances, entries) is stored as a
+   snapshot; the response is a page of it plus `snapshot`, `opening_balance`,
+   `closing_balance`, `has_more`, and `known_at` echoed when supplied.
 
-**`POST /authorizations/{id}/void`** (payer only, no key). Order: 401 → body 400 (empty body ok)
-→ 404 → 403 → `voided` → 200 current state (repeat is fine) → `captured` or `expired` → 409
-`authorization_not_open` → open: release remainder, status `voided`, 200. A partially captured
-authorization keeps its captures and payment ids.
+**Complexity**: O(P_u · R) per read for P_u = the user's payments and R revisions per payment,
+plus O(P_u log P_u) to sort a statement. A user with 20 000 payments costs ~tens of ms. Paging a
+snapshot is O(limit). All reads happen inside one lock hold (consistent view; the sweep runs
+first).
 
-**`GET /authorizations`** (JSON API; HTML when `Accept` asks for it, §6). Caller is payer or
-receiver only; `direction` outgoing|incoming, `status` one of four (clock-expired matches
-`expired` only — the sweep guarantees it), `limit`/`offset`/`has_more` via the shared `page()`,
-newest first via `store.newest_first`. Body `{"authorizations": [...], "has_more": bool}`.
+**Validation**: `as_of`, `known_at`, `from`, `to` must parse (§1.1) else 422; empty → 422;
+`from > to` → 422 (decision S3-D3); `limit`/`offset` as stage 1. With `snapshot`, any of `from`,
+`to`, `known_at` present → 422; then unknown token / other user's token / pre-reset token → 404.
 
-`GET /me` adds `total` (= `balance`), `available`, `held`.
+## 3. Correction write — `POST /payments/{id}/corrections`
 
-## 4. Fixture validation (reset)
+Idempotent path (seventh+first: eight idempotent paths; same replay rules). Order, first failure
+answers (extends D-01):
 
-- `authorization_ttl_seconds`: absent → 600; else integral (bool excluded), n ≥ 1 and
-  now + n within year 9999 (D9), else 422.
-- `authorizations`: absent → `[]`; each entry: unique `id` (≤64 chars), `from_user_id` and
-  `to_user_id` known and different, `amount` 1..10⁹, optional `captured_amount` 0..amount
-  (default 0), `note` string ≤200 (default ""), `visibility` public|private (default public),
-  `status` one of four (required), `expires_at` RFC 3339 with offset (required), optional
-  `created_at` (RFC 3339, default reset time), optional `payment_id`/`payment_ids`.
-- Seeded `balance` is `total`. Per user, Σ remaining of **open and unexpired** seeded holds >
-  balance → 422 `validation_failed`, nothing changes. Seeded `open` with past `expires_at` is
-  swept to `expired` at load and holds nothing. `available` is never seeded.
-- Every 422 leaves the previous state in place (validate-then-swap, as stage 1).
+1. 401 → body 400 (unparseable / not an object) → key 400/422 → **replay** (stored 201 body →
+   200, "even after newer revisions"; different body → 409 `idempotency_key_reuse`).
+2. Fields (decision S3-D4: every invalid field, wrong type included, is 422, per "Invalid input is
+   422 validation_failed"): `expected_revision` integer ≥ 1; `amount` integer 0..1 000 000 000;
+   `effective_at` RFC 3339 with offset and `≤ now` (request start); `reason` string of 1..200
+   characters (code points, D-05). All required.
+3. 404 unknown payment. 403 caller is not the original sender (receiver and third parties).
+4. 422 `linked_payment_immutable`: settlement member (`settlement_id` set) or capture
+   (`authorization_id` set).
+5. 409 `stale_revision`: `expected_revision ≠` latest revision number.
+6. `diff = amount − latest.amount`. `diff > 0` debits the sender, `diff < 0` debits the receiver;
+   409 `insufficient_funds` if the debited user's **current available** < |diff|.
+7. 409 `historical_overdraft`: for the sender and the receiver (the only users whose history
+   changes), with the new revision appended and `K = now`, build the boundary series of every
+   distinct instant ≤ now among their selected effective times and hold events; group all
+   movements at one instant; walk from `opening`; fail if `total < 0` or `total − held < 0` after
+   any group. O(P_u log P_u).
+8. Effect (same hold): append revision `{revision n+1, amount, effective_at as given,
+   recorded_at = STORE.tick(), reason}`; move |diff| between the same two wallets' current
+   balances; record the idempotent response; 201
+   `{payment_id, revision, amount, effective_at, recorded_at, reason}`.
 
-## 5. Export / import
+A failure at 4–7 leaves balances, revisions, statements, snapshots and idempotency state
+untouched (checks happen before any write; one lock hold). Two concurrent corrections with the
+same `expected_revision` serialise on the lock; the second sees `stale_revision`.
 
-- **D10** `format_version` stays `1`: §10 fixes `track: "pocketful", format_version: 1`, and a
-  stage-2 service must accept a stage-1 export unchanged. The state object is opaque and gains
-  keys; import treats them as optional with defaults.
-- **Migration on import** (stage-1 state → stage-2 state): missing `settings` → ttl 600; missing
-  `authorizations` → `{}`; missing `counters.a` → 0; payments without `authorization_id` → null;
-  users' `held` recomputed from authorizations (0 for a stage-1 export). Tokens, idempotency
-  records, replay bodies, ids, timestamps and balances are carried unchanged.
-- **D11** replay of a pre-upgrade receipt returns the **stored original body unchanged**, i.e.
-  without `authorization_id` — §7 "body identical to the original response as a JSON value"
-  outranks the stage 2 shape note, which describes newly created payments. GET endpoints render
-  migrated payments with `authorization_id: null`.
-- Export runs a sweep first, then snapshots under the same hold.
-- Ownership: `transfer_io.py` was the designer's in stage 1. Since the designer is on screens and
-  this migration is model work, I propose the builder owns `stage-2/app/transfer_io.py` for stage
-  2 (lead to confirm). Same for `settlements.py` and `splits.py` if their checks need changes;
-  only `apply_batch` changes, which is mine.
+`GET /payments/{id}/revisions` → `{"revisions": [...]}` in revision order, revision 1 with
+`reason: ""`. Parties only; third party → 404 (even public); no token → 401.
 
-## 6. HTML / static seam (item S2.1 — first, unblocks the designer)
+## 4. Snapshots
 
-- **Page routes** (GET and HEAD): `/`, `/split`, `/signup`, `/login` always HTML;
-  `/requests` and `/authorizations` return HTML when the `Accept` header lists `text/html`
-  with q > 0, else the existing JSON API (API clients and `fetch` with
-  `Accept: application/json` keep JSON; `*/*` alone is JSON). Pages need no token: the shell
-  authenticates in the browser with the bearer token it keeps (`localStorage`), which survives an
-  import because tokens do (§10).
-- **What a page route serves**: `web/<name>.html` if it exists (`index.html` for `/`,
-  `split.html`, `signup.html`, `login.html`, `requests.html`, `authorizations.html`), else
-  `web/index.html` (single-page shell). The designer chooses either pattern.
-- **Static assets**: `GET /assets/<path>` from `stage-2/web/assets/`. Path is URL-decoded,
-  normalised and must stay inside the folder (no `..`, no absolute paths, no NUL) → else 404
-  JSON envelope. Types by extension: `.html` `text/html; charset=utf-8`, `.css` `text/css;
-  charset=utf-8`, `.js`/`.mjs` `text/javascript; charset=utf-8`, `.json`, `.svg`
-  `image/svg+xml`, `.png`, `.ico`, `.woff2` `font/woff2`; unknown → `application/octet-stream`.
-- **Caching**: HTML `Cache-Control: no-cache`; assets `Cache-Control: no-cache` plus `ETag`
-  (sha256 of content) and `304` on `If-None-Match`. Files are read once and cached in memory
-  (they are in the image; no runtime network).
-- **Headers on HTML**: `Content-Security-Policy: default-src 'self'; img-src 'self' data:;
-  style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'`,
-  `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`.
-- **Seam module** `app/web.py` (builder): registers page and asset routes with `auth=False,
-  locked=False`; the `Dockerfile` copies `web/`. The designer writes only under `stage-2/web/`.
-- **API contract for the screens** (stable, JSON): every stage 1 endpoint plus §3 above; the
-  UI's `fetch` sends `Accept: application/json` and `Content-Type: application/json`. The pay
-  form's retry identity (same key + same body) is the client's job; the server's §7 replay gives
-  the original body. Amount parsing (decimal → minor units) and split preview (§9 rule) are
-  client-side; `GET /me` gives `minor_units` and `currency`.
+- In memory on the `Store` object (not in the exported state): `token → {user_id, generation,
+  result}`; token = `secrets.token_urlsafe(24)`. `generation` increments on every reset **and
+  import** (decision S3-D5: an import also starts a new world; old tokens → 404).
+- Frozen result = list of rendered entries + balances + echoes; paging slices it; `has_more =
+  offset + limit < len(entries)`; offsets past the end → empty page, `has_more: false`.
+- Memory: entries share rendered dicts; a cap of 10 000 snapshots per user evicts the oldest
+  (decision S3-D6, risk noted — spec says tokens last until reset; the cap is far above any
+  realistic test volume).
+
+## 5. Upgrade and import
+
+`format_version` stays 1 (D10). Import detects the source by keys:
+- **stage-1 state** (no `authorizations`, no `revisions`): stage 2 defaults (as today) + revision 1
+  for every payment from `created_at` (settlement members: their `committed_at` = `created_at`);
+  openings recomputed; per-user indexes rebuilt; L5 session carry-over.
+- **stage-2 state** (`authorizations`, no `revisions`): as above, plus hold events reconstructed:
+  created at `created_at`; one capture event per `payment_ids` entry at that payment's
+  `created_at`; closing: `captured` → last capture time; `expired` → `expires_at`; `voided` →
+  **time unknown in a stage 2 export** → the latest of `created_at` and its last capture (the
+  earliest consistent release; never creates a false `historical_overdraft`; decision S3-D7).
+  L5 session carry-over also applies to a stage-2-format import (decision S3-D8, lead to
+  confirm).
+- **stage-3 state**: revisions, events, `closed_at` validated (revision numbers contiguous,
+  recorded keys strictly increasing, amounts 0..1e9 except revision 1 which keeps the original,
+  instants parse); openings recomputed and checked against the history; replacement as before.
+- Snapshots are not exported; the monotonic clock continues from `max(now, latest instant in
+  the imported state + 1 µs)`.
+
+## 6. Changes to existing endpoints
+
+- `GET /activity`, payment receipts, replays: unchanged (original payment, original amount).
+- New payments' `created_at`: microsecond precision (S3-D1); still RFC 3339 with offset.
+- `GET /me`: unchanged without temporal parameters; with them, §2.
+- Authorization views gain `closed_at`. Payment views unchanged (statement entries carry the
+  selected amount inside `payment` and add `revision`, `effective_at`, `recorded_at`).
+- Reset: seeded payment `created_at` in the future → 422; seeded holds may carry `created_at`
+  (must not be in the future).
 
 ## 7. Work items (builder)
 
-Common DONE WHEN for every item: `cd stage-2 && python3 -m unittest discover -s tests` green;
-image builds from a clean worktree and is healthy within 60 s on a port in 18200–18299 with
-`--cpus 2 --memory 2g`; stage-2 acceptance suite (analyst) green for the item's rows;
-`stage-2/tools/stress.py` 8/8 still passes.
+Common DONE WHEN: unit tests green; image from a clean worktree healthy on 18200–18299 with
+`--cpus 2 --memory 2g`; carried acceptance suites (stage 1 and stage 2) green; stage 2 stress and
+holds stress still pass.
 
-| Item | Spec | Scope | Item DONE WHEN |
-|---|---|---|---|
-| **S2.1 HTML/static seam** (first) | Stage 2 routes table, "browser and the API share /requests", UI `/authorizations` | `app/web.py`, Accept negotiation, `/assets/*`, Dockerfile copies `web/`, placeholder `web/index.html` until the designer's lands | tests: each page route → 200 `text/html`; `/requests` and `/authorizations` with `Accept: text/html` → HTML, with `*/*`/JSON → JSON (401 without token); traversal (`/assets/../app/store.py`, `%2e%2e`, `%00`) → 404 envelope; ETag/304; HEAD works |
-| S2.2 Holds model | Authorizations model, invariants 1–3, GET /me, fixture | state additions, `STORE.hold()` sweep, `held`, available-based checks in `apply_transfer`/`apply_batch`, fixture rules, payment `authorization_id`, `/me` fields | tests: seeded open hold → `/me` available/held; seeded holds > balance → 422 unchanged; past `expires_at` → expired at load; ttl rules; payments/request pay/settlement refused against available; no-holds behaviour identical to stage 1 |
-| S2.3 Authorize + list | `POST /authorizations`, `GET /authorizations` | handler, view, list filters | every table row; not in `/activity`; direction/status/paging; expiry by clock without any request at the deadline (ttl 1 s) |
-| S2.4 Capture + void | capture (default and extended), void | `apply_capture`, D8 order, remainder release, `payment_ids`, `remaining_amount` | every table row; partial final capture releases remainder in the same step; `final:false` chain to exhaustion; `{}` vs `{"amount":n}` → reuse 409; 50 concurrent captures (distinct keys) never exceed the authorized amount; void then capture 409; expiry after partial capture keeps captures |
-| S2.5 Export/import migration | §10 + "Existing clients after an upgrade" | defaults for missing keys, held recompute, D10/D11 | a real stage-1 export (from the frozen stage-1 image) imports into stage 2: logins/tokens work, pending requests payable, a pre-upgrade payment key replays 200 with the original body; stage-2 export→import→export equal |
-| S2.6 Concurrency and load | "Concurrent operations…", §2 limits | stress scenarios for holds (authorize/capture/void/expiry races, settlements vs holds) in `tests/soak.py` and a stress extension | 50 in flight, 0 5xx, Σ total constant, available ≥ 0 at every sampled read, captures ≤ authorized |
+| Item | Scope | Item DONE WHEN |
+|---|---|---|
+| **S3.1 Foundation** (may start before the gate) | `instants.py` (parse, ikey, monotonic tick), revisions on every payment path, openings, user indexes, hold events + `closed_at`, seeded `created_at` future → 422, seeded history consistency, export/import of the new keys, stage-1/2 synthesis (S3-D7) | unit tests: ikey exactness across offsets/fractions; every payment path writes revision 1; openings from seeded and imported states; hold events for create/capture/void/expiry; stage-1 and stage-2 exports import with revisions/events; stage-3 round trip equal |
+| S3.2 `/me` as_of/known_at | §2 views incl. holds | tests for inclusive as_of, before-first = opening, after-last = current, known_at selection, future instants, hold lifecycle at T/K, echoes, 422s |
+| S3.3 `/statement` + snapshots | §2, §4 | ordering (effective, id), half-open window, opening/closing identity, pagination invariance, snapshot freeze under writes/corrections, 404/422 rules, zero entries |
+| S3.4 Corrections + revisions | §3 | every error with order, debit side, insufficient vs historical_overdraft (incl. available via holds and same-instant grouping), replay after newer revisions, concurrent same expected revision → one 201, linked immutability, revisions endpoint privacy |
+| S3.5 Upgrade over populated state | §5 | real frozen stage-1 and stage-2 images, populated with every write kind incl. holds/captures/voids/expiries, export → stage-3 import → history views, statements, corrections, replays, tokens; stage-3 round trip |
+| S3.6 Concurrency and load | concurrent corrections, statements and snapshots under writes; sum of totals in historical views | stress tool: no 5xx, < 5 s, Σ total(T,K) = seeded total for sampled views, snapshots unchanged under load |
 
-Order: S2.1 → S2.2 → S2.3 → S2.4 → S2.5 → S2.6. The designer can start on S2.1's seam and the
-stage 1 API at once; `/authorizations` screens need S2.3/S2.4.
+Order: S3.1 → S3.2 → S3.3 → S3.4 → S3.5 → S3.6. The designer's reference model can start from
+the spec and this plan; the API contract is §2–§3.
 
-## 8. Decisions recorded
+## 8. Decisions recorded here (align with the analyst's records)
 
-- D8 capture of a clock-expired authorization → 409 `authorization_expired`; void of it → 409
-  `authorization_not_open` (spec: "A captured or expired one is 409 authorization_not_open").
-- D9 `authorization_ttl_seconds`: any positive integer for which now + ttl stays a representable
-  timestamp (up to 9999-12-31T23:59:59Z); beyond that 422 (S2.8, analyst finding 6).
-- D10 export `format_version` stays 1; stage-2 state keys are optional on import.
-- D11 pre-upgrade replays return the stored body unchanged (no `authorization_id`).
-- D12 `final` of the wrong JSON type → 400 `malformed_request`; invalid `amount` → 422.
-- D13 `Accept` negotiation: HTML only when `text/html` is listed with q > 0; `*/*` alone → JSON.
-- D14 seeded `captured_amount` > `amount`, or `from == to`, → 422.
-- L5 (lead, on analyst D-22): importing a **stage-1** state keeps each destination token whose
-  user exists in the import with the same id, email (case-insensitive) and handle; export tokens
-  always survive; a stage-2 import stays pure replacement. Done inside the one swap hold.
+- S3-D1 instants: exact Decimal epoch keys; server instants µs precision, service-wide strictly
+  increasing; supplied instants echoed verbatim.
+- S3-D2 inconsistent or negative seeded history → reset 422.
+- S3-D3 statement `from > to` → 422.
+- S3-D4 correction field errors, wrong JSON types included, → 422.
+- S3-D5 snapshots invalid after reset and after import (404).
+- S3-D6 snapshot cap 10 000 per user, oldest evicted.
+- S3-D7 voided holds imported from stage 2 release at their latest known event.
+- S3-D8 L5 session carry-over for stage-1 and stage-2 format imports.
+- S3-D9 correction error order: 400 → 422 fields → 404 → 403 → 422 linked → 409 stale →
+  409 insufficient_funds → 409 historical_overdraft.
 
 ## 9. Risks
 
 | Risk | Mitigation |
 |---|---|
-| Sweep missed on some path → stale `open` read | Single entry `STORE.hold()`; unit test asserts every route registers through the pipeline; expiry tests with ttl 1 s and no request at the deadline |
-| `held` drifts from the authorizations table | Only four transitions write it, all in `store.py`; reset/import recompute; S2.6 checks `held == Σ remaining` after load |
-| Stage-1 export shape vs stage-2 import | S2.5 test imports an export produced by the real frozen stage-1 image, not a hand-made one |
-| Accept negotiation breaks API clients of `/requests` | `*/*` and absent → JSON; acceptance stage 1 suite re-run on stage 2 |
-| Static path traversal | normalise + containment check + tests |
-| Error-order ambiguities (D8, D12) disagree with acceptance | recorded here; each is a one-line change |
-| Host CPU contention makes hashing slow (seen at the stage 1 gate) | unchanged from stage 1 (designer's bounded hashing); not touched here |
+| Time semantics off by an edge (inclusive/exclusive, same-instant grouping, offsets) | one `ikey`; tests at exact boundaries; designer's independent reference model diffed against the service |
+| Imported stage-2 voids lack a void time | S3-D7 (earliest consistent release); recorded |
+| Snapshot memory growth | shared entry dicts; S3-D6 cap |
+| Overdraft check cost on long histories | only two users per correction; O(P log P) |
+| Stage 1/2 regressions (precision change of created_at) | carried suites must stay green; activity order unchanged (instant, seq) |
+| Current vs historical drift | invariant test: view(now, now) == materialised values after every write kind |
