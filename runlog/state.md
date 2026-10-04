@@ -7,7 +7,7 @@ Last accepted revision: 6a3fd334b9a64588b9d821ba654ae47538cba7bc (stage 2). Stag
 
 ## Stage 3 phase
 
-- [ ] Carry forward (builder copies stage-2 -> stage-3)
+- [x] Carry forward 1a674f4
 - [ ] Ledger (analyst, given the most time) S3.L
 - [ ] Plan (builder) S3.P ; reference oracle (designer) S3.O
 - [ ] Plan gate
@@ -19,7 +19,7 @@ Last accepted revision: 6a3fd334b9a64588b9d821ba654ae47538cba7bc (stage 2). Stag
 
 | Id | Title | Owner | Paths | State | Last rev | Rejections |
 |---|---|---|---|---|---|---|
-| S3.0 | Carry forward | builder | stage-3/ | assigned | - | 0 |
+| S3.0 | Carry forward | builder | stage-3/ | built, in review | 1a674f4 | 0 |
 | S3.L | Ledger + glossary + decisions | analyst | stage-3/docs/ledger.md | assigned | - | 0 |
 | S3.P | Plan | builder | stage-3/docs/plan.md | assigned | - | 0 |
 | S3.O | Independent reference model + differential/stress tool | designer | stage-3/tools/oracle/ | assigned | - | 0 |

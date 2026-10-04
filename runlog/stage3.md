@@ -9,6 +9,8 @@
 | Time (UTC) | Event |
 |---|---|
 | 01:12 | Dispatch received; seats present |
+| 01:14 | S3.0 -> builder; stage 3 spec (2 parts) + S3.L ledger -> analyst, S3.P plan -> builder, S3.O reference model -> designer |
+| 01:16 | S3.0 committed 1a674f4; review + tooling -> verifier |
 
 ## Work items
 
