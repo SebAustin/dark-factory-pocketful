@@ -123,11 +123,10 @@ import restores them (overrides stage 3's L8 for stage 4).
   state object (taken before an import), its frozen rows `[pid, revision, delta, balance_after]`
   plus opening/closing, materialised at export time. Identical frozen results are written once and
   shared by reference (D4-6).
-- **Import of a stage-4 export replaces the snapshot store** with the imported tokens (D-74):
-  recipes bind to the imported state, frozen rows are rendered from it, so a token minted before
-  the export pages identically after the import, even with a reset in between; tokens not in the
-  imported state are 404. Importing a stage-1/2/3 export leaves the destination's snapshot store
-  untouched (nothing to restore).
+- **Import of a stage-4 export merges** its snapshots into the in-process store (lead L12, which
+  amends D-74): recipes bind to the imported state, frozen results are kept rendered; destination
+  tokens keep paging; on a clash the imported token wins. Importing a stage-1/2/3 export adds
+  nothing. Reset clears everything.
 - Tokens are opaque random strings and are carried verbatim (deterministic across export/import).
 - **Stage-3-format imports** carry no snapshots (stage 3 L8 never exported them): nothing to
   restore; stage-3 tokens cannot survive that upgrade. Known limitation, recorded, not worked
@@ -174,9 +173,9 @@ Order: S4.1 → S4.2 → S4.3 → S4.4 → S4.5.
 - D-70 one lock: exactly one winner among overlapping single corrections and batches.
 - D-71/D-72 a refund is an ordinary payment; `refund_of` on every new payment object (14 keys);
   stored receipts replay verbatim.
-- D-74 upgrades and L10: stage-4 exports carry snapshots, import of a stage-4 export replaces the
-  snapshot store; stage-1/2/3 imports leave it untouched; L5 sessions for stage-1/2/3 imports
-  (my D4-8); stage-3 tokens cannot survive (limitation). Replaces my D4-7 (merge).
+- D-74 + L12 upgrades and snapshots: stage-4 exports carry snapshots; importing one merges them
+  into the store (imported token wins a clash); stage-1/2/3 imports add none; L5 sessions for
+  stage-1/2/3 imports (my D4-8); stage-3 tokens cannot survive (limitation).
 - D-75 carried suite changes.
 - My D4-4 (no failure-injection hook: validation is read-only, the commit cannot fail) and D4-6
   (exported snapshots: recipe when bound to the current state, frozen rows otherwise, identical

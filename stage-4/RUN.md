@@ -51,7 +51,9 @@ The service listens on `0.0.0.0:$PORT` (default `8080`) and answers `GET /health
     available funds, then every historical boundary); a refused batch changes nothing. All new
     revisions share one `recorded_at` and carry the `correction_batch_id`.
 - Server-assigned instants have microsecond precision and strictly increase.
-- `POST /_test/import` accepts exports from this team's stage 1, 2, 3 and 4 services.
+- `POST /_test/import` accepts exports from this team's stage 1, 2, 3 and 4 services. A stage 4
+  export carries the statement snapshot tokens, and importing it restores them (stage 1–3
+  exports carry none); only a reset ends snapshots.
 
 ## Run without Docker
 

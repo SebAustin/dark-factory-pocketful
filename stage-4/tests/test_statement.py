@@ -143,21 +143,18 @@ class SnapshotTest(Base):
         ada = token("ada@example.com")
         self.assertEqual(statement(ada, snapshot=token_).code, "not_found")
 
-    def test_tokens_last_until_reset_not_across_it(self):  # D-50, final L8
+    def test_tokens_survive_export_reset_import(self):  # stage 4: L10, L12, D-74
         token_ = self.ok(self.ada, limit=2)["snapshot"]
         before = self.ok(self.ada, snapshot=token_, limit=10)
         exported = call("GET", "/_test/export").body
-        self.assertNotIn("snapshots", exported["state"])  # not exported
-        self.assertNotIn(token_, str(exported))
-        # an import (of any state) neither clears nor replaces them
-        other = copy.deepcopy(exported)
-        self.assertEqual(call("POST", "/_test/import", other).status, 204)
-        call("POST", "/payments", {"to_handle": "bob", "amount": 1}, token=self.ada,
-             key=uuid.uuid4().hex)
-        self.assertEqual(self.ok(self.ada, snapshot=token_, limit=10), before)
+        self.assertIn(token_, exported["state"]["snapshots"]["tokens"])
+        exported_session = self.ada
         reset()
+        fresh = token("ada@example.com")  # the reset ended the session too
+        self.assertEqual(statement(fresh, snapshot=token_).code, "not_found")  # reset ends
         self.assertEqual(call("POST", "/_test/import", exported).status, 204)
-        self.assertEqual(statement(self.ada, snapshot=token_).code, "not_found")
+        # the export's session and snapshot both come back (stage-4 import replaces sessions)
+        self.assertEqual(self.ok(exported_session, snapshot=token_, limit=10), before)
 
     def test_snapshot_reproduces_after_backdated_correction(self):
         first = self.ok(self.ada)

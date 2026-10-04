@@ -9,7 +9,7 @@ from decimal import Decimal
 
 from . import errors
 from .routes import route
-from . import instants, ledger, store
+from . import instants, ledger, statements, store
 from .store import (AUTH_STATUSES, DEFAULT_TTL, REQUEST_STATUSES, STORE, empty_state,
                     parse_rfc3339)
 from .validation import BALANCE_LIMIT, HANDLE_RE, MAX_ID, VISIBILITIES, integral
@@ -38,6 +38,8 @@ def _bad(message: str):
 def export_state(ctx, state, user):
     with STORE.hold():
         snapshot = json.loads(json.dumps(STORE.state))
+        # L10: statement snapshots travel with the state (exact decimal keys as strings)
+        snapshot["snapshots"] = json.loads(json.dumps(statements.export_snapshots(STORE.state)))
     return 200, {"track": TRACK, "format_version": FORMAT_VERSION, "state": snapshot}
 
 
@@ -378,8 +380,17 @@ def import_state(ctx, state, user):
     if "state" not in body:
         raise errors.validation("state is required")
     fresh = validated_state(body["state"])
-    # One lock hold: all of the old state goes, all of the new arrives. A stage-1 state is the
-    # upgrade path, where signed-in browsers keep their destination sessions (L5).
-    carry = carry_sessions if is_upgrade_state(body["state"]) else None
+    submitted = body["state"]
+    snapshots = statements.import_snapshots(submitted["snapshots"], fresh) \
+        if "snapshots" in submitted else {}  # stage-1/2/3 exports carry none (L10)
+    upgrade = is_upgrade_state(submitted)
+
+    def carry(old: dict, new: dict) -> None:
+        # One lock hold: all of the old state goes, all of the new arrives. Upgrades keep the
+        # destination's signed-in sessions (L5, D-74); imported snapshots merge into the
+        # process store, the imported token winning a clash (L10, L12).
+        if upgrade:
+            carry_sessions(old, new)
+        STORE.snapshots.update(snapshots)
     STORE.replace_state(fresh, carry=carry)
     return 204, None

@@ -233,7 +233,7 @@ class InvalidImportTest(unittest.TestCase):
     def test_every_missing_state_key(self):
         from app.transfer_io import DERIVED_KEYS, STAGE2_DEFAULTS
         for key in self.snap["state"]:
-            if key in STAGE2_DEFAULTS or key in DERIVED_KEYS:
+            if key in STAGE2_DEFAULTS or key in DERIVED_KEYS or key == "snapshots":
                 continue
             self.rejects(lambda b, key=key: b["state"].pop(key))
 
