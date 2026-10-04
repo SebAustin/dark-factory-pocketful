@@ -31,6 +31,7 @@ Last accepted revision: 6a3fd334b9a64588b9d821ba654ae47538cba7bc (stage 2). Stag
 
 ## Stage 3 decisions
 
+- L8 (01:4x): snapshots survive export/import of the same state (export carries them; D-50 over plan S3-D5) because spec 'Tokens last until reset'; no snapshot cap/eviction (drop S3-D6); L5 carry-over for stage-2 imports confirmed (S3-D8 = D-52); S3-D7 = D-52.
 - L7 (01:3x): builder starts S3.2-S3.6 before the plan gate closes (as L1/L4); analyst decisions D-41..D-60 binding unless a spec quote contradicts.
 
 ---
