@@ -23,6 +23,7 @@ Round 1 (analyst): plan agrees with D-41..D-60 except snapshot invalidation on i
 | S3.0 | Carry forward | builder | 01:14 | yes | ACCEPT 1a674f4 |
 | S3.1 | Bitemporal foundation | builder | 01:2x | yes | ACCEPT aa3922c |
 | S3.2 | /me as_of/known_at | builder | 01:3x | yes | ACCEPT e02f93d |
+| S3.3 | Statement + snapshots | builder | 01:3x | yes | REJECT fe6ff39, ACCEPT c8943d4 |
 | S3.4 | Corrections + revisions | builder | 01:3x | yes | ACCEPT 6757ba3 |
 | S3.5 | Populated upgrade checks | builder | 01:3x | yes | ACCEPT 41cf24c |
 | S3.6 | Ledger stress | builder | 01:3x | yes | ACCEPT c03a99e |
@@ -30,6 +31,10 @@ Round 1 (analyst): plan agrees with D-41..D-60 except snapshot invalidation on i
 ## Rejections and what they caught
 
 - S3.3 @fe6ff39 REJECT (verifier): each statement read stored the whole window until reset — 5500 reads made a 69 MB export that import refused (>64 MiB) and memory grew ~67 KB/read toward the 2 GiB limit. Fix: O(1) snapshot recipes over append-only revisions, with generation references; snapshots not exported (final L8).
+
+## Stage gate
+
+- Gate packet sent on aaf1ee2db56a74f01e6db9f96b51fe34536e4bf6 (stage 3 spec pasted 2 parts + packet); seats told to quiet host.
 
 ## Gate table at acceptance
 

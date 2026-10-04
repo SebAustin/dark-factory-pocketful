@@ -10,9 +10,9 @@ Last accepted revision: 6a3fd334b9a64588b9d821ba654ae47538cba7bc (stage 2). Stag
 - [x] Carry forward 1a674f4
 - [ ] Ledger (analyst, given the most time) S3.L
 - [ ] Plan (builder) S3.P ; reference oracle (designer) S3.O
-- [ ] Plan gate
-- [ ] Items
-- [ ] Stage gate
+- [x] Plan gate (L9)
+- [x] Items (all accepted)
+- [ ] Stage gate: packet sent on aaf1ee2db56a74f01e6db9f96b51fe34536e4bf6
 - [ ] Run log
 
 ## Stage 3 work items
@@ -25,7 +25,7 @@ Last accepted revision: 6a3fd334b9a64588b9d821ba654ae47538cba7bc (stage 2). Stag
 | S3.P | Plan | builder | stage-3/docs/plan.md | built (in plan gate) | 2cf0853 | 0 |
 | S3.1 | Bitemporal foundation | builder | app/store etc. | accepted | aa3922c | 0 |
 | S3.2 | /me as_of/known_at | builder | app | accepted | e02f93d | 0 |
-| S3.3 | /statement + snapshots | builder | app | fix resubmitted (recipes, not exported) | c8943d4 | 1 |
+| S3.3 | /statement + snapshots | builder | app | accepted (note: replaced states retained by live snapshots until reset — recorded risk) | c8943d4 | 1 |
 | S3.4 | Corrections + revisions | builder | app | accepted | 6757ba3 | 0 |
 | S3.5 | Populated upgrade checks | builder | tests | accepted | 41cf24c | 0 |
 | S3.6 | Ledger stress | builder | tools | accepted | c03a99e | 0 |
