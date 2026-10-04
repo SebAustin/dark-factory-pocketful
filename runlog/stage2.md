@@ -48,6 +48,8 @@ Round 1 (analyst): 1 blocking (D-22 browser session across stage-1 import -> lea
 
 ## Rejections and what they caught
 
+- Stage gate @6c295d6 REJECT: stage-2/RUN.md still described and built stage 1 (stage 1 §2 RUN.md command). No item review looked at RUN.md after the carry-forward.
+
 - S2.U11 @c6a8996 REJECT (verifier, real-viewport screenshot): with feedback moved below the button, a refused payment's pay-error rendered fully under the fixed bottom tab bar at 390x844 — 'A refused payment shows pay-error'. DOM visibility checks could not see it.
 
 - S2.U10 @74d83a5 REJECT (verifier): new 'change' listener cleared the feedback slot above the submit button on blur, the button jumped and the click was lost after an edit — 'Changing a field makes the next submission a new payment request'. Analyst found the in-flight variant independently (S2.U11).
@@ -59,6 +61,8 @@ Round 1 (analyst): 1 blocking (D-22 browser session across stage-1 import -> lea
 ## Stage gate
 
 - Gate packet sent on 6c295d6fb5f0d1b178b9c3597a3a9da97e59a9de (stage 2 spec pasted 3 parts + packet); seats told to quiet host.
+
+- Gate 1 on 6c295d6: REJECT (verifier) on F6 only — stage-2/RUN.md was the unchanged stage-1 copy (title, command building stage-1, stale soak path). G1-G6, G8 green; G7 red on F6. -> S2.9 builder.
 
 ## Gate table at acceptance
 

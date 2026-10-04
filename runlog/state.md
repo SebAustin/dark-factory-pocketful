@@ -13,7 +13,7 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 - [x] Plan gate: closed L6 after one round
 - [x] Work items split
 - [x] Item reviews (all accepted)
-- [ ] Stage gate: packet sent on 6c295d6fb5f0d1b178b9c3597a3a9da97e59a9de
+- [ ] Stage gate: FAIL 1/3 on 6c295d6 (F6 stale RUN.md; all behavioural/visual gates green) -> S2.9, then re-gate
 - [ ] Run log recorded
 
 ## Stage 2 work items
@@ -23,6 +23,7 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 | S2.0 | Carry forward copy | builder | stage-2/ (whole copy) | accepted | 10e5b5e | 0 |
 | S2.V | Screen walker tooling | verifier | reviews/stage2/tools/ | done (375/390/1280) | 1275ada | 0 |
 | S2.L | Ledger + glossary (182 new rows, D-21..D-38) | analyst | stage-2/docs/ledger.md, glossary.md | done | f146c3b | 0 |
+| S2.9 | Stage 2 RUN.md (gate F6) | builder | stage-2/RUN.md | assigned | - | 0 |
 | S2.8 | Upgrade keeps destination sessions (D-22 / L5) + ttl + pay replay | builder | transfer_io.py, store | accepted | bf2e57d | 0 |
 | S2.P | API/model plan | builder | stage-2/docs/plan.md | built (to critique) | 0cfc980 | 0 |
 | S2.U | UI plan | designer | stage-2/docs/ui-plan.md | built (to critique) | 624aa75 | 0 |
