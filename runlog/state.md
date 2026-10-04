@@ -12,7 +12,7 @@ Last accepted revision: 6a3fd334b9a64588b9d821ba654ae47538cba7bc (stage 2). Stag
 - [ ] Plan (builder) S3.P ; reference oracle (designer) S3.O
 - [x] Plan gate (L9)
 - [x] Items (all accepted)
-- [ ] Stage gate: FAIL 1/3 on aaf1ee2 (F7 stale RUN.md again, F8 dead code; behaviour all green) -> S3.7 + ledger names, then re-gate
+- [ ] Stage gate: FAIL 1/3 on aaf1ee2 (F7 stale RUN.md again, F8 dead code; behaviour all green) -> S3.7 30821c2 + ledger 36547b6; re-gate sent on 36547b6451dab2843338683d4226b7fbc1349250
 - [ ] Run log
 
 ## Stage 3 work items
