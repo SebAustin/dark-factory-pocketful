@@ -11,16 +11,17 @@ def slot(method: str, path: str, key: str) -> str:
     return "{} {}\n{}".format(method, path, key)
 
 
-def resolve(state: dict, user_id: str, slot_: str, body: dict):
+def resolve(state: dict, user_id: str, slot_: str, canon: str):
     """Return (200, original body) for a replay, raise 409 for a different body, else None."""
     record = state["idem"].get(user_id, {}).get(slot_)
     if record is None:
         return None
-    if record["canon"] != canonical(body):
+    if record["canon"] != canon:
         raise errors.conflict("idempotency_key_reuse",
                               "key already used with a different request body")
     return 200, record["body"]
 
 
-def record(state: dict, user_id: str, slot_: str, body: dict, response: dict) -> None:
-    state["idem"].setdefault(user_id, {})[slot_] = {"canon": canonical(body), "body": response}
+def record(state: dict, user_id: str, slot_: str, canon: str, response: dict) -> None:
+    """Store a 201 response; `canon` was computed before the handler wrote anything."""
+    state["idem"].setdefault(user_id, {})[slot_] = {"canon": canon, "body": response}

@@ -140,6 +140,16 @@ def next_seq(state: dict) -> int:
     return state["seq"]
 
 
+def peek_id(state: dict, kind: str):
+    """(id, counter value) that new_id would produce, without changing the state."""
+    table, n = state[TABLE_FOR_KIND[kind]], state["counters"][kind]
+    while True:
+        n += 1
+        candidate = ID_PREFIX[kind] + str(n)
+        if candidate not in table:
+            return candidate, n
+
+
 def new_id(state: dict, kind: str) -> str:
     table = state[TABLE_FOR_KIND[kind]]
     while True:

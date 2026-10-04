@@ -85,10 +85,11 @@ def dispatch(ctx):
         body = ctx.json_object()
         key = _idempotency_key(ctx)
         slot = idempotency.slot(ctx.method, ctx.path, key)
-        replay = idempotency.resolve(state, user["id"], slot, body)
+        canon = idempotency.canonical(body)  # prepared before the handler writes anything
+        replay = idempotency.resolve(state, user["id"], slot, canon)
         if replay is not None:
             return replay
         status, out = r["handler"](ctx, state, user)
         if status == 201:
-            idempotency.record(state, user["id"], slot, body, out)
+            idempotency.record(state, user["id"], slot, canon, out)
         return status, out

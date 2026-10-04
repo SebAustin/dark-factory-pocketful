@@ -200,6 +200,39 @@ class ErrorTest(Base):
         self.assertEqual(ok.status, 201)  # same key reusable after the refusal
 
 
+class PrepareThenApplyTest(Base):
+    """Lead note on the plan gate: a failure while preparing writes nothing."""
+
+    def snapshot_state(self):
+        from app.store import STORE
+        with STORE.lock:
+            st = STORE.state
+            return copy.deepcopy({k: st[k] for k in ("payments", "users", "counters",
+                                                     "correction_batches", "idem")})
+
+    def test_injected_failure_in_prepare_changes_nothing(self):
+        from app import batches
+        before = self.snapshot_state()
+        real = batches.revision_view
+        calls = []
+
+        def failing(p, rev):  # fail on the LAST item, after the first ones were prepared
+            calls.append(p["id"])
+            if len(calls) == 2:
+                raise KeyError("injected")
+            return real(p, rev)
+        batches.revision_view = failing
+        k = key()
+        try:
+            r = self.batch([item(self.p1, 600), item(self.p2, 500)], k=k)
+        finally:
+            batches.revision_view = real
+        self.assertEqual(r.status, 500)
+        self.assertEqual(self.snapshot_state(), before)
+        ok = self.batch([item(self.p1, 600), item(self.p2, 500)], k=k)
+        self.assertEqual(ok.status, 201, ok.raw)  # the key was never claimed
+
+
 class ConcurrencyTest(Base):
     def test_batches_and_singles_sharing_a_revision_one_wins(self):
         results = []

@@ -1,10 +1,11 @@
 """POST /correction-batches (stage 4; D-66..D-70): an operator corrects several payments at once.
 
-Everything is validated first, reading only (shape, item errors in input order, settlement checks
-by first appearance, combined current available, combined history); then every revision is
-appended with one shared recorded_at and every difference moved, in the same lock hold. A refusal
-therefore changes nothing, and any two writers naming the same payment revision serialise on the
-lock (the second sees stale_revision).
+prepare() validates (shape, item errors in input order, settlement checks by first appearance,
+combined current available, combined history) and builds every object the batch will write — the
+revisions with one shared recorded_at, their views, the batch record, the 201 body, the next id —
+without touching the state. apply() then only assigns and appends those objects, in the same lock
+hold. A refusal or any error while preparing therefore changes nothing, and any two writers naming
+the same payment revision serialise on the lock (the second sees stale_revision).
 """
 from . import errors, instants, ledger, store
 from .corrections import boundaries_ok, fields, item_check, revision_view
@@ -67,10 +68,10 @@ def _settlements(state: dict, checked: list) -> None:
             raise errors.validation("members of one settlement need one effective instant")
 
 
-@route("POST", "/correction-batches", idempotent=True, operator=True)
-def correction_batch(ctx, state, user):
-    now = instants.key(now_ts())  # the batch's read instant N
-    checked = _items(state, _shape(ctx.json_object()), now)
+def prepare(state: dict, operator: dict, body: dict, now) -> dict:
+    """Validate and build everything the batch will write — revisions, views, the batch record,
+    the 201 body, the new counter value — without changing the state (plan §3, lead note)."""
+    checked = _items(state, _shape(body), now)
     _settlements(state, checked)
     net: dict = {}  # combined current change per wallet (D-67)
     proposed = {}
@@ -85,17 +86,32 @@ def correction_batch(ctx, state, user):
     if not all(boundaries_ok(state, uid, proposed, now) for uid in net):
         raise errors.conflict("historical_overdraft",
                               "the corrected history makes a balance negative")
-    batch_id = store.new_id(state, "cb")
+    batch_id, counter = store.peek_id(state, "cb")
     recorded_at = now_ts()  # one tick, later than every earlier recorded_at (D-41)
-    views = []
+    appends = []
     for p, _, _ in checked:
         rev = dict(proposed[p["id"]], recorded_at=recorded_at, correction_batch_id=batch_id)
+        appends.append((p, rev, revision_view(p, rev)))
+    record = {"id": batch_id, "operator": operator["id"], "recorded_at": recorded_at,
+              "payment_ids": [p["id"] for p, _, _ in checked]}
+    response = {"correction_batch_id": batch_id, "recorded_at": recorded_at,
+                "revisions": [view for _, _, view in appends]}
+    return {"counter": counter, "appends": appends, "net": net, "record": record,
+            "response": response}
+
+
+def apply(state: dict, plan: dict) -> dict:
+    """Only assignments and appends of objects prepared above; nothing here can fail."""
+    state["counters"]["cb"] = plan["counter"]
+    for p, rev, _ in plan["appends"]:
         p["revisions"].append(rev)
-        views.append(revision_view(p, rev))
-    for uid, d in net.items():
+    for uid, d in plan["net"].items():
         state["users"][uid]["balance"] += d
-    state["correction_batches"][batch_id] = {
-        "id": batch_id, "operator": user["id"], "recorded_at": recorded_at,
-        "payment_ids": [p["id"] for p, _, _ in checked]}
-    return 201, {"correction_batch_id": batch_id, "recorded_at": recorded_at,
-                 "revisions": views}
+    state["correction_batches"][plan["record"]["id"]] = plan["record"]
+    return plan["response"]
+
+
+@route("POST", "/correction-batches", idempotent=True, operator=True)
+def correction_batch(ctx, state, user):
+    now = instants.key(now_ts())  # the batch's read instant N
+    return 201, apply(state, prepare(state, user, ctx.json_object(), now))
