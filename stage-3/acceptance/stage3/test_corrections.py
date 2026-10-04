@@ -15,9 +15,12 @@ def past(seconds=5):
     return iso_ns(now_ns() - seconds * 10 ** 9)
 
 
-def body(expected=1, amount=400, eff=None, reason="fix"):
-    return {"expected_revision": expected, "amount": amount, "effective_at": eff or past(),
-            "reason": reason}
+_DEFAULT = object()
+
+
+def body(expected=1, amount=400, eff=_DEFAULT, reason="fix"):
+    return {"expected_revision": expected, "amount": amount,
+            "effective_at": past() if eff is _DEFAULT else eff, "reason": reason}
 
 
 def post(api, token, pid, b, key=None):
@@ -212,8 +215,8 @@ def test_R3_MNY_3_MNY_9_current_unaffordable_409_before_historical(world, api):
     p = world.pay("cy", "bob", 1500)              # cy now 0
     assert_error(post(api, world.tok["cy"], p["payment_id"], body(amount=1600)), 409,
                  "insufficient_funds")
-    q = world.pay("ada", "bob", 1000)
-    api.pay(world.tok["bob"], "dee", 3500)        # bob spends; can't give 1000 back now
+    q = world.pay("ada", "bob", 1000)                 # bob: 2500 + 1500 + 1000 = 5000
+    assert api.pay(world.tok["bob"], "dee", 4500).status_code == 201   # bob keeps 500 < 1000
     assert_error(post(api, world.tok["ada"], q["payment_id"], body(amount=0)), 409,
                  "insufficient_funds")
 
