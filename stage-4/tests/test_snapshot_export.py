@@ -50,23 +50,39 @@ class ExportTest(Base):
         reset()
         self.assertEqual(statement(token("ada@example.com"), snapshot=mine).code, "not_found")
 
-    def test_token_of_an_older_state_is_exported_frozen_and_deduplicated(self):
+    def test_tokens_of_an_older_state_export_one_generation(self):  # F9
         first_export = call("GET", "/_test/export").body
-        old = [statement(self.ada).body["snapshot"] for _ in range(3)]  # identical results
+        old = [statement(self.ada).body["snapshot"] for _ in range(3)]
         before = self.page(self.ada, old[0])
         self.assertEqual(call("POST", "/_test/import", first_export).status, 204)
         call("POST", "/payments", {"to_handle": "bob", "amount": 7},
              token=token("ada@example.com"), key=key())
         exported = call("GET", "/_test/export").body
         snaps = exported["state"]["snapshots"]
+        self.assertEqual(len(snaps["generations"]), 1)  # three tokens, one retained state
         for t in old:
-            self.assertIn("frozen", snaps["tokens"][t])
-        self.assertEqual(len(snaps["frozen"]), 1)  # three tokens, one stored result
+            self.assertEqual(snaps["tokens"][t]["generation"], "0")
         reset()
         self.assertEqual(call("POST", "/_test/import", exported).status, 204)
         self.assertEqual(self.page(self.ada, old[0]), before)
-        self.assertEqual(self.page(self.ada, old[2], limit=1, offset=0)["entries"],
-                         before["entries"][:1])
+        self.assertEqual(self.page(self.ada, old[2], limit=1)["entries"], before["entries"][:1])
+        self.assertEqual(call("GET", "/_test/export").body, exported)  # stable round trip
+
+    def test_export_grows_with_retained_states_not_reads(self):  # F9 repro, scaled down
+        for i in range(120):
+            call("POST", "/payments", {"to_handle": "bob", "amount": 1}, token=self.ada,
+                 key=key())
+            statement(self.ada, limit=1)
+        other = call("GET", "/_test/export").body
+        reset()
+        exported_b = call("GET", "/_test/export").body
+        # tokens minted on state A are retained across an import of an unrelated state B
+        for i in range(3):
+            statement(token("ada@example.com"), limit=1)
+        self.assertEqual(call("POST", "/_test/import", exported_b).status, 204)
+        size = len(json.dumps(call("GET", "/_test/export").body))
+        self.assertLess(size, 200_000)
+        self.assertGreater(len(json.dumps(other)), 0)
 
     def test_imported_token_wins_a_clash(self):
         snap = statement(self.ada).body["snapshot"]
@@ -81,10 +97,13 @@ class ExportTest(Base):
 
     def test_invalid_snapshots_are_422_and_change_nothing(self):
         exported = call("GET", "/_test/export").body
-        for bad in ("x", {"tokens": {"t": {"user": "u_nobody"}}, "frozen": {}},
+        for bad in ("x", {"tokens": {"t": {"user": "u_nobody"}}, "generations": {}},
                     {"tokens": {"t": {"user": "u_ada", "start": "x", "end": "1", "known": "1"}},
-                     "frozen": {}},
-                    {"tokens": {"t": {"user": "u_ada", "frozen": "nope"}}, "frozen": {}}):
+                     "generations": {}},
+                    {"tokens": {"t": {"user": "u_ada", "generation": "9", "start": "1",
+                                      "end": "1", "known": "1"}}, "generations": {}},
+                    {"tokens": {}, "generations": {"0": {"currency": "EUR", "users": "x",
+                                                        "payments": {}, "user_payments": {}}}}):
             body = copy.deepcopy(exported)
             body["state"]["snapshots"] = bad
             r = call("POST", "/_test/import", body)

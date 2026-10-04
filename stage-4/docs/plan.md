@@ -117,14 +117,14 @@ State: `correction_batches[id] = {id, operator, recorded_at, payment_ids}`; coun
 L10: "A stage-4 service must accept exports produced by the same team's stages 1–3, retaining
 settlement membership, corrections and snapshots" → stage-4 exports carry snapshot tokens and
 import restores them (overrides stage 3's L8 for stage 4).
-- Live snapshots stay O(1) recipes. **Export** writes, per token: if the recipe reads the current
-  state, the recipe itself `{user, start, end, known, known_echo}` (exact decimal strings,
-  `-Infinity` for an open start) — the exported state reproduces it exactly; if it reads an older
-  state object (taken before an import), its frozen rows `[pid, revision, delta, balance_after]`
-  plus opening/closing, materialised at export time. Identical frozen results are written once and
-  shared by reference (D4-6).
+- Live snapshots stay O(1) recipes. **Export** writes every token as its recipe
+  `{user, start, end, known, known_echo}` (exact decimal strings). A recipe reading the exported
+  state needs nothing more. Recipes that still read an older state (they survived an import, L12)
+  carry a `generation`; each such state is exported **once** as a compact ledger view — the
+  snapshot owners' payments with their revisions, the openings and handles involved, the
+  currency — so the export grows with retained states, never with reads × window (verifier F9).
 - **Import of a stage-4 export merges** its snapshots into the in-process store (lead L12, which
-  amends D-74): recipes bind to the imported state, frozen results are kept rendered; destination
+  amends D-74): recipes bind to the imported state or to their generation's view; destination
   tokens keep paging; on a clash the imported token wins. Importing a stage-1/2/3 export adds
   nothing. Reset clears everything.
 - Tokens are opaque random strings and are carried verbatim (deterministic across export/import).
@@ -177,9 +177,9 @@ Order: S4.1 → S4.2 → S4.3 → S4.4 → S4.5.
   into the store (imported token wins a clash); stage-1/2/3 imports add none; L5 sessions for
   stage-1/2/3 imports (my D4-8); stage-3 tokens cannot survive (limitation).
 - D-75 carried suite changes.
-- My D4-4 (no failure-injection hook: validation is read-only, the commit cannot fail) and D4-6
-  (exported snapshots: recipe when bound to the current state, frozen rows otherwise, identical
-  rows shared) stand as implementation choices.
+- D4-4 revised (lead's plan-gate note): batches are prepare-then-apply — every object is built
+  before the first write; a unit test injects a failure into the prepare step. D4-6 revised (F9):
+  exported snapshots are recipes; retained older states are exported once as ledger views.
 
 ## 8. Risks
 

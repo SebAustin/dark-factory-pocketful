@@ -69,15 +69,6 @@ def _limit_offset(query: dict):
 
 
 def _page(snap: dict, token: str, limit: int, offset: int) -> dict:
-    if "frozen" in snap:  # restored from an export of an older state: rendered rows
-        frozen = snap["frozen"]
-        body = {"opening_balance": frozen["opening_balance"],
-                "entries": frozen["entries"][offset:offset + limit],
-                "closing_balance": frozen["closing_balance"],
-                "has_more": offset + limit < len(frozen["entries"]), "snapshot": token}
-        if frozen.get("known_at") is not None:
-            body["known_at"] = frozen["known_at"]
-        return body
     state = snap["state"]
     result = _compute(state, snap["user"], snap["start"], snap["end"], snap["known"])
     result["known_at"] = snap["known_echo"]
@@ -113,34 +104,37 @@ def statement(ctx, state, user):
 
 # ---------------------------------------------------------------- export / import (L10, L12)
 
-def _full(state: dict, snap: dict) -> dict:
-    """The whole frozen result of a recipe, rendered (for snapshots of an older state)."""
-    result = _compute(state, snap["user"], snap["start"], snap["end"], snap["known"])
-    body = _render(state, result, "", len(result["entries"]), 0)
-    return {"opening_balance": body["opening_balance"], "entries": body["entries"],
-            "closing_balance": body["closing_balance"], "known_at": snap["known_echo"]}
+def _ledger_view(state: dict, uids) -> dict:
+    """What recipes of `uids` can read from an older state: their payments with revisions, the
+    openings and handles involved, and the currency. Exported once per retained state (F9)."""
+    payment_ids = []
+    for uid in uids:
+        payment_ids.extend(state["user_payments"].get(uid, ()))
+    payments = {pid: state["payments"][pid] for pid in payment_ids}
+    parties = set(uids) | {x for p in payments.values() for x in (p["from"], p["to"])}
+    return {"currency": state["currency"],
+            "users": {u: {"handle": state["users"][u]["handle"],
+                          "opening": state["users"][u]["opening"]} for u in parties},
+            "user_payments": {u: list(state["user_payments"].get(u, ())) for u in uids},
+            "payments": payments}
 
 
 def export_snapshots(current: dict) -> dict:
-    """Every live token: a recipe when it reads the current (exported) state — the export
-    reproduces it exactly — else its rendered frozen result, identical results stored once."""
-    import hashlib
-    import json
-    tokens, frozen = {}, {}
+    """Every live token as a recipe. Recipes reading the exported state need nothing more; each
+    older state that recipes still read (they survived an import, L12) is exported once as a
+    compact ledger view, so the export grows with retained states, not with reads x window."""
+    tokens, generations, owners, index = {}, {}, {}, {}
     for token, snap in STORE.snapshots.items():
-        if "frozen" in snap:
-            result = snap["frozen"]
-        elif snap["state"] is current:
-            tokens[token] = {"user": snap["user"], "start": str(snap["start"]),
-                             "end": str(snap["end"]), "known": str(snap["known"]),
-                             "known_echo": snap["known_echo"]}
-            continue
-        else:
-            result = _full(snap["state"], snap)
-        digest = hashlib.sha256(json.dumps(result, sort_keys=True).encode()).hexdigest()
-        frozen[digest] = result
-        tokens[token] = {"user": snap["user"], "frozen": digest}
-    return {"tokens": tokens, "frozen": frozen}
+        rec = {"user": snap["user"], "start": str(snap["start"]), "end": str(snap["end"]),
+               "known": str(snap["known"]), "known_echo": snap["known_echo"]}
+        if snap["state"] is not current:
+            g = index.setdefault(id(snap["state"]), str(len(index)))
+            owners.setdefault(g, (snap["state"], set()))[1].add(snap["user"])
+            rec["generation"] = g
+        tokens[token] = rec
+    for g, (state, uids) in owners.items():
+        generations[g] = _ledger_view(state, sorted(uids))
+    return {"tokens": tokens, "generations": generations}
 
 
 def _instant_key(text):
@@ -152,29 +146,51 @@ def _instant_key(text):
     return None if value.is_nan() else value
 
 
+def _generation(view, bad) -> dict:
+    """A validated ledger view, usable by _compute and _render like a state."""
+    if not isinstance(view, dict) or not isinstance(view.get("currency"), str):
+        bad("generation needs a currency")
+    users, payments, index = view.get("users"), view.get("payments"), view.get("user_payments")
+    if not all(isinstance(x, dict) for x in (users, payments, index)):
+        bad("generation needs users, payments and user_payments")
+    for u in users.values():
+        if not isinstance(u, dict) or not isinstance(u.get("handle"), str) \
+                or not isinstance(u.get("opening"), int) or isinstance(u.get("opening"), bool):
+            bad("generation users need a handle and an opening")
+    for pid, p in payments.items():
+        revs = p.get("revisions") if isinstance(p, dict) else None
+        if p is None or p.get("id") != pid or p.get("from") not in users or p.get("to") not in users \
+                or not isinstance(revs, list) or not revs \
+                or not all(isinstance(r, dict) and isinstance(r.get("amount"), int)
+                           and isinstance(r.get("recorded_at"), str)
+                           and isinstance(r.get("effective_at"), str) for r in revs):
+            bad("generation payments are malformed")
+    for uid, pids in index.items():
+        if uid not in users or not isinstance(pids, list) or any(q not in payments for q in pids):
+            bad("generation user_payments are malformed")
+    return {"currency": view["currency"], "users": users, "payments": payments,
+            "user_payments": index}
+
+
 def import_snapshots(data, state: dict) -> dict:
-    """Validated token -> snapshot for a stage-4 export's snapshots; raises 422 if malformed."""
+    """Validated token -> recipe for a stage-4 export's snapshots; raises 422 if malformed."""
     def bad(why):
         raise errors.validation("state: snapshots " + why)
     if not isinstance(data, dict) or not isinstance(data.get("tokens"), dict) \
-            or not isinstance(data.get("frozen"), dict):
-        bad("must hold tokens and frozen results")
+            or not isinstance(data.get("generations"), dict):
+        bad("must hold tokens and generations")
+    generations = {g: _generation(v, bad) for g, v in data["generations"].items()}
     out = {}
     for token, rec in data["tokens"].items():
-        if not isinstance(rec, dict) or rec.get("user") not in state["users"]:
-            bad("name unknown users")
-        echo = rec.get("known_echo")
-        if "frozen" in rec:
-            result = data["frozen"].get(rec["frozen"])
-            if not isinstance(result, dict) or not isinstance(result.get("entries"), list) \
-                    or not all(isinstance(result.get(k), int) and not isinstance(result.get(k), bool)
-                               for k in ("opening_balance", "closing_balance")):
-                bad("have an invalid frozen result")
-            out[token] = {"user": rec["user"], "frozen": result}
-            continue
+        if not isinstance(rec, dict):
+            bad("tokens must be objects")
+        source = generations.get(rec["generation"]) if "generation" in rec else state
+        if source is None or rec.get("user") not in source["users"]:
+            bad("name unknown users or generations")
         keys = [_instant_key(rec.get(k)) for k in ("start", "end", "known")]
+        echo = rec.get("known_echo")
         if any(k is None for k in keys) or (echo is not None and not isinstance(echo, str)):
             bad("have an invalid recipe")
         out[token] = {"user": rec["user"], "start": keys[0], "end": keys[1], "known": keys[2],
-                      "known_echo": echo, "state": state}
+                      "known_echo": echo, "state": source}
     return out
