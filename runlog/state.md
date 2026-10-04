@@ -25,13 +25,14 @@ Last accepted revision: 6a3fd334b9a64588b9d821ba654ae47538cba7bc (stage 2). Stag
 | S3.P | Plan | builder | stage-3/docs/plan.md | built (in plan gate) | 2cf0853 | 0 |
 | S3.1 | Bitemporal foundation | builder | app/store etc. | accepted | aa3922c | 0 |
 | S3.2-S3.6 | /me history, statement+snapshots, corrections, upgrade, load | builder | app/** | assigned | - | 0 |
-| S3.PG | Plan gate | analyst | - | assigned | - | 0 |
+| S3.PG | Plan gate | analyst | - | done: 1 finding (snapshots across import -> L8 revised) + 2 notes; gate closed (L9) | 341f1a2 | 0 |
 | S3.A | Acceptance (stage1+stage2 carried, stage3 new) | analyst | stage-3/acceptance/ | assigned | - | 0 |
 | S3.O | Independent reference model + differential/stress tool | designer | stage-3/tools/oracle/ | assigned | - | 0 |
 
 ## Stage 3 decisions
 
-- L8 (01:4x): snapshots survive export/import of the same state (export carries them; D-50 over plan S3-D5) because spec 'Tokens last until reset'; no snapshot cap/eviction (drop S3-D6); L5 carry-over for stage-2 imports confirmed (S3-D8 = D-52); S3-D7 = D-52.
+- L9 (01:5x): plan gate closed after one round; finding 1 -> L8 revision to builder; notes: no cap (L8.2), plan §1.4 text.
+- L8 (01:4x, revised 01:5x after analyst PG finding 1): snapshots live in the process-wide store, cleared only by reset; import neither clears nor carries them; not exported (spec 'Tokens last until reset'); no snapshot cap/eviction (drop S3-D6); L5 carry-over for stage-2 imports confirmed (S3-D8 = D-52); S3-D7 = D-52.
 - L7 (01:3x): builder starts S3.2-S3.6 before the plan gate closes (as L1/L4); analyst decisions D-41..D-60 binding unless a spec quote contradicts.
 
 ---

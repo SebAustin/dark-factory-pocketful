@@ -12,6 +12,10 @@
 | 01:14 | S3.0 -> builder; stage 3 spec (2 parts) + S3.L ledger -> analyst, S3.P plan -> builder, S3.O reference model -> designer |
 | 01:16 | S3.0 committed 1a674f4; review + tooling -> verifier |
 
+## Plan gate
+
+Round 1 (analyst): plan agrees with D-41..D-60 except snapshot invalidation on import (finding 1) -> lead revised L8: snapshots cleared only by reset. Gate closed (L9).
+
 ## Work items
 
 | Id | Title | Owner | Assigned | Accepted | Verdicts |
