@@ -93,11 +93,13 @@ TARGET_URL=http://127.0.0.1:18200 LEDGER_SECONDS=60 python3 stage-4/tools/ledger
 TARGET_URL=http://127.0.0.1:18200 python3 stage-4/tools/ledger_stress.py big
 TARGET_URL=http://127.0.0.1:18200 python stage-4/tools/oracle/diff_run.py
 STAGE1_URL=http://127.0.0.1:<stage-1 port> STAGE2_URL=http://127.0.0.1:<stage-2 port> \
-  STAGE3_URL=http://127.0.0.1:18200 python3 stage-4/tests/upgrade_check3.py
+  STAGE3_URL=http://127.0.0.1:<stage-3 port> STAGE4_URL=http://127.0.0.1:18200 \
+  python3 stage-4/tests/upgrade_check4.py
 ```
 
 `ledger_stress.py` races corrections, re-pages snapshots under writes and checks that balances sum
 to the seeded total in every historical view; `big` times reads over 20 000 payments;
 `oracle/diff_run.py` diffs the service against an independent reference model;
-`upgrade_check3.py` imports populated stage 1 and stage 2 exports and checks history,
-statements, corrections, sessions and replays.
+`upgrade_check4.py` imports populated stage 1, 2 and 3 exports (the frozen services of those
+stages) and checks history, statements, corrections, refunds, batches over imported settlements,
+sessions, replays and the stage 4 snapshot round trip.
