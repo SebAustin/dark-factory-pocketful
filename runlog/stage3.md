@@ -16,6 +16,7 @@
 
 | Id | Title | Owner | Assigned | Accepted | Verdicts |
 |---|---|---|---|---|---|
+| S3.0 | Carry forward | builder | 01:14 | yes | ACCEPT 1a674f4 |
 
 ## Rejections and what they caught
 
