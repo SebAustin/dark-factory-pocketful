@@ -25,7 +25,8 @@ Last accepted revision: 36547b6451dab2843338683d4226b7fbc1349250 (stage 3). Stag
 | S4.PG | Plan gate | analyst | - | PLAN PASS (note: prepare-then-apply -> builder) | - | 0 |
 | S4.P | Plan | builder | stage-4/docs/plan.md | built | 8ea5e3c | 0 |
 | S4.1 | Refunds | builder | app | accepted | 95cde7e | 0 |
-| S4.2+ | Batches, upgrade, load | builder | app | assigned | - | 0 |
+| S4.2 | Correction batches | builder | app | accepted | 4f6e16d | 0 |
+| S4.3-S4.5 | Snapshots L10/L12, upgrade, load | builder | app | in progress/review | - | 0 |
 | S4.O | Oracle ext + atomicity-under-failure tool | designer | stage-4/tools/oracle/ | assigned | - | 0 |
 
 ## Stage 4 decisions

@@ -21,6 +21,7 @@ Round 1 (analyst): PLAN PASS on 8ea5e3c (+a3d5879) and S4.1 95cde7e against ledg
 |---|---|---|---|---|---|
 | S4.0 | Carry forward + RUN.md | builder | 11:59 | yes | ACCEPT 2cdac7b, ACCEPT bb32d6a |
 | S4.1 | Refunds | builder | 12:0x | yes | ACCEPT 95cde7e |
+| S4.2 | Correction batches | builder | 12:1x | yes | ACCEPT 4f6e16d |
 
 ## Rejections and what they caught
 
