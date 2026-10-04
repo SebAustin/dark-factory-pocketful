@@ -1,5 +1,34 @@
 # Run state (lead's durable memory)
 
+Track: pocketful. CURRENT STAGE: 4. Stage 4 dispatch: 2026-10-04T11:57:36Z.
+Room: af150286-bfd0-4fd8-8ae1-c57d84bf2e91. Seats: henry.sebastien1982/{analyst,builder,designer,verifier}.
+Spec copies: runlog/stage1-spec.md .. stage4-spec.md.
+Last accepted revision: 36547b6451dab2843338683d4226b7fbc1349250 (stage 3). Stage 2: 6a3fd33. Stage 1: 9d7ab5e. stage-1/2/3 FROZEN.
+
+## Stage 4 phase
+
+- [ ] Carry forward + RUN.md item (lesson from stages 2 and 3)
+- [ ] Ledger S4.L ; Plan S4.P ; Oracle extension + failure-injection tool S4.O
+- [ ] Plan gate
+- [ ] Items
+- [ ] Stage gate
+- [ ] Run log
+
+## Stage 4 work items
+
+| Id | Title | Owner | Paths | State | Last rev | Rejections |
+|---|---|---|---|---|---|---|
+| S4.0 | Carry forward | builder | stage-4/ | assigned | - | 0 |
+
+## Stage 4 decisions
+
+- L10 (11:58): stage 4 text 'A stage-4 service must accept exports produced by the same team's stages 1-3, retaining settlement membership, corrections and snapshots' overrides L8 for stage 4: stage-4 exports CARRY snapshots and import restores them. KNOWN LIMITATION: frozen stage-3 exports contain no snapshots (L8) and use random tokens, so stage-3 snapshot tokens cannot survive a stage-3 -> stage-4 upgrade. Record in final report.
+
+---
+
+# STAGE 3 (accepted, archived below)
+
+
 Track: pocketful. CURRENT STAGE: 3. Stage 3 dispatch: 2026-10-04T01:12:36Z.
 Room: af150286-bfd0-4fd8-8ae1-c57d84bf2e91. Seats: henry.sebastien1982/{analyst,builder,designer,verifier}.
 Spec copies: runlog/stage1-spec.md, stage2-spec.md, stage3-spec.md.
