@@ -11,6 +11,10 @@
 | 11:57 | Dispatch received; seats present |
 | 11:59 | S4.0 (+RUN.md) -> builder; spec + S4.L -> analyst, S4.P -> builder, S4.O -> designer; L10 recorded (snapshots exported in stage 4; stage-3 limitation) |
 
+## Plan gate
+
+Round 1 (analyst): PLAN PASS on 8ea5e3c (+a3d5879) and S4.1 95cde7e against ledger 200efad + L12; agrees no fault hook needed (black-box mid-batch failure tests in stage4/test_atomic.py); note prepare-then-apply forwarded to builder.
+
 ## Work items
 
 | Id | Title | Owner | Assigned | Accepted | Verdicts |
