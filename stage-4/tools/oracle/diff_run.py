@@ -1198,7 +1198,7 @@ class Run:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--upgrade", type=int, choices=(1, 2), help="populate a frozen stage-1/2 service (--source), export it, import into the target, then diff")
+    ap.add_argument("--upgrade", type=int, choices=(1, 2, 3), help="populate a frozen stage-1/2/3 service (--source), export it, import into the target, then diff")
     ap.add_argument("--source", help="URL of the frozen stage-1/2 service to populate for --upgrade (your own copy)")
     ap.add_argument("--source-ops", type=int, default=60)
     ap.add_argument("--ops", type=int, default=120)

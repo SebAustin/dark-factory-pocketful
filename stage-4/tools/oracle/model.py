@@ -164,10 +164,11 @@ class Model:
             for pid in a.get("payment_ids", []):
                 model.add_capture(aid, pid)
             last = model.payments[a["payment_ids"][-1]].created_at if a.get("payment_ids") else None
+            exported = parse(a["closed_at"]) if a.get("closed_at") else None      # stage-3 exports carry the real close time (D-74)
             if a["status"] == "captured":
-                model.close_auth(aid, "captured", last)
+                model.close_auth(aid, "captured", exported or last)
             elif a["status"] == "voided":
-                model.close_auth(aid, "voided", last or parse(a["created_at"]))
+                model.close_auth(aid, "voided", exported or last or parse(a["created_at"]))
         return model
 
     def add_user(self, user):
