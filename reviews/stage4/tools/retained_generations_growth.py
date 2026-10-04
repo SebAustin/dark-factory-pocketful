@@ -1,7 +1,7 @@
 """Repro for S4.3 F10: each import retains one generation per outgoing state that a live snapshot points at; the export and the
 memory grow as (imports with a live snapshot) x (state size), and the service then refuses its own unchanged export.
 
-    python3 reviews/stage4/tools/retained_generations_growth.py http://127.0.0.1:<port> [payments=20000] [cycles=30] [container]
+    python3 reviews/stage4/tools/retained_generations_growth.py http://127.0.0.1:<port> [payments=20000] [cycles=30] [container] [--drift]
 Seeds one sender with `payments` payments, exports that state E, then `cycles` times: read one statement page (a live snapshot),
 import E without a reset (tokens survive per L12). Every snapshot must still page identically. Finally the service is exported and
 that unchanged export is re-imported.
@@ -17,6 +17,7 @@ B = sys.argv[1].rstrip("/")
 N = int(sys.argv[2]) if len(sys.argv) > 2 else 20000
 CYCLES = int(sys.argv[3]) if len(sys.argv) > 3 else 30
 CONTAINER = sys.argv[4] if len(sys.argv) > 4 else None
+DRIFT = "--drift" in sys.argv          # one extra payment before each read, so every replaced state differs
 
 
 def call(m, p, b=None, t=None, k=None, raw=None):
@@ -50,6 +51,8 @@ _, E = call("GET", "/_test/export")
 print("seeded %d payments: export %.1f MB, memory %s" % (N, len(E) / 1e6, mem()))
 snaps = []
 for i in range(CYCLES):
+    if DRIFT:
+        call("POST", "/payments", {"to_handle": "b", "amount": 1}, t, "d%d" % i)
     s, st = call("GET", "/statement?limit=2", t=t)
     snap = json.loads(st)["snapshot"]
     snaps.append((snap, call("GET", "/statement?snapshot=%s&limit=2&offset=%d" % (snap, N - 2), t=t)))
