@@ -22,12 +22,16 @@ Last accepted revision: 6a3fd334b9a64588b9d821ba654ae47538cba7bc (stage 2). Stag
 | S3.0 | Carry forward | builder | stage-3/ | accepted | 1a674f4 | 0 |
 | S3.V | Upgrade driver + hist probe | verifier | reviews/stage3/tools | done | 2ae1c9d | 0 |
 | S3.L | Ledger (128 R3 rows, D-41..D-60) | analyst | stage-3/docs/ledger.md | done | 754b18f | 0 |
-| S3.P | Plan | builder | stage-3/docs/plan.md | assigned | - | 0 |
+| S3.P | Plan | builder | stage-3/docs/plan.md | built (in plan gate) | 2cf0853 | 0 |
+| S3.1 | Bitemporal foundation | builder | app/store etc. | built | aa3922c | 0 |
+| S3.2-S3.6 | /me history, statement+snapshots, corrections, upgrade, load | builder | app/** | assigned | - | 0 |
+| S3.PG | Plan gate | analyst | - | assigned | - | 0 |
+| S3.A | Acceptance (stage1+stage2 carried, stage3 new) | analyst | stage-3/acceptance/ | assigned | - | 0 |
 | S3.O | Independent reference model + differential/stress tool | designer | stage-3/tools/oracle/ | assigned | - | 0 |
 
 ## Stage 3 decisions
 
-none yet
+- L7 (01:3x): builder starts S3.2-S3.6 before the plan gate closes (as L1/L4); analyst decisions D-41..D-60 binding unless a spec quote contradicts.
 
 ---
 
