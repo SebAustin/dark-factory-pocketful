@@ -25,6 +25,8 @@ Round 1 (analyst): PLAN PASS on 8ea5e3c (+a3d5879) and S4.1 95cde7e against ledg
 
 ## Rejections and what they caught
 
+- S4.3 @d1ffc66 REJECT (verifier): tokens surviving an import were exported as fully rendered frozen results, so export grew reads x window (379 MB in 13.2 s after 1000 reads; over the 10 s control timeout and 64 MiB import cap). Fix: export each retained generation once + recipes.
+
 ## Gate table at acceptance
 
 | Gate | Result | Evidence |
