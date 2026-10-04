@@ -7,7 +7,7 @@ Last accepted revision: 36547b6451dab2843338683d4226b7fbc1349250 (stage 3). Stag
 
 ## Stage 4 phase
 
-- [ ] Carry forward + RUN.md item (lesson from stages 2 and 3)
+- [x] Carry forward 2cdac7b + RUN.md bb32d6a (in review)
 - [ ] Ledger S4.L ; Plan S4.P ; Oracle extension + failure-injection tool S4.O
 - [ ] Plan gate
 - [ ] Items
@@ -18,14 +18,17 @@ Last accepted revision: 36547b6451dab2843338683d4226b7fbc1349250 (stage 3). Stag
 
 | Id | Title | Owner | Paths | State | Last rev | Rejections |
 |---|---|---|---|---|---|---|
-| S4.0 | Carry forward + RUN.md | builder | stage-4/ | assigned | - | 0 |
+| S4.0 | Carry forward + RUN.md | builder | stage-4/ | in review | 2cdac7b+bb32d6a | 0 |
 | S4.L | Ledger (64 R4 rows, D-62..D-75) | analyst | stage-4/docs/ledger.md | done | 200efad | 0 |
 | S4.A | Acceptance (s1-3 carried, s4 new) | analyst | stage-4/acceptance/ | assigned | - | 0 |
-| S4.P | Plan | builder | stage-4/docs/plan.md | assigned | - | 0 |
+| S4.P | Plan | builder | stage-4/docs/plan.md | built | 8ea5e3c | 0 |
+| S4.1 | Refunds | builder | app | in review | 95cde7e | 0 |
+| S4.2+ | Batches, upgrade, load | builder | app | assigned | - | 0 |
 | S4.O | Oracle ext + atomicity-under-failure tool | designer | stage-4/tools/oracle/ | assigned | - | 0 |
 
 ## Stage 4 decisions
 
+- L12 (12:1x): stage-4 import MERGES exported snapshots into the store (destination tokens survive; collision -> imported wins); reset clears all. Builder GO S4.2+.
 - L11 (12:00): builder may start refunds right after the plan (as L1/L4/L7).
 - L10 (11:58): stage 4 text 'A stage-4 service must accept exports produced by the same team's stages 1-3, retaining settlement membership, corrections and snapshots' overrides L8 for stage 4: stage-4 exports CARRY snapshots and import restores them. KNOWN LIMITATION: frozen stage-3 exports contain no snapshots (L8) and use random tokens, so stage-3 snapshot tokens cannot survive a stage-3 -> stage-4 upgrade. Record in final report.
 
