@@ -13,7 +13,7 @@ from .http_util import CONTENT_TYPE, Ctx, Raw, encode
 
 # Route modules register themselves on import. Modules not built yet are skipped.
 ROUTE_MODULES = ("testctl", "auth", "payments", "requests_", "splits", "settlements",
-                 "transfer_io", "authorizations", "statements", "web")
+                 "transfer_io", "authorizations", "statements", "corrections", "web")
 MAX_BODY = 1024 * 1024                 # ordinary API bodies
 MAX_STATE_BODY = 64 * 1024 * 1024      # reset fixtures and import snapshots
 STATE_PATHS = ("/_test/reset", "/_test/import")
