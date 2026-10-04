@@ -19,7 +19,8 @@ Last accepted revision: 36547b6451dab2843338683d4226b7fbc1349250 (stage 3). Stag
 | Id | Title | Owner | Paths | State | Last rev | Rejections |
 |---|---|---|---|---|---|---|
 | S4.0 | Carry forward + RUN.md | builder | stage-4/ | assigned | - | 0 |
-| S4.L | Ledger + decisions | analyst | stage-4/docs/ledger.md | assigned | - | 0 |
+| S4.L | Ledger (64 R4 rows, D-62..D-75) | analyst | stage-4/docs/ledger.md | done | 200efad | 0 |
+| S4.A | Acceptance (s1-3 carried, s4 new) | analyst | stage-4/acceptance/ | assigned | - | 0 |
 | S4.P | Plan | builder | stage-4/docs/plan.md | assigned | - | 0 |
 | S4.O | Oracle ext + atomicity-under-failure tool | designer | stage-4/tools/oracle/ | assigned | - | 0 |
 
