@@ -24,7 +24,7 @@ Last accepted revision: 36547b6451dab2843338683d4226b7fbc1349250 (stage 3). Stag
 | S4.A | Acceptance (s1 422, s2 272, s3 134, s4 90) | analyst | stage-4/acceptance/ | built; only red = snapshot restore (S4.3) | 34e8a53 | 0 |
 | S4.PG | Plan gate | analyst | - | PLAN PASS (note: prepare-then-apply -> builder) | - | 0 |
 | S4.P | Plan | builder | stage-4/docs/plan.md | built | 8ea5e3c | 0 |
-| S4.1 | Refunds | builder | app | in review | 95cde7e | 0 |
+| S4.1 | Refunds | builder | app | accepted | 95cde7e | 0 |
 | S4.2+ | Batches, upgrade, load | builder | app | assigned | - | 0 |
 | S4.O | Oracle ext + atomicity-under-failure tool | designer | stage-4/tools/oracle/ | assigned | - | 0 |
 
