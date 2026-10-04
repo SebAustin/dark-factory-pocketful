@@ -94,6 +94,20 @@ def query_int(query: dict, name: str, default: int, lo: int, hi: int = None) -> 
     return n
 
 
+def query_instant(query: dict, name: str):
+    """(received string, exact key) for an instant query parameter, None if absent; 422 if
+    present but not RFC 3339 with an offset (D-42; empty included). The echo keeps the string
+    as received; a '+' decoded to a space before the offset is repaired for the key only."""
+    if name not in query:
+        return None
+    from .instants import key, repair_query_instant
+    received = query[name]
+    k = key(repair_query_instant(received))
+    if k is None:
+        raise errors.validation(name + " must be an RFC 3339 instant with an offset")
+    return received, k
+
+
 def query_enum(query: dict, name: str, allowed):
     if name not in query:
         return None

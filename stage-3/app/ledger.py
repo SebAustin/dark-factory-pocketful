@@ -59,3 +59,47 @@ def history_is_nonnegative(state: dict, uid: str) -> bool:
         if running < 0:
             return False
     return True
+
+
+# ---------------------------------------------------------------- historical views (D-48, D-51)
+
+def selected(p: dict, known):
+    """The latest revision recorded at or before `known` (a key), or None (D-48 step 1)."""
+    for rev in reversed(p["revisions"]):
+        if key_or_min(rev["recorded_at"]) <= known:
+            return rev
+    return None
+
+
+def total_at(state: dict, uid: str, at, known) -> int:
+    """Balance of uid at instant `at` (inclusive) as known at `known` (D-48)."""
+    total = state["users"][uid]["opening"]
+    for pid in state["user_payments"].get(uid, ()):
+        p = state["payments"][pid]
+        rev = selected(p, known)
+        if rev is not None and key_or_min(rev["effective_at"]) <= at:
+            total += signed(uid, p, rev["amount"])
+    return total
+
+
+def hold_at(a: dict, at, known) -> int:
+    """What one hold reserves at `at` as known at `known` (D-51)."""
+    events = a.get("events") or []
+    if not events or events[0]["kind"] != "created":
+        return 0  # seeded closed holds hold nothing at any instant
+    created = key_or_min(events[0]["at"])
+    if created > known or at < created:
+        return 0
+    if at >= key_or_min(a["expires_at"]):
+        return 0  # expiry is known as soon as creation is known
+    held = events[0]["held_delta"]
+    for e in events[1:]:
+        when = key_or_min(e["at"])
+        if when <= known and when <= at:
+            held += e["held_delta"]
+    return max(held, 0)
+
+
+def held_at(state: dict, uid: str, at, known) -> int:
+    return sum(hold_at(a, at, known) for a in state["authorizations"].values()
+               if a["from"] == uid)

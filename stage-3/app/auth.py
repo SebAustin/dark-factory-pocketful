@@ -1,10 +1,10 @@
 """Signup, login and GET /me (spec §6, §4 handles, §8)."""
 import re
 
-from . import errors, passwords
+from . import errors, instants, ledger, passwords
 from .routes import route
 from .store import STORE, available, new_id, new_token, now_ts
-from .validation import req_str
+from .validation import query_instant, req_str
 
 EMAIL_RE = re.compile(r"\A[^@\s]+@[^@\s]+\Z")
 NON_HANDLE_RE = re.compile(r"[^a-z0-9_]")
@@ -81,8 +81,22 @@ def login(ctx, state, user):
 
 @route("GET", "/me")
 def me(ctx, state, user):
-    return 200, {"user_id": user["id"], "display_name": user["display_name"],
-                 "handle": user["handle"], "balance": user["balance"],
-                 "total": user["balance"], "available": available(user),
-                 "held": user.get("held", 0),
-                 "currency": state["currency"], "minor_units": state["minor_units"]}
+    as_of = query_instant(ctx.query, "as_of")
+    known_at = query_instant(ctx.query, "known_at")
+    if as_of is None and known_at is None:  # stage 2 response, current corrected values
+        total, held = user["balance"], user.get("held", 0)
+    else:  # one read instant N for every default of this read (D-43)
+        now = instants.key(now_ts())
+        at = as_of[1] if as_of else now
+        known = known_at[1] if known_at else now
+        total = ledger.total_at(state, user["id"], at, known)
+        held = ledger.held_at(state, user["id"], at, known)
+    body = {"user_id": user["id"], "display_name": user["display_name"],
+            "handle": user["handle"], "balance": total, "total": total,
+            "available": total - held, "held": held,
+            "currency": state["currency"], "minor_units": state["minor_units"]}
+    if as_of:
+        body["as_of"] = as_of[0]
+    if known_at:
+        body["known_at"] = known_at[0]
+    return 200, body
