@@ -68,9 +68,15 @@ class Run:
         self.queries = 0
         self.skip = set()
         self.protocol = True
+        self.seed_closed = True
         self.last_instant = NEG
         self.keys = 0
+        self.last_span = (datetime.now(UTC), datetime.now(UTC))
+        self.skew_samples = []
         self.outcomes = {}
+        self.closed_expect = {}
+        self.ttl = TTL
+        self.reset_instant = None
         self.old_receipts = []
         self.lock = threading.Lock()
 
@@ -82,7 +88,9 @@ class Run:
         if key:
             headers["Idempotency-Key"] = key
         url = path + ("?" + raw_query if raw_query else "")
+        sent = datetime.now(UTC)
         r = self.http.request(method, url, headers=headers, json=body, params=params, timeout=timeout)
+        self.last_span = (sent, datetime.now(UTC))
         try:
             data = r.json()
         except ValueError:
@@ -140,8 +148,23 @@ class Run:
                            "note": "seed", "visibility": "public"})
         auth = {"id": "a_seed", "from_user_id": "u_1", "to_user_id": "u_2", "amount": 1000, "note": "seeded hold", "visibility": "public",
                 "status": "open", "created_at": fmt(start - timedelta(hours=2)), "expires_at": fmt(start + timedelta(hours=3))}
+        auths = [auth]
+        self.closed_expect = {}
+        if self.seed_closed and self.protocol:       # D-51: seeded closed holds hold nothing; closed_at has fixed fallbacks
+            auths += [
+                {"id": "a_exp", "from_user_id": "u_1", "to_user_id": "u_2", "amount": 300, "note": "seed", "visibility": "public", "status": "expired",
+                 "expires_at": fmt(start - timedelta(hours=5))},
+                {"id": "a_void", "from_user_id": "u_2", "to_user_id": "u_3", "amount": 200, "note": "seed", "visibility": "public", "status": "voided",
+                 "created_at": fmt(start - timedelta(hours=4)), "closed_at": fmt(start - timedelta(hours=3)), "expires_at": fmt(start - timedelta(hours=2))},
+                {"id": "a_cap", "from_user_id": "u_3", "to_user_id": "u_4", "amount": 100, "note": "seed", "visibility": "public", "status": "captured",
+                 "captured_amount": 100, "created_at": fmt(start - timedelta(hours=2)), "expires_at": fmt(start - timedelta(minutes=90))},
+                {"id": "a_void2", "from_user_id": "u_4", "to_user_id": "u_1", "amount": 50, "note": "seed", "visibility": "public", "status": "voided",
+                 "expires_at": fmt(start - timedelta(hours=2))},
+            ]
+            self.closed_expect = {"a_exp": ("expired", "expires_at", "u_1"), "a_void": ("voided", fmt(start - timedelta(hours=3)), "u_2"),
+                                  "a_cap": ("captured", fmt(start - timedelta(hours=2)), "u_3"), "a_void2": ("voided", "R", "u_4")}
         return {"currency": "EUR", "minor_units": 2, "authorization_ttl_seconds": TTL, "users": users, "payments": seeded,
-                "requests": [], "authorizations": [auth], "settlement_operator_ids": ["u_0"]}, seeded, auth
+                "requests": [], "authorizations": auths, "settlement_operator_ids": ["u_0"]}, seeded, auth
 
     def setup(self):
         fixture, seeded, auth = self.fixture()
@@ -171,6 +194,8 @@ class Run:
             rows.append((p["id"], p["from_user_id"], p["to_user_id"], p["amount"], created, p["visibility"]))
         omitted = [parse(by_id[p["id"]]["created_at"]) for p in seeded if "created_at" not in p]
         self.expect(all(t <= self.now() for t in omitted), "omitted seeded created_at must be the reset time, not later than now", str(omitted))
+        self.reset_instant = min(omitted) if omitted else None
+        self.expect(len(set(omitted)) <= 1, "every omitted seeded created_at is the one reset instant (D-44)", str(omitted))
         self.model = Model.from_seed({u["id"]: u["balance"] for u in fixture["users"]}, rows)
         self.model.add_auth(auth["id"], auth["from_user_id"], auth["to_user_id"], auth["amount"], parse(auth["created_at"]), parse(auth["expires_at"]))
         self.auths = [auth["id"]]
@@ -231,7 +256,7 @@ class Run:
             self.model.add_auth(resp["authorization_id"], frm, to, amount, created, parse(resp["expires_at"]))
             self.auths.append(resp["authorization_id"])
             self.expect(resp.get("closed_at", "missing") is None, "a new authorization must expose closed_at: null", json.dumps(resp))
-            self.expect(parse(resp["expires_at"]) == created + timedelta(seconds=TTL), "expires_at must be created_at + ttl (microseconds kept, D-41)", json.dumps(resp))
+            self.expect(parse(resp["expires_at"]) == created + timedelta(seconds=self.ttl), "expires_at must be created_at + ttl (microseconds kept, D-41)", json.dumps(resp))
         else:
             self.expect(status == 409, "authorize refused unexpectedly", f"{status} {resp}")
 
@@ -415,9 +440,31 @@ class Run:
 
     # ------------------------------------------------------------------ view checks
     def learn_skew(self, created_at):
-        delta = parse(created_at) - datetime.now(UTC)
+        """Server clock minus client clock, from the instant a payment was created vs the midpoint of its request."""
+        sent, received = self.last_span
+        delta = parse(created_at) - (sent + (received - sent) / 2)
         if abs(delta) < timedelta(seconds=3):
-            self.skew = timedelta(seconds=round(delta.total_seconds()))
+            self.skew_samples = (self.skew_samples + [delta])[-15:]
+            ordered = sorted(self.skew_samples)
+            self.skew = ordered[len(ordered) // 2]
+
+    def read_instants(self, span):
+        """The model cannot see the read instant N; N lies inside the request's span (server clock). Candidates: the span ends
+        and every recorded instant inside it (the answer only changes at those instants)."""
+        sent, received = span
+        slack = timedelta(milliseconds=25) if self.skew_samples else timedelta(seconds=1)
+        lo, hi = sent + self.skew - slack, received + self.skew + slack
+        out = {lo, hi}
+        m = self.model
+        events = []
+        for pay in m.payments.values():
+            events += [rev.recorded_at for rev in pay.revs]
+        for a in m.auths.values():
+            events += [a.created_at, a.expires_at] + ([a.close[1]] if a.close else [])
+        for e in events:
+            if lo - MICRO <= e <= hi + MICRO:
+                out.update([e - MICRO, e, e + MICRO])
+        return sorted(out)
 
     def instants(self):
         pool = set()
@@ -454,23 +501,22 @@ class Run:
             params["as_of"] = as_of_text
         if known_text:
             params["known_at"] = known_text
-        t0 = self.now()
         status, resp = self.call("GET", "/me", self.tokens[user], params=params)
+        span = self.last_span
         self.queries += 1
         if not self.expect(status == 200, "GET /me failed", f"{params} => {status} {resp}"):
             return None
         as_of = parse(as_of_text) if as_of_text else None
         known = parse(known_text) if known_text else None
         got = {k: resp.get(k) for k in ("balance", "total", "available", "held")}
-        base = t0.replace(microsecond=0)
         tried = []
-        for now in (base - timedelta(seconds=1), base, base + timedelta(seconds=1), base + timedelta(seconds=2)):
+        for now in self.read_instants(span):
             want = self.model.me(user, as_of, known, now)
             tried.append(want)
             if want == got:
                 break
         else:
-            self.diverge("GET /me view", f"user {user} params {params}\nmodel   {tried[1]}\nservice {got}\n"
+            self.diverge("GET /me view", f"user {user} params {params}\nmodel   {tried[len(tried) // 2]}\nservice {got}\n"
                          f"repro: curl -G -H 'Authorization: Bearer <{user} token>' {self.base}/me " + " ".join(f"--data-urlencode '{k}={v}'" for k, v in params.items()))
         if as_of_text:
             self.expect(resp.get("as_of") == as_of_text, "as_of must be echoed exactly (D-43)", f"sent {as_of_text!r} got {resp.get('as_of')!r}")
@@ -507,14 +553,13 @@ class Run:
             params["limit"] = limit
         if offset is not None:
             params["offset"] = offset
-        t0 = self.now()
         status, resp = self.call("GET", "/statement", self.tokens[user], params=params)
+        span = self.last_span
         self.queries += 1
         if not self.expect(status == 200, "GET /statement failed", f"{params} => {status} {resp}"):
             return None
         frm, to, known = (parse(x) if x else None for x in (frm_t, to_t, known_t))
-        base = t0.replace(microsecond=0)
-        nows = [base - timedelta(seconds=1), base, base + timedelta(seconds=1), base + timedelta(seconds=2)] if to is None else [base]
+        nows = self.read_instants(span) if to is None else [span[0] + self.skew]
         shape = self.shape(resp)
         lim = 50 if limit is None else limit
         off = 0 if offset is None else offset
@@ -525,7 +570,7 @@ class Run:
                 matched = full
                 break
         if matched is None:
-            full = self.model.statement(user, frm, to, known, nows[min(1, len(nows) - 1)])
+            full = self.model.statement(user, frm, to, known, nows[len(nows) // 2])
             self.diverge("GET /statement view", f"user {user} params {params}\nmodel   {json.dumps(self.want_page(full, lim, off), default=str)}\nservice {json.dumps(shape, default=str)}\n"
                          f"repro: curl -G -H 'Authorization: Bearer <{user} token>' {self.base}/statement " + " ".join(f"--data-urlencode '{k}={v}'" for k, v in params.items()))
             return None
@@ -608,7 +653,7 @@ class Run:
             lo, hi = sorted([self.rng.choice(pool), self.rng.choice(pool)])
             f = self.render(lo) if self.rng.random() < 0.6 else None
             t = self.render(hi) if self.rng.random() < 0.75 else None
-            if f and t is None and lo > self.now() - timedelta(seconds=3):    # from vs the default `to` (now) would be ambiguous
+            if f and t is None and lo > self.now() - timedelta(seconds=1):    # from vs the default `to` (now) would be ambiguous
                 f = None
             k = self.render(self.rng.choice(pool)) if self.rng.random() < 0.5 else None
             self.stmt_view(user, f, t, k, self.rng.choice([None, 1, 2, 3, 200]), self.rng.choice([None, 0, 1, 4]), want_snapshot=self.rng.random() < 0.3)
@@ -670,6 +715,74 @@ class Run:
             for pid, item in seen.items():
                 if pid in self.model.payments:
                     self.expect(item["amount"] == self.model.payments[pid].revs[0].amount, "the feed shows the ORIGINAL amount after corrections (D-56)", f"{pid}: {item['amount']} vs {self.model.payments[pid].revs[0].amount}")
+
+    # ------------------------------------------------------------------ upgrade path (D-52)
+    def setup_upgrade(self, data):
+        """Adopt an imported stage-1/2 export: users, tokens and the model rebuilt from the export's state (D-52)."""
+        state = data["export"]["state"]
+        self.users = list(state["users"])
+        self.handles = {u: state["users"][u]["handle"] for u in self.users}
+        self.tokens = dict(data["tokens"])
+        self.model = Model.from_import(state)
+        self.seeded_total = sum(u["balance"] for u in state["users"].values())
+        self.auths = list(self.model.auths)
+        self.snapshots = []
+        self.keys = 0
+        self.payment_keys = None
+        self.upgrade = data
+        self.ttl = state.get("settings", {}).get("authorization_ttl_seconds", 600)     # stage-1 exports carry none: the default (D-52)
+        instants = [p.created_at for p in self.model.payments.values()] + [a.created_at for a in self.model.auths.values()]
+        self.last_instant = max(instants) if instants else NEG
+        self.note(f"imported a stage {data['stage']} export: {len(state['users'])} users, {len(self.model.payments)} payments, {len(self.model.auths)} authorizations")
+
+    def check_import(self):
+        data, state = self.upgrade, self.upgrade["export"]["state"]
+        for u in self.users:
+            status, me = self.call("GET", "/me", self.tokens[u])
+            if not self.expect(status == 200, "a source token must still authenticate after the import (D-52)", f"{u}: {status} {me}"):
+                continue
+            src = state["users"][u]
+            held = src.get("held", 0)
+            self.expect(me["balance"] == src["balance"] and me["total"] == src["balance"] and me["held"] == held and me["available"] == src["balance"] - held,
+                        "imported balances, held and available must equal the export's", f"{u}: {me} vs balance {src['balance']} held {held}")
+        replayed = 0
+        for w in data["writes"]:
+            if w["user"] not in self.tokens:
+                continue
+            status, resp = self.call("POST", w["path"], self.tokens[w["user"]], w["body"], w["key"])
+            replayed += 1
+            self.expect(status == 200 and resp == w["response"], "an imported idempotent receipt must replay 200 with the original body (D-52)",
+                        f"{w['path']} key {w['key']}: {status} {json.dumps(resp)[:200]} vs {json.dumps(w['response'])[:200]}")
+        self.note(f"replayed {replayed} imported idempotent writes")
+        self.sync_auths()
+
+    def check_linked(self):
+        """Imported settlement members and captures are immutable; an ordinary imported payment is correctable."""
+        linked = [p for p in self.model.payments.values() if p.kind in ("settlement", "capture")]
+        plain = [p for p in self.model.payments.values() if p.kind == "plain"]
+        for pay in self.rng.sample(linked, min(8, len(linked))):
+            self.do_correction(pay, pay.frm, 1, max(pay.current().amount - 1, 0), fmt(self.now() - timedelta(seconds=30)))
+        for pay in self.rng.sample(plain, min(3, len(plain))):
+            self.do_correction(pay, pay.frm, 1, max(pay.current().amount - 1, 0), fmt(self.now() - timedelta(seconds=30)))
+        self.note(f"checked {min(8, len(linked))} linked and {min(3, len(plain))} ordinary imported payments")
+
+    def check_seeded_closed(self):
+        """D-51: seeded closed holds hold nothing (the /me grid covers that); closed_at = supplied closed_at, else expires_at
+        (expired), else supplied created_at, else the reset instant."""
+        for aid, (status, closed, user) in self.closed_expect.items():
+            code, resp = self.call("GET", "/authorizations", self.tokens[user], params={"limit": 200})
+            item = next((a for a in (resp or {}).get("authorizations", []) if a["authorization_id"] == aid), None)
+            if not self.expect(item is not None, "a seeded closed authorization must be listed", f"{aid} for {user}: {code}"):
+                continue
+            self.expect(item["status"] == status, "a seeded closed authorization keeps its status", f"{aid}: {item['status']} != {status}")
+            got = item.get("closed_at", "missing")
+            if closed == "expires_at":
+                want = parse(item["expires_at"])
+            elif closed == "R":
+                want = self.reset_instant
+            else:
+                want = parse(closed)
+            self.expect(got not in (None, "missing") and parse(got) == want, "seeded closed authorization closed_at (D-51)", f"{aid}: got {got}, want {want}")
 
     def check_reset_validation(self):
         """D-44/D-45: a future seeded created_at and a negative opening are 422 and change nothing."""
@@ -851,6 +964,9 @@ class Run:
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--upgrade", type=int, choices=(1, 2), help="populate a frozen stage-1/2 service (--source), export it, import into the target, then diff")
+    ap.add_argument("--source", help="URL of the frozen stage-1/2 service to populate for --upgrade (your own copy)")
+    ap.add_argument("--source-ops", type=int, default=60)
     ap.add_argument("--ops", type=int, default=120)
     ap.add_argument("--seed", type=int, default=int(os.environ.get("DIFF_SEED", random.randrange(1 << 30))))
     ap.add_argument("--concurrent", type=float, default=8, help="seconds of the 50-way concurrent phase (0 = skip)")
@@ -867,9 +983,21 @@ def main():
     run.protocol = not args.no_protocol
     began = time.time()
     try:
-        run.setup()
-        if run.protocol:
-            run.check_reset_validation()
+        if args.upgrade:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            from upgrade import populate
+            data = populate(args.source, args.upgrade, args.seed, args.source_ops)
+            data["stage"] = args.upgrade
+            status, resp = run.call("POST", "/_test/import", body=data["export"], timeout=60)
+            run.expect(status == 204, f"a stage {args.upgrade} export must import (D-52)", f"{status} {resp}")
+            run.setup_upgrade(data)
+            run.check_import()
+            run.check_linked()
+        else:
+            run.setup()
+            if run.protocol:
+                run.check_seeded_closed()
+                run.check_reset_validation()
         run.grid(20)
         run.lockstep(args.ops)
         run.same_revision_race()

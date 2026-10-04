@@ -161,6 +161,31 @@ def test_correction_order_follows_d46():
     eq(m.correction_result("p1", "a", 1, 300, T("10:00:00"), NOW), "ok", "delta 0 is allowed")
 
 
+def test_import_d52():
+    """D-52 by hand: a stage-2 export. a: balance 700; sent p1 (300) and received nothing -> opening 1000. b: balance 300,
+    received p1 and a 100 capture c1 and sent 100 (p2) -> opening 300 - 300 - 100 + 100 = 0."""
+    state = {"users": {"a": {"balance": 600}, "b": {"balance": 300, "held": 0}},
+             "payments": {"p1": {"from": "a", "to": "b", "amount": 300, "created_at": "2026-09-24T10:00:00+00:00", "visibility": "public"},
+                          "p2": {"from": "b", "to": "a", "amount": 100, "created_at": "2026-09-24T10:05:00+00:00", "visibility": "public"},
+                          "c1": {"from": "a", "to": "b", "amount": 100, "created_at": "2026-09-24T10:22:00+00:00", "visibility": "public",
+                                 "authorization_id": "h1"},
+                          "s1": {"from": "a", "to": "b", "amount": 0, "created_at": "2026-09-24T10:30:00+00:00", "settlement_id": "st1"}},
+             "authorizations": {"h1": {"from": "a", "to": "b", "amount": 400, "status": "voided", "created_at": "2026-09-24T10:20:00+00:00",
+                                       "expires_at": "2026-09-24T10:40:00+00:00", "payment_ids": ["c1"]},
+                                "h2": {"from": "b", "to": "a", "amount": 50, "status": "voided", "created_at": "2026-09-24T10:10:00+00:00",
+                                       "expires_at": "2026-09-24T10:40:00+00:00", "payment_ids": []}}}
+    m = Model.from_import(state)
+    eq(m.opening, {"a": 600 + 300 - 100 + 100 - 0, "b": 300 - 300 + 100 - 100}, "openings = balance - net of all imported payments")
+    eq((m.payments["c1"].kind, m.payments["s1"].kind, m.payments["p1"].kind), ("capture", "settlement", "plain"), "link kinds")
+    eq(m.auths["h1"].close, ("voided", T("10:22:00")), "voided stage-2 hold closes at its last capture (D-52)")
+    eq(m.auths["h2"].close, ("voided", T("10:10:00")), "voided without captures closes at created_at (D-52)")
+    eq(m.me("a", T("10:21:00"), None, NOW)["held"], 400, "h1 holds its full amount until the capture at 10:22")
+    eq(m.me("a", T("10:22:00"), None, NOW)["held"], 0, "closing capture releases the rest")
+    eq(m.me("b", T("10:10:00"), None, NOW)["held"], 0, "h2 closed at its creation holds nothing")
+    eq(m.correction_result("c1", "a", 1, 10, T("10:22:00"), NOW), "linked_payment_immutable", "imported capture is immutable")
+    eq(m.correction_result("s1", "a", 1, 10, T("10:30:00"), NOW), "linked_payment_immutable", "imported settlement member is immutable")
+
+
 def test_sum_of_totals_is_conserved():
     m = corrected()
     m.add_payment("p4", "b", "a", 20, T("11:00:00"))

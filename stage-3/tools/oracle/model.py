@@ -132,6 +132,36 @@ class Model:
             model.add_payment(pid, frm, to, amount, created, visibility=visibility)
         return model
 
+    @classmethod
+    def from_import(cls, state):
+        """D-52: rebuild history from a stage-1 or stage-2 export's state (revision 1 for every payment).
+
+        opening(u) = imported balance(u) - net effect of ALL imported payments touching u. Payments with a
+        settlement_id are settlement members and those with an authorization_id are captures (both immutable).
+        Authorizations: created_at as exported; captures at their payment's created_at; captured -> closed at
+        the last capture; expired -> implicit at expires_at; voided -> closed at the last capture if any, else
+        at created_at (the stage-2 export carries no void time); open -> still open."""
+        users = state["users"]
+        net = {u: 0 for u in users}
+        pays = state.get("payments", {})
+        for p in pays.values():
+            net[p["from"]] -= p["amount"]
+            net[p["to"]] += p["amount"]
+        model = cls({u: users[u]["balance"] - net[u] for u in users})
+        for pid, p in pays.items():
+            kind = "settlement" if p.get("settlement_id") else ("capture" if p.get("authorization_id") else "plain")
+            model.add_payment(pid, p["from"], p["to"], p["amount"], parse(p["created_at"]), kind=kind, visibility=p.get("visibility", "public"))
+        for aid, a in state.get("authorizations", {}).items():
+            model.add_auth(aid, a["from"], a["to"], a["amount"], parse(a["created_at"]), parse(a["expires_at"]))
+            for pid in a.get("payment_ids", []):
+                model.add_capture(aid, pid)
+            last = model.payments[a["payment_ids"][-1]].created_at if a.get("payment_ids") else None
+            if a["status"] == "captured":
+                model.close_auth(aid, "captured", last)
+            elif a["status"] == "voided":
+                model.close_auth(aid, "voided", last or parse(a["created_at"]))
+        return model
+
     def add_user(self, user):
         self.opening.setdefault(user, 0)
 

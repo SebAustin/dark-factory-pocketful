@@ -42,11 +42,29 @@ key set, statement and entry key sets, the stage 2 payment object (13 keys) insi
 missing key / no token / no JSON object, feed unchanged by corrections (D-56), reset with a future `created_at` or a negative opening is 422 and changes nothing,
 seeded `created_at` kept exactly as supplied and omitted = reset time (<= now, before API payments), snapshot token 404 after a reset.
 
+## Upgrade path and seeded closed holds (S3.O2)
+```sh
+# your OWN copies of the frozen sources (stdlib only), then:
+(cd stage-1 && PORT=18310 python3 -m app.server) &   (cd stage-2 && PORT=18311 python3 -m app.server) &
+TARGET_URL=http://127.0.0.1:18300 $PY stage-3/tools/oracle/diff_run.py --upgrade 2 --source http://127.0.0.1:18311 --seed 5
+TARGET_URL=http://127.0.0.1:18300 $PY stage-3/tools/oracle/diff_run.py --upgrade 1 --source http://127.0.0.1:18310 --seed 5
+```
+`--upgrade N` populates the frozen stage-N service with random history (payments incl. same-second bursts, requests in every status, splits,
+settlements; stage 2 adds authorizations, partial/final captures, voids and expiries), takes the unchanged export, imports it into the target,
+rebuilds the model from the export (`Model.from_import`, D-52: revision 1 per payment, opening = balance − net of all imported payments, settlement
+members and captures immutable, captured/voided/expired hold closings), then checks: source tokens authenticate, balances/held/available equal the export,
+every recorded idempotent write replays 200 verbatim, corrections of imported linked payments are `linked_payment_immutable` and of ordinary ones follow
+the model, then the whole random run (all operations, grid, statements, snapshots, race, 50-way concurrent phase) continues on the imported state.
+Seeded **closed** holds (expired / voided with and without `closed_at` / captured) are in every normal run's fixture and checked for status and the
+D-51 `closed_at` fallbacks (supplied `closed_at`, else `expires_at` for expired, else supplied `created_at`, else the reset instant); the grid proves
+they hold nothing at any instant.
+
 ## Tolerances and limits (be aware)
 - The model cannot see the service's read instant N. Queries whose answer depends on "now" (default `to`, `/me` holds without `as_of`) are accepted if
-  they match the model at any whole second from -1 to +2 around the request start; an off-by-one-second *service* bug there is therefore not reported.
-  Explicit instants (the bulk of the grid, including +-1 microsecond around every recorded instant) are exact.
+  they match the model at some instant inside the request's own span on the server clock (client clock + a learned skew, widened by 25 ms) or at a recorded
+  instant inside that span; a service bug that only shows with N outside that window is reported. Explicit instants (the bulk of the grid, including +-1 microsecond
+  around every recorded instant) are exact.
 - Instants finer than a microsecond are not generated (the service clock is microseconds, D-41); `.123456789` parsing is covered by `selftest_model.py` only.
-- Seeded **closed** holds and the **import/upgrade** of populated stage-1/stage-2 exports (D-52) are not driven here; the seeded **open** hold is.
+- The upgrade run uses the frozen sources started from their source trees (same code as the images, not the containers).
 - The self-test stand-in answers from the same model, so it proves the tool catches divergences and that the tool and model agree with themselves; the model's
   own correctness rests on `selftest_model.py` (hand-computed) and on review against the spec.
