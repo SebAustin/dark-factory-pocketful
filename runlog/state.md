@@ -31,7 +31,7 @@ Last accepted revision: 36547b6451dab2843338683d4226b7fbc1349250 (stage 3). Stag
 | S4.4 | Populated stage-1/2/3 upgrades | builder | tests | accepted | 2b8d873 | 0 |
 | S4.5 | Load | builder | tools | accepted | a2e2ac4 | 0 |
 | S4.O | Oracle ext + atomicity-under-failure tool | designer | stage-4/tools/oracle/ | done; 0 divergences on 86284b6; 18 injected rules PASS | 756a818 | 0 |
-| S4.U1 | Refund badge in feed | designer | stage-4/web/** | assigned | - | 0 |
+| S4.U1 | Refund badge in feed | designer | stage-4/web/** | in review | f68e512 | 0 |
 
 ## Stage 4 decisions
 
