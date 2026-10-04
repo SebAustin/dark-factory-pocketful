@@ -1,419 +1,299 @@
-# Stage 2 requirements ledger — Pocketful: wallet screens and payment authorizations
+# Stage 3 requirements ledger — Pocketful: statements and payment corrections
 
-Sources of truth: `runlog/stage2-spec.md` (stage 2) and `runlog/stage1-spec.md` (stage 1,
-"continue to apply, with the additions below"). Stage 1's 228 rows live in
-`stage-1/docs/ledger.md` (frozen, accepted 9d7ab5e) and remain in force; the rows stage 2
-changes are listed in **Part B** with the new rule. Part A holds the new stage 2 rows.
+Sources of truth: `runlog/stage3-spec.md` (stage 3), `runlog/stage2-spec.md`, `runlog/stage1-spec.md`
+("The requirements from stages 1 and 2 continue to apply, with the additions below"). Stage 1's
+228 rows (`stage-1/docs/ledger.md`, frozen 9d7ab5e) and stage 2's 182 rows (`stage-2/docs/ledger.md`,
+frozen 6a3fd33) stay in force; rows stage 3 changes are listed in **Part B**. Part A holds the new
+rows. Time semantics are fixed by the decision records D-41…D-60 (`docs/decisions/`), cited as `D-nn`.
 
-- **id**: `R2-<area>.<n>`, stable once published. Areas: SCR screens/routing, VIS product and
-  visual quality, SIGN signup/login UI, PAY pay/request UI, AMT amount input and formatting,
-  FEED activity UI, REQ requests UI, SPL split UI, SYNC refresh after actions, RACE competing
-  clients / uncertain outcomes, UPG upgrade, HOLD hold invariants and API changes, MOD fixture
-  model, EXP expiry, ME `GET /me`, AUTH `POST /authorizations`, CAP capture, VOID void, LIST
-  `GET /authorizations`, AUI authorizations UI, CONC concurrency.
-- **kind**: behaviour, error, invariant, limit, format, screen, operational.
-- **proof**: planned acceptance test in `stage-2/acceptance/` (`api_*` = httpx, `ui_*` =
-  playwright at 390 px and 1280 px), or `untestable: <reason>`, or `review:` (judged by the
-  verifier's screen review, partly automatable).
-- Committed suite (S2.A): `stage-2/acceptance/stage2/test_api_*.py` and `test_ui_*.py`; every test
-  is named `test_R2_<AREA>_<n>_...` with the ids it proves, so `grep -n R2_CAP_12` finds it. The proof
-  column gives the intent and planned grouping.
-- **H** marks hidden requirements (unlikely to be probed by a quick reading or a sample check).
-- Open readings are settled in `docs/decisions/D-21`… and cited as `D-nn`.
+- **id**: `R3-<area>.<n>`, stable once published. Areas: TS payment timestamps and seeding, ME
+  `GET /me` temporal reads, ST `GET /statement`, REV revision model, COR correction endpoint
+  (validation, response, idempotency), MNY money movement and overdraft rules of corrections, RVL
+  `GET /payments/{id}/revisions`, KN `known_at` selection, SNAP stable statement pagination, SET
+  settlement/capture links, UPG upgrades over populated state, HH historical holds, INV invariants
+  across every historical view.
+- **kind**: behaviour, error, invariant, limit, format, operational.
+- **proof**: planned test in `stage-3/acceptance/stage3/` (`test_R3_<AREA>_<n>_...`), all over
+  HTTP; `prop:` = property/differential test (a reference model in the test computes the expected
+  value from the spec's rules and is compared with the service across many generated instants);
+  `untestable: <reason>`.
+- **H** = hidden: unlikely to be probed by a quick reading or the event's small shipped subset.
 
-## Part A — new stage 2 requirements
+Notation used in quotes and decisions: *T* = `as_of`, *K* = `known_at`, *E(p)* / *R(p)* = selected
+effective / recorded instant of payment *p*, *now* = the read instant (D-43).
 
-### Screens and routing (SCR)
+## Part A — new stage 3 requirements
 
-| id | section | requirement (verbatim quote) | kind | proof |
-|---|---|---|---|---|
-| R2-SCR.1 | intro | "Users can manage payments, requests and bill splits in a browser." | screen | ui_flows.py::test_pay_request_split_end_to_end |
-| R2-SCR.2 | intro | "The following screens must be reachable by URL." `/`, `/requests`, `/split`, `/signup`, `/login` (and `/authorizations`, UI section) | screen | ui_routes.py::test_required_routes_render_html[route] |
-| R2-SCR.3 | intro | "Other screens must be reachable through the UI." | screen | ui_routes.py::test_navigation_reaches_every_screen |
-| R2-SCR.4 | intro | "Server-side and client-side rendering are both permitted." | operational | untestable: permission |
-| R2-SCR.5 **H** | intro | "The browser and the API share `/requests`. Return the UI for `Accept: text/html`; API requests without that header receive JSON." | behaviour | api_negotiation.py::test_requests_html_vs_json (Accept text/html → text/html page; no Accept / `*/*` / application/json → JSON, 401 JSON without token) (D-21) |
-| R2-SCR.6 **H** | UI | "The UI and the API share `/authorizations`: serve HTML for `Accept: text/html` and JSON otherwise, as for `/requests`." | behaviour | api_negotiation.py::test_authorizations_html_vs_json |
-| R2-SCR.7 | intro | "The UI must expose the `data-testid` attributes listed below for integration testing. Additional elements are permitted" | format | every ui_* test locates elements only by data-testid |
-| R2-SCR.8 **H** | §2 (stage 1) carried | "Runtime assets and dependencies must be included in the image. This includes fonts, scripts and stylesheets; external services are unavailable at runtime." | operational | ui_routes.py::test_no_external_requests (playwright records every request; all same-origin) |
-
-### Product and visual quality (VIS)
+### Payment timestamps and seeding (TS)
 
 | id | section | requirement (verbatim quote) | kind | proof |
 |---|---|---|---|---|
-| R2-VIS.1 | Product | "The browser experience must feel like a coherent, presentation-ready consumer finance product, not a test harness with controls attached. Aim for a calm, trustworthy character." | screen | review: verifier screen review of screenshots at 390/1280 (ui_visual.py::test_screenshots saves them) |
-| R2-VIS.2 **H** | Product | "Available funds must be the clearest monetary value once holds exist, with total and held funds visibly secondary." | screen | ui_visual.py::test_available_is_headline (computed font-size/weight of wallet-available > wallet-balance and wallet-held) |
-| R2-VIS.3 | Product | "Payments, requests, splits and authorisations should be easy to scan, and status, direction, privacy and money movement should be understandable without interpreting raw API data." | screen | review: + ui_visual.py::test_no_raw_json_or_enum_dump (no `{"`, no raw `u_…` ids as primary text) |
-| R2-VIS.4 | Product | "Use a consistent visual system for typography, spacing, colour, controls and feedback. Primary actions must be easy to identify." | screen | review |
-| R2-VIS.5 **H** | Product | "Available, held, pending, loading, successful, refused and uncertain states must be visually distinct" | screen | ui_visual.py::test_states_visually_distinct (pay-error vs pay-uncertain vs success differ in computed colour/icon; pending vs paid request items differ) |
-| R2-VIS.6 | Product | "Format people, amounts and timestamps for people first; expose technical identifiers only where they help the user." | screen | review: + ui_visual.py::test_no_raw_json_or_enum_dump |
-| R2-VIS.7 **H** | Product | "The required flows must remain clear and usable at a 375 CSS-pixel viewport and at conventional desktop widths, without horizontal page scrolling." | screen | ui_visual.py::test_no_horizontal_scroll[375,390,1280][route] (document.scrollingElement.scrollWidth ≤ innerWidth, with long notes and 1e9 amounts rendered) |
-| R2-VIS.8 **H** | Product | "Inputs need visible labels" | screen | ui_a11y.py::test_every_input_has_visible_label (label[for]/aria-labelledby visible text, not placeholder-only) |
-| R2-VIS.9 **H** | Product | "keyboard focus must be apparent" | screen | ui_a11y.py::test_focus_visible (Tab to each control; outline/box-shadow differs from unfocused) |
-| R2-VIS.10 **H** | Product | "text and controls need sufficient contrast" | screen | ui_a11y.py::test_text_contrast_wcag_aa (computed colours, ratio ≥ 4.5 normal / 3 large & controls) |
-| R2-VIS.11 **H** | Product | "Provide considered empty, loading and error states" | screen | ui_states.py::test_empty_states (empty-activity, empty-requests, empty-authorizations); ui_states.py::test_loading_state_shown_while_slow (route delay) |
-| R2-VIS.12 | Product | "keep navigation consistent across the required routes" | screen | ui_routes.py::test_navigation_consistent (same nav links on every route) |
-| R2-VIS.13 | Product | "A custom illustration, brand asset or exact visual match to a reference is not required." | operational | untestable: permission |
+| R3-TS.1 | Timestamps | "Every payment's `created_at` is an RFC 3339 instant with an offset identifying when it moved money." | format | test_R3_TS_1_created_at_rfc3339_every_payment_kind (direct, request pay, settlement member, capture, seeded, imported) |
+| R3-TS.2 | Timestamps | "Every endpoint returning a payment includes it." | format | test_R3_TS_2_created_at_on_every_payment_surface (POST /payments, pay, capture, settlements, /activity, /statement entries) |
+| R3-TS.3 | Timestamps | "`GET /activity` retains its existing ordering by this field." | behaviour | test_R3_TS_3_activity_order_by_created_at_incl_seeded_past (seeded created_at in the past sorts below newer API payments) |
+| R3-TS.4 **H** | Timestamps | "Seeded payments may supply `created_at`" | behaviour | test_R3_TS_4_seeded_created_at_kept (echoed by instant on /activity, revisions, statement) |
+| R3-TS.5 **H** | Timestamps | "omission uses reset time, before subsequent API-created payments." | behaviour | test_R3_TS_5_omitted_created_at_is_reset_time_before_api_payments (seeded without created_at sorts before an API payment made immediately after reset, in /activity and /statement) (D-44) |
+| R3-TS.6 **H** | Timestamps | "A seeded `created_at` in the future gives `422 validation_failed` from `POST /_test/reset`, with no state change." | error | test_R3_TS_6_seeded_future_created_at_422_state_unchanged (now+5 s → 422; old token, balances, feed intact; created_at = now−1 s accepted) |
+| R3-TS.7 **H** | Timestamps | "A fixture's `balance` remains the balance after all seeded payments. Loading those payments must not change that balance." | behaviour | test_R3_TS_7_seeded_balance_is_ending_balance (/me current = fixture balance with dated seeded payments) |
+| R3-TS.8 **H** | Effective time | "A seeded payment's supplied `created_at` is also its original recorded/effective time; omission uses reset time." | behaviour | test_R3_TS_8_seeded_revision1_times (revisions[0].effective_at = recorded_at = created_at) |
+| R3-TS.9 **H** | Effective time | "Seeded history is consistent and nonnegative." | invariant | test_R3_TS_9_inconsistent_seeded_history_422 (opening balance would be negative, or a seeded boundary negative → 422) (D-45) |
+| R3-TS.10 **H** | derived, D-41 | server-assigned instants have microsecond precision and are strictly increasing across the service (monotonic) | format | test_R3_TS_10_server_instants_strictly_increase (50 rapid payments: created_at strictly increasing; tie-free) |
+| R3-TS.11 **H** | derived, D-44 | ties among equal `created_at` (seeded or settlement members) order by payment id ascending (code-point order) | behaviour | test_R3_TS_11_equal_created_at_tiebreak_by_id (statement and as_of boundaries) |
 
-### Signup and login UI (SIGN)
+### `GET /me` as of an instant (ME)
 
 | id | section | requirement (verbatim quote) | kind | proof |
 |---|---|---|---|---|
-| R2-SIGN.1 | Signup | `signup-email`, `signup-password`, `signup-display-name` inputs, `signup-submit` button | screen | ui_auth.py::test_signup_flow_signs_in |
-| R2-SIGN.2 | Signup | `login-email`, `login-password`, `login-submit` | screen | ui_auth.py::test_login_flow_signs_in |
-| R2-SIGN.3 **H** | Signup | "`auth-error` \| Error message. Present only when there is one" | screen | ui_auth.py::test_auth_error_only_on_error (absent on load; present on wrong password, short password, email_taken, handle_taken; gone after success) |
-| R2-SIGN.4 **H** | Signup | "`current-user` \| Visible on every screen when signed in. Text contains the display name" | screen | ui_auth.py::test_current_user_on_every_route |
-| R2-SIGN.5 **H** | Signup | "`current-handle` \| Text is exactly the caller's handle, with no `@` and no surrounding words" | screen | ui_auth.py::test_current_handle_exact (text.strip() == handle; derived handle for signup) |
-| R2-SIGN.6 | Signup | "`logout-button` \| Button" | screen | ui_auth.py::test_logout_signs_out (current-user gone; protected route shows login) |
+| R3-ME.1 | GET /me | "`as_of` is optional and is an RFC 3339 instant with an offset." | behaviour | test_R3_ME_1_as_of_accepts_offsets (`Z`, `+02:00`, `-05:30`, fractional seconds; same instant → same answer) (D-42) |
+| R3-ME.2 **H** | GET /me | "Anything else — a naive local time, a bare date, an empty value — is 422 `validation_failed`." | error | test_R3_ME_2_as_of_invalid_422 (`2026-09-24T13:20:00`, `2026-09-24`, ``, `now`, `1727184000`, `2026-13-01T00:00:00Z`, `2026-09-24 13:20:00Z`) |
+| R3-ME.3 **H** | GET /me | "Without temporal query parameters the response retains the existing money fields and reports current corrected values." | behaviour | test_R3_ME_3_no_params_shape_unchanged_and_corrected (exact stage-2 key set; balance reflects corrections) |
+| R3-ME.4 **H** | GET /me | "`balance` is the caller's balance as it stood at that instant: the balance after every payment of theirs with `created_at` at or before `as_of`, and before every payment after it." | behaviour | prop: test_R3_ME_4_as_of_matches_reference_model (every boundary ±1 µs) |
+| R3-ME.5 **H** | GET /me | "A payment made at exactly `as_of` counts as having happened." | behaviour | test_R3_ME_5_as_of_inclusive_at_exact_instant (as_of = created_at string, and the same instant in another offset) |
+| R3-ME.6 | GET /me | "An `as_of` at or after the latest payment returns the current balance." | behaviour | test_R3_ME_6_as_of_after_latest_is_current (and far future) |
+| R3-ME.7 **H** | GET /me | "An `as_of` before the earliest payment returns the opening balance — what the wallet held before anything moved." | behaviour | test_R3_ME_7_as_of_before_earliest_is_opening (seeded: balance − net of seeded; signup user: 0) |
+| R3-ME.8 **H** | GET /me | "The response carries `as_of` back, exactly as given." | format | test_R3_ME_8_as_of_echoed_verbatim (offset, fraction and case preserved; absent when not supplied) (D-43) |
+| R3-ME.9 **H** | Historical holds | "For `GET /me?as_of=T&known_at=K`, all four money fields describe that same view: `balance = total`, `available = total - held`." | invariant | prop: test_R3_ME_9_four_fields_same_view |
+| R3-ME.10 **H** | KN | "Echo supplied `known_at` exactly." | format | test_R3_ME_10_known_at_echoed_verbatim |
 
-### Balance, pay and request forms (PAY)
-
-| id | section | requirement (verbatim quote) | kind | proof |
-|---|---|---|---|---|
-| R2-PAY.1 | Balance | "`wallet-balance` \| Text is exactly the formatted amount. Carries `data-amount="{minor units}"`" (stage 2: formatted `total`) | screen | ui_wallet.py::test_wallet_balance_text_and_data_amount |
-| R2-PAY.2 | Balance | `pay-handle`, `pay-amount`, `pay-note`, `pay-submit` | screen | ui_pay.py::test_pay_flow_moves_money |
-| R2-PAY.3 | Balance | "`pay-visibility` \| Selects `public` or `private`. Option values are those two strings" | screen | ui_pay.py::test_pay_visibility_options_and_private |
-| R2-PAY.4 | Balance | "`pay-error` \| Error message, when the payment is refused — including insufficient funds" | screen | ui_pay.py::test_pay_error_insufficient_unknown_self |
-| R2-PAY.5 | Balance | `request-handle`, `request-amount`, `request-note`, `request-submit`; "`request-error` \| Error message, when the request is refused" | screen | ui_pay.py::test_request_form_creates_request_and_errors |
-| R2-PAY.6 **H** | Balance | "Keep the pay form's values after success." | screen | ui_pay.py::test_form_values_kept_after_success |
-| R2-PAY.7 **H** | Balance | "Submitting it again without changing a field must not send another payment: `wallet-balance` falls once, the feed contains one payment and `pay-error` is absent." | behaviour | ui_pay.py::test_resubmit_unchanged_is_replay (network log: second POST carries the same Idempotency-Key and body, answered 200) |
-| R2-PAY.8 **H** | Balance | "Changing a field makes the next submission a new payment request. Retries follow §7." | behaviour | ui_pay.py::test_changed_field_new_key (new key; balance falls twice) (D-24) |
-
-### Amount input and formatting (AMT)
+### `GET /statement` (ST)
 
 | id | section | requirement (verbatim quote) | kind | proof |
 |---|---|---|---|---|
-| R2-AMT.1 **H** | Balance | "`pay-amount` is a **decimal** string as a person would type it, e.g. `15.00`" | behaviour | ui_amount.py::test_decimal_inputs_submit_minor_units |
-| R2-AMT.2 **H** | Formatted amount | "`wallet-balance` is the decimal with exactly `minor_units` decimal places, a single space, then the currency code: `100.00 EUR`." | format | ui_amount.py::test_formatted_amount_exact[EUR-2] (`100.00 EUR`, `0.00 EUR`, `0.05 EUR`, `1234567.89 EUR`) (D-25) |
-| R2-AMT.3 **H** | Formatted amount | "For a `minor_units` of `0` there is no decimal point at all: `1200 JPY`." | format | ui_amount.py::test_formatted_amount_exact[JPY-0] |
-| R2-AMT.4 **H** | Formatted amount | (derived) `minor_units: 3` → three places: `1.500 BHD`, `0.001 BHD` | format | ui_amount.py::test_formatted_amount_exact[BHD-3] |
-| R2-AMT.5 | Formatted amount | "Balances are never negative, so there is no sign." | format | ui_amount.py::test_formatted_amount_exact (no "-" or "+") |
-| R2-AMT.6 **H** | Formatted amount | "With `minor_units: 2`, `15.00` and `15` both submit `1500`; `15.5` submits `1550`." | behaviour | ui_amount.py::test_decimal_inputs_submit_minor_units (request body amount observed on the wire) |
-| R2-AMT.7 **H** | Formatted amount | "Nonnumeric input or more than `minor_units` decimal places must show the form's error element without sending a request. For example, `15.005` is rejected rather than rounded." | behaviour | ui_amount.py::test_bad_amount_shows_error_no_request (`15.005`, `abc`, `1e3`, `15,00`, `` ; JPY `15.0`; BHD `1.0005`; zero POSTs observed) (D-23) |
-| R2-AMT.8 **H** | Split / Authorize | "`split-amount` \| Decimal input, same rule as `pay-amount`"; authorize form "Same input rules as the pay form"; request form amount (D-23) | behaviour | ui_amount.py::test_same_rule_on_request_split_authorize_forms |
+| R3-ST.1 | Statement | "Both `from` and `to` are optional; `from` defaults to the opening of the wallet and `to` to now." | behaviour | test_R3_ST_1_defaults_full_history_to_now (D-43) |
+| R3-ST.2 | Statement | "`limit` and `offset` behave exactly as in `GET /requests`." | limit | test_R3_ST_2_limit_offset_rules (1..200, default 50, plain digits, huge offset valid, has_more) |
+| R3-ST.3 | Statement | "Returns the payments the caller sent or received in the half-open window `[from, to)`, **oldest first**, each with the caller's balance immediately after it" | behaviour | test_R3_ST_3_half_open_window (payment at exactly `from` included, at exactly `to` excluded) |
+| R3-ST.4 | Statement | response `{ "opening_balance", "entries": [ { "payment", "delta", "balance_after" } ], "closing_balance", "has_more" }` (+ revision fields and `snapshot`) | format | test_R3_ST_4_shape (D-49) |
+| R3-ST.5 | Statement | "Entries are ordered by `created_at` ascending, then payment `id` ascending for ties." (stage 3 final: by selected `effective_at`, then id — R3-KN.6) | behaviour | test_R3_ST_5_order_effective_then_id |
+| R3-ST.6 **H** | Statement | "`opening_balance` is the balance immediately before `from`. `closing_balance` is the balance immediately before `to`." | behaviour | prop: test_R3_ST_6_opening_closing_match_me_as_of (opening = /me as_of from−1µs; closing = as_of to−1µs, same K) |
+| R3-ST.7 **H** | Statement | "`opening_balance` plus all `delta` values in the full window must equal `closing_balance`." | invariant | prop: test_R3_ST_7_opening_plus_deltas_equals_closing (all pages concatenated) |
+| R3-ST.8 | Statement | "A sent payment has a negative `delta`; a received payment has a positive `delta`." | behaviour | test_R3_ST_8_delta_sign |
+| R3-ST.9 **H** | Statement | "Pagination must not change an entry's `balance_after` or the window's opening and closing balances. These values describe the full window regardless of `limit` and `offset`." | invariant | test_R3_ST_9_pagination_does_not_change_balances (limit 1..n, every offset) |
+| R3-ST.10 **H** | Statement | "Only payments sent or received by the caller appear in their statement, including when other payments are public. The activity-feed visibility rules do not apply to statements." | invariant | test_R3_ST_10_only_own_payments_public_or_private (third-party public payments absent; own private present) |
+| R3-ST.11 | derived | `balance_after` of entry *i* = opening_balance + Σ deltas of entries 0..i in window order | invariant | prop: test_R3_ST_11_running_balance |
+| R3-ST.12 **H** | derived, D-54 | `from`/`to` invalid instants → 422; `from` > `to` → 422; `from` = `to` → empty window, opening = closing | error | test_R3_ST_12_window_validation |
+| R3-ST.13 | Statement | "This abbreviated example omits the revision fields and `snapshot` token described below." | format | test_R3_ST_4_shape |
+| R3-ST.14 **H** | derived, D-49 | settlement members appear as separate entries sharing one instant (combined boundary), captures appear once | behaviour | test_R3_ST_14_settlement_members_and_captures_in_statement |
 
-### Activity feed UI (FEED)
-
-| id | section | requirement (verbatim quote) | kind | proof |
-|---|---|---|---|---|
-| R2-FEED.1 | Feed | "`activity-list` \| Container. Its children are newest first in the DOM" | screen | ui_feed.py::test_activity_newest_first_dom_order (payments ≥1.1 s apart) |
-| R2-FEED.2 | Feed | "`activity-item-{payment_id}` \| One per visible payment. Carries `data-visibility="public"` or `data-visibility="private"`" | screen | ui_feed.py::test_activity_items_match_api_feed (set equals GET /activity for that user, incl. seeded, captures, settlement members) |
-| R2-FEED.3 | Feed | "`activity-parties-{payment_id}` \| Text contains both handles" | screen | ui_feed.py::test_activity_item_fields |
-| R2-FEED.4 **H** | Feed | "`activity-amount-{payment_id}` \| Text is exactly the formatted amount" | format | ui_feed.py::test_activity_item_fields (exact text, no sign) |
-| R2-FEED.5 **H** | Feed | "`activity-note-{payment_id}` \| Text is exactly the note. Present even when the note is empty" | format | ui_feed.py::test_activity_note_exact_and_empty_present (unicode/emoji/HTML-ish note rendered as text, not markup) |
-| R2-FEED.6 | Feed | "`empty-activity` \| Shown instead of the list when nothing is visible" | screen | ui_states.py::test_empty_states |
-| R2-FEED.7 | Feed | "Two payments with equal timestamps may appear in either order." | behaviour | untestable: permission; tests never assert intra-second order |
-| R2-FEED.8 **H** | Feed + stage 1 §4 | (derived) private payments of other users never rendered; feed rule identical to `GET /activity` | invariant | ui_feed.py::test_activity_items_match_api_feed |
-
-### Requests UI (REQ)
+### Revision model (REV)
 
 | id | section | requirement (verbatim quote) | kind | proof |
 |---|---|---|---|---|
-| R2-REQ.1 | Requests | "`incoming-list`, `outgoing-list` \| Containers" | screen | ui_requests.py::test_incoming_outgoing_lists |
-| R2-REQ.2 | Requests | "`request-item-{request_id}` \| One per request. Carries `data-status="{status}"`" | screen | ui_requests.py::test_request_items_status_all_four |
-| R2-REQ.3 | Requests | "`request-amount-{request_id}` \| Text is exactly the formatted amount" | format | ui_requests.py::test_request_items_status_all_four |
-| R2-REQ.4 **H** | Requests | "`request-pay-{request_id}` … `request-decline-{request_id}` \| Button. Present only on a `pending` incoming request" | screen | ui_requests.py::test_action_buttons_only_where_allowed |
-| R2-REQ.5 **H** | Requests | "`request-cancel-{request_id}` \| Button. Present only on a `pending` outgoing request" | screen | ui_requests.py::test_action_buttons_only_where_allowed |
-| R2-REQ.6 | Requests | "`request-error` \| Shown when a pay, decline or cancel is refused" | screen | ui_requests.py::test_pay_short_shows_request_error |
-| R2-REQ.7 | Requests | "`empty-requests` \| Shown when both lists are empty" | screen | ui_states.py::test_empty_states |
-| R2-REQ.8 | Requests | (derived) pay/decline/cancel buttons perform the stage 1 operations; pay uses an Idempotency-Key | behaviour | ui_requests.py::test_pay_decline_cancel_buttons (D-27 visibility default public) |
+| R3-REV.1 **H** | Effective time | "The service must distinguish **when money took effect** from **when it learned that fact**." | behaviour | prop: test_R3_KN_matrix (as_of × known_at grid against the model) |
+| R3-REV.2 | Effective time | "Every payment has a revision history." | behaviour | test_R3_REV_2_every_payment_kind_has_revision_1 |
+| R3-REV.3 **H** | Effective time | "Revision 1 has `amount` as originally paid and `effective_at = recorded_at = created_at`." | format | test_R3_REV_3_revision1_fields (direct, request pay, member, capture, seeded, imported) (D-47) |
+| R3-REV.4 **H** | Effective time | "Opening balances equal seeded ending balances minus the net effect of original seeded payments." | behaviour | test_R3_ME_7_as_of_before_earliest_is_opening |
+| R3-REV.5 **H** | Effective time | "Corrections must not change those opening balances." | invariant | test_R3_REV_5_corrections_keep_opening (correct a seeded payment, also to 0 and to an earlier effective_at: as_of before everything unchanged) |
+| R3-REV.6 | Effective time | "New accounts open at zero." | behaviour | test_R3_REV_6_signup_opens_at_zero |
+| R3-REV.7 **H** | Corrections | "It appends an immutable revision" | invariant | test_R3_REV_7_revisions_immutable (list unchanged after later revisions except appended ones) |
+| R3-REV.8 **H** | Corrections | "Recorded times for one payment strictly increase." | invariant | test_R3_REV_8_recorded_at_strictly_increases (3 corrections inside one second) (D-41) |
+| R3-REV.9 **H** | Corrections | "Correction changes neither parties nor visibility." | invariant | test_R3_REV_9_parties_visibility_unchanged (statement payment object, /activity, feed visibility for third parties) |
 
-### Split UI (SPL)
-
-| id | section | requirement (verbatim quote) | kind | proof |
-|---|---|---|---|---|
-| R2-SPL.1 | Split | `split-amount`, `split-note`, `split-submit` | screen | ui_split.py::test_split_submit_creates_requests |
-| R2-SPL.2 **H** | Split | "`split-handles` \| Text input: handles separated by commas, in order" | behaviour | ui_split.py::test_handles_parsed_in_order (`"ada, bob,cy"` → ["ada","bob","cy"]) (D-26) |
-| R2-SPL.3 **H** | Split | "`split-preview` \| Shows the computed shares before submitting. Contains one `split-share-{handle}` per participant" | screen | ui_split.py::test_preview_before_any_post (zero POST /splits observed while preview shows) |
-| R2-SPL.4 **H** | Split | "`split-share-{handle}` \| Text is exactly the formatted share amount" | format | ui_split.py::test_preview_matches_section9_table (10.00/3 → 3.34,3.33,3.33; 0.01/3 → 0.01,0.00,0.00; JPY) |
-| R2-SPL.5 | Split | "`split-error` \| Error message, when the split is refused" | screen | ui_split.py::test_split_error_unknown_or_duplicate |
-| R2-SPL.6 **H** | Split | "`split-preview` must show the shares the server would compute, by the rule in `stage-1.md` §9, before anything is posted. The preview and submitted split must have identical shares." | invariant | ui_split.py::test_preview_equals_server_shares (order-sensitivity case included) |
-
-### Refresh after actions (SYNC)
+### Correction endpoint (COR)
 
 | id | section | requirement (verbatim quote) | kind | proof |
 |---|---|---|---|---|
-| R2-SYNC.1 **H** | Split end | "After any successful action, the balance, the feed and the request lists on the same page must show the new state without a manual reload." | behaviour | ui_sync.py::test_state_refreshes_after_each_action (pay, request, pay-request, decline, cancel, split, authorize, capture, void) |
-| R2-SYNC.2 **H** | Split end | "Navigation must wait for the write to succeed before it refreshes the data. Any mechanism is fine, including a full navigation." | behaviour | ui_sync.py::test_refresh_waits_for_write (POST delayed 1.5 s by route; no GET /me before POST completes, final DOM shows new state) |
-| R2-SYNC.3 | Split end | "There is no live-update requirement here — another client may change state, but this browser need only refresh after its own action or an explicit refresh." | behaviour | untestable: permission |
+| R3-COR.1 | Corrections | "`POST /payments/{payment_id}/corrections` requires an idempotency key and the original sender." | behaviour | test_R3_COR_1_requires_key_400 |
+| R3-COR.2 | Corrections | "An authenticated non-sender gets 403 `forbidden`" | error | test_R3_COR_2_receiver_and_third_party_403 |
+| R3-COR.3 | Corrections | "unknown payment gets 404." | error | test_R3_COR_3_unknown_payment_404 |
+| R3-COR.4 | Corrections | body `{"expected_revision", "amount", "effective_at", "reason"}` — "All fields are required." | error | test_R3_COR_4_each_field_missing_422 |
+| R3-COR.5 **H** | Corrections | "Revision is a positive integer" | error | test_R3_COR_5_expected_revision_rules (0, −1, 1.5, "1", true, null → 422; 1.0 accepted) (D-46) |
+| R3-COR.6 **H** | Corrections | "amount is an integer 0..1000000000 (zero reverses the entire payment)" | error | test_R3_COR_6_amount_rules (−1, 1e9+1, 2.5, "5", true, null → 422; 0 and 1e9 accepted) |
+| R3-COR.7 **H** | Corrections | "reason is a string of 1..200 characters" | error | test_R3_COR_7_reason_rules ("" and 201 chars → 422; 1 and 200 chars, emoji counted as one code point, accepted; non-string → 422) |
+| R3-COR.8 **H** | Corrections | "effective time is an RFC 3339 instant not later than now." | error | test_R3_COR_8_effective_at_rules (naive, date, future by 2 s → 422; exactly server-now-ish and past accepted) |
+| R3-COR.9 **H** | Corrections | "Invalid input is 422 `validation_failed`." | error | test_R3_COR_9_wrong_types_are_422_not_400 (D-46) |
+| R3-COR.10 | Corrections | "returning 201 with `payment_id`, `revision`, `amount`, `effective_at`, server-assigned `recorded_at`, and `reason`." | format | test_R3_COR_10_response_shape (exact key set; revision = previous+1) |
+| R3-COR.11 | Corrections | "A stale expected revision gives 409 `stale_revision`." | error | test_R3_COR_11_stale_revision_409 (lower and higher than current) |
+| R3-COR.12 **H** | Corrections | "Successful replay returns that original revision with 200 even after newer revisions." | behaviour | test_R3_COR_12_replay_after_newer_revisions_200_original |
+| R3-COR.13 | Corrections | "Different body with the same key is 409 `idempotency_key_reuse`." | error | test_R3_COR_13_reuse_409 |
+| R3-COR.14 **H** | §7 carried | claimed key resolved before validation; failed 4xx (stale, overdraft, insufficient) leaves the key reusable; key scoped per user + path; 20 concurrent identical → one 201 | behaviour | test_R3_COR_14_idempotency_rules (eighth idempotent path) |
+| R3-COR.15 **H** | derived, D-46 | precedence: 401 → 400 body → 400/422 key → replay/reuse → 422 fields → 404 → 403 → 422 linked → 409 stale → 409 insufficient → 409 historical_overdraft | error | test_R3_COR_15_precedence_pairs |
+| R3-COR.16 **H** | Stable pagination | "Concurrent corrections using the same expected revision cannot both succeed." | invariant | test_R3_COR_16_concurrent_same_expected_one_wins (20 distinct keys → one 201, rest 409 stale_revision; money moved once) |
 
-### Competing clients and uncertain outcomes (RACE)
-
-| id | section | requirement (verbatim quote) | kind | proof |
-|---|---|---|---|---|
-| R2-RACE.1 | Competing | "Add `wallet-refresh`, a button on `/` that refreshes the balance and feed without clearing the pay form." | behaviour | ui_race.py::test_refresh_button_keeps_form |
-| R2-RACE.2 **H** | Competing | "**Latest refresh wins:** a delayed earlier read must not overwrite a later refresh, including when responses arrive out of order." | behaviour | ui_race.py::test_latest_refresh_wins_out_of_order (route holds 1st GET /me + /activity, 2nd answers after an API payment; release 1st; DOM keeps the 2nd values) |
-| R2-RACE.3 **H** | Competing | "A refused payment shows `pay-error`, refreshes the balance/feed, and preserves all pay inputs." | behaviour | ui_race.py::test_refused_payment_refreshes_and_keeps_inputs (balance spent by API behind the page) |
-| R2-RACE.4 **H** | Competing | "A request cancelled elsewhere while its pay button is visible must show `request-error` when payment is refused and refresh the request list so the stale pay button disappears." | behaviour | ui_race.py::test_cancelled_elsewhere_pay_shows_error_and_button_disappears |
-| R2-RACE.5 **H** | Competing | "If a payment response is lost, including after `POST /payments` commits, show `pay-uncertain` (nonempty text), not `pay-error`." | behaviour | ui_race.py::test_lost_response_after_commit_shows_uncertain (route.fetch then abort) ; ui_race.py::test_lost_request_before_commit_shows_uncertain (abort before forwarding) (D-28) |
-| R2-RACE.6 **H** | Competing | "Keep the unchanged form retryable with the **same key and body**." | behaviour | ui_race.py::test_retry_after_uncertain_same_key_same_body (wire capture) |
-| R2-RACE.7 **H** | Competing | "Successful retry removes both error/uncertainty elements, refreshes the balance and feed, and moves money exactly once." | behaviour | ui_race.py::test_retry_after_uncertain_same_key_same_body (API balances: one debit; feed one item) |
-| R2-RACE.8 **H** | Competing | "Unknown outcomes are not confirmed rejections." | behaviour | ui_race.py::test_lost_response_after_commit_shows_uncertain (pay-error absent) |
-| R2-RACE.9 | Competing | "No background polling, live synchronization, or recovery across page reloads is required." | behaviour | untestable: permission |
-| R2-RACE.10 **H** | Competing | "The same balance refresh rules apply to the available and held amounts introduced below." | behaviour | ui_race.py::test_latest_refresh_wins_out_of_order (asserts wallet-available/wallet-held too) |
-
-### Existing clients after an upgrade (UPG)
+### Money movement and overdraft (MNY)
 
 | id | section | requirement (verbatim quote) | kind | proof |
 |---|---|---|---|---|
-| R2-UPG.1 **H** | Upgrade | "A stage-2 service must accept an export produced by the same team's stage-1 service." | behaviour | api_upgrade.py::test_stage1_export_imports_into_stage2 (export from the stage-1 image on another port → import → 204; /me has total=available=balance, held 0) |
-| R2-UPG.2 **H** | Upgrade | "A browser signed in before that export/import upgrade must remain signed in afterwards." | behaviour | ui_upgrade.py::test_browser_stays_signed_in_across_upgrade (D-22) |
-| R2-UPG.3 **H** | Upgrade | "Existing pending requests remain payable through the request screen." | behaviour | ui_upgrade.py::test_imported_pending_request_payable_in_ui |
-| R2-UPG.4 **H** | Upgrade | "A payment whose response was lost before export remains retryable after import with the same body and key; the UI must recover the original payment and refresh the imported balance." | behaviour | ui_upgrade.py::test_lost_payment_retry_after_upgrade_recovers_original (one debit, retry gets 200 original body, pay-uncertain cleared) |
-| R2-UPG.5 | Upgrade | "These requirements apply when import completes between browser requests; migration during an in-flight request is not required." | behaviour | untestable: permission |
-| R2-UPG.6 **H** | Upgrade | "No page reload or new screen is required. The form and pending retry identity must survive the upgrade." | behaviour | ui_upgrade.py::test_lost_payment_retry_after_upgrade_recovers_original (no reload between steps; pay inputs unchanged; same key on the wire) |
-| R2-UPG.7 **H** | Upgrade + §10 | (derived) a stage-2 export round-trips into stage 2 preserving authorizations, holds, ttl, captures and receipts of all seven paths | behaviour | api_upgrade.py::test_stage2_export_import_preserves_holds_and_receipts |
+| R3-MNY.1 **H** | Corrections | "The difference from the previous amount moves between the **same two wallets** in the same atomic step." | behaviour | test_R3_MNY_1_delta_moves_between_same_wallets (third parties untouched) |
+| R3-MNY.2 **H** | Corrections | "Increasing the amount debits the original sender; decreasing it debits the original receiver." | behaviour | test_R3_MNY_2_increase_debits_sender_decrease_debits_receiver |
+| R3-MNY.3 **H** | Corrections | "A currently unaffordable debit gives 409 `insufficient_funds`." | error | test_R3_MNY_3_current_unaffordable_409 (against current available, incl. held funds) |
+| R3-MNY.4 **H** | Corrections | "Otherwise, if any user's corrected balance is negative at any effective-time boundary, return 409 `historical_overdraft`." | error | test_R3_MNY_4_historical_overdraft_409 (receiver spent the money before the correction's effective time; sender's earlier balance) |
+| R3-MNY.5 **H** | Corrections | "Balances at a boundary include the combined effect of all movements at that instant." | behaviour | test_R3_MNY_5_boundary_combines_same_instant (settlement member pair at one instant: no false overdraft) |
+| R3-MNY.6 **H** | Corrections | "Either failure preserves balances, revision history, statements and idempotency state." | invariant | test_R3_MNY_6_failures_change_nothing (balances, revisions, statement, key reusable) |
+| R3-MNY.7 **H** | Corrections | "The sum of balances must equal the seeded total in every historical view." | invariant | prop: test_R3_INV_1_sum_conserved_every_view |
+| R3-MNY.8 **H** | Historical holds | "A correction is rejected with 409 `historical_overdraft` if it makes either total or available negative at any past effective/event boundary, under the latest known revisions." | error | test_R3_MNY_8_overdraft_on_available_via_hold (a hold active at the effective time) |
+| R3-MNY.9 **H** | Historical holds | "Current unaffordable debits still take precedence as `insufficient_funds`." | error | test_R3_MNY_9_insufficient_precedes_historical |
+| R3-MNY.10 **H** | Corrections | zero amount "reverses the entire payment" | behaviour | test_R3_MNY_10_zero_reverses (both wallets back to pre-payment balances; statement entry delta 0) |
+| R3-MNY.11 **H** | derived, D-46 | a correction with the same amount (delta 0) and another effective time is allowed, moves no money now, shifts history | behaviour | test_R3_MNY_11_same_amount_moves_only_history |
+| R3-MNY.12 **H** | derived, D-46 | request-pay payments, seeded payments and imported payments are correctable (only settlement members and captures are linked) | behaviour | test_R3_MNY_12_correct_request_pay_seeded_imported |
 
-### Hold invariants and API changes (HOLD)
-
-| id | section | requirement (verbatim quote) | kind | proof |
-|---|---|---|---|---|
-| R2-HOLD.1 | Authorizations | "A payment may be **authorised** now and **captured** later, for the full amount or less." | behaviour | api_capture.py::test_partial_final_capture_releases_rest |
-| R2-HOLD.2 | Authorizations | "An authorisation places a *hold* on the payer's wallet: it reserves money without moving it." | behaviour | api_auth.py::test_authorize_holds_without_moving (total unchanged, held +amount, available −amount; receiver unchanged) |
-| R2-HOLD.3 | Authorizations | "Capturing moves the money; a final capture also releases whatever was not captured. Nonfinal captures keep the remainder held." | behaviour | api_capture.py::test_partial_final_capture_releases_rest; api_capture.py::test_nonfinal_keeps_remainder_held |
-| R2-HOLD.4 | Authorizations | "An open authorisation expires and releases its remainder on its own." | behaviour | api_expiry.py::test_expiry_releases_without_any_request |
-| R2-HOLD.5 **H** | Authorizations | "The sum of all wallet `total` values always equals the total seeded by the last reset. A hold moves no money; payments, settlements and captures transfer money between wallets." | invariant | api_conc.py::test_totals_conserved_mixed_concurrent (every API test also audits sum of totals) |
-| R2-HOLD.6 **H** | Authorizations | "`available = total − held` must never be negative." | invariant | api_conc.py::test_available_never_negative_concurrent |
-| R2-HOLD.7 **H** | Authorizations | "Held funds cannot fund new payments, authorizations or settlement net debits." | error | api_hold.py::test_held_funds_refuse_payment_authorization_settlement_requestpay (each 409 insufficient_funds when total ≥ amount > available) |
-| R2-HOLD.8 **H** | Authorizations | "Captures may spend the money reserved for them." | behaviour | api_hold.py::test_capture_spends_reserved_when_available_zero |
-| R2-HOLD.9 **H** | Authorizations | "Cumulative captures must not exceed the authorized amount." | invariant | api_capture.py::test_cumulative_never_exceeds (non-final sequence, concurrent captures) |
-| R2-HOLD.10 **H** | Authorizations | "Each idempotent capture moves money once. A closed hold cannot be captured again." | invariant | api_capture.py::test_capture_replay_moves_once; api_capture.py::test_closed_cannot_capture |
-| R2-HOLD.11 **H** | API changes | "`GET /me` keeps `balance`, and `balance` **equals `total`**. … With no open holds, `balance`, `total` and `available` agree and `held` is zero, and every earlier behaviour is unchanged." | invariant | api_me.py::test_me_fields_no_holds |
-| R2-HOLD.12 **H** | API changes | "`POST /payments` remains an immediate transfer. It must not leave an intermediate hold or require a separate capture." | behaviour | api_hold.py::test_payment_immediate_no_hold (held 0 after; no authorization listed) |
-| R2-HOLD.13 **H** | API changes | "Every `409 insufficient_funds` in stage 1 — on `POST /payments`, `POST /requests/{id}/pay` and settlements — is now evaluated against `available`. With no open holds, the result is unchanged." | error | api_hold.py::test_held_funds_refuse_payment_authorization_settlement_requestpay |
-| R2-HOLD.14 | API changes | "Paying a request remains immediate. Authorizing a request is out of scope." | behaviour | api_hold.py::test_request_pay_immediate |
-| R2-HOLD.15 | API changes | "`POST /splits` is unchanged." | behaviour | carried stage-1 suite (test_splits.py) green on stage 2 |
-| R2-HOLD.16 **H** | API changes | "There are now seven idempotent write paths: stage 1's five, authorizations and captures. The same replay rules apply independently to each." | behaviour | api_idem.py (every stage-1 §7 test parametrised over the two new paths: missing key 400, length, replay 200 identical, reuse 409, claimed key before validation, failed-4xx reuse, per-user, per-path, 20 concurrent → one 201) |
-
-### Fixture model (MOD)
+### Revisions endpoint (RVL)
 
 | id | section | requirement (verbatim quote) | kind | proof |
 |---|---|---|---|---|
-| R2-MOD.1 | Model | "The fixture gains a service-wide default lifetime and an `authorizations` array." (`id`, `from_user_id`, `to_user_id`, `amount`, `note`, `visibility`, `status`, `expires_at`) | format | api_model.py::test_seeded_authorization_visible_with_fixture_fields |
-| R2-MOD.2 **H** | Model | "`authorization_ttl_seconds` applies to every authorisation created through the API. It defaults to 600 when omitted." | behaviour | api_auth.py::test_expires_at_is_created_plus_ttl[600 default, 2, 3600] |
-| R2-MOD.3 **H** | Model | "If supplied, it must be a positive integer number of seconds." | error | api_model.py::test_ttl_invalid_reset_422 (0, −1, 1.5, "600", true, null) (D-29) |
-| R2-MOD.4 | Model | "Seeded authorisations carry their own absolute `expires_at` instead." | behaviour | api_model.py::test_seeded_expires_at_kept_verbatim_instant |
-| R2-MOD.5 **H** | Model | "A user's seeded `balance` is still `total`. **`available` is derived, never seeded** — the service subtracts the seeded open holds itself." | behaviour | api_model.py::test_seeded_open_hold_reduces_available (total = balance, available = balance − hold) |
-| R2-MOD.6 **H** | Model | "A sum of seeded unexpired open holds larger than that user's `balance` is a reset error: `422 validation_failed` from `POST /_test/reset`, changing nothing, exactly like a negative seeded balance." | error | api_model.py::test_seeded_holds_over_balance_422_state_unchanged (sum = balance → 204; sum = balance+1 → 422; expired/voided/captured over balance → 204) |
-| R2-MOD.7 | Model | "Seeded `status` is `open`, `captured`, `voided` or `expired`. Only `open` holds anything." | behaviour | api_model.py::test_seeded_statuses_only_open_holds; api_model.py::test_seeded_status_invalid_422 |
-| R2-MOD.8 **H** | Model | "An earlier fixture may omit `authorizations` altogether; omission means an empty list." | behaviour | carried stage-1 suite uses stage-1 fixtures unchanged; api_model.py::test_fixture_without_authorizations |
-| R2-MOD.9 **H** | Model | (derived, D-30) seeded authorizations referencing unknown users, self-authorizations, invalid amount/visibility/expires_at, duplicate ids → 422 changing nothing | error | api_model.py::test_seeded_authorization_invalid_422 |
+| R3-RVL.1 | Revisions | "`GET /payments/{payment_id}/revisions` returns `{"revisions": [...]}` in revision order, including revision 1 (`reason: ""`)." | format | test_R3_RVL_1_list_in_order_with_revision1 |
+| R3-RVL.2 **H** | Revisions | "Only the two parties can read it; a third party gets 404 even for a public payment." | error | test_R3_RVL_2_third_party_404_public_and_private (operator too) |
+| R3-RVL.3 | Revisions | "No token is 401." | error | test_R3_RVL_3_no_token_401 |
+| R3-RVL.4 | derived | unknown payment → 404 | error | test_R3_RVL_4_unknown_404 |
+| R3-RVL.5 **H** | derived, D-47 | each revision item has the correction response's shape (`payment_id, revision, amount, effective_at, recorded_at, reason`) | format | test_R3_RVL_5_item_shape_matches_correction_response |
 
-### Expiry (EXP)
+### `known_at` selection (KN)
 
 | id | section | requirement (verbatim quote) | kind | proof |
 |---|---|---|---|---|
-| R2-EXP.1 **H** | Model | "An authorization whose `expires_at` is at or before now is `expired` and holds no funds." | behaviour | api_expiry.py::test_expired_holds_nothing (seeded past expires_at: status expired, held 0, available = total) |
-| R2-EXP.2 **H** | Model | "Reads and writes must reflect expiry even if no request occurred at the deadline." | behaviour | api_expiry.py::test_expiry_releases_without_any_request (ttl 2 s; no request for 3 s; then /me, list, capture, payment of the released funds) |
-| R2-EXP.3 **H** | Model | "`GET /authorizations` must show `status: "expired"`, and `GET /me` must include the released remainder in `available`." | behaviour | api_expiry.py::test_expiry_releases_without_any_request; api_expiry.py::test_partial_nonfinal_then_expiry_releases_only_remainder |
-| R2-EXP.4 | Model | "Seeded expiry times are at least an hour from reset time, in the past or future; newly created authorizations may have shorter lifetimes." | limit | api_expiry.py fixtures use ±1 h seeded, ttl 2 s for API-created |
-| R2-EXP.5 **H** | Capture | "`expires_at` is at or before now \| 409 `authorization_expired`" | error | api_expiry.py::test_capture_after_expiry_409_expired (D-31 precedence) |
-| R2-EXP.6 **H** | LIST | "An authorisation expired by the clock matches `expired`, never `open`." | behaviour | api_list.py::test_clock_expired_filters_as_expired |
-| R2-EXP.7 **H** | Upgrade + §10 | (derived) expiry continues by absolute time across export/import | behaviour | api_upgrade.py::test_stage2_export_import_preserves_holds_and_receipts |
+| R3-KN.1 | KN | "`GET /me` and `GET /statement` accept optional `known_at`, an RFC 3339 instant with offset." | behaviour | test_R3_KN_1_accepted_on_me_and_statement |
+| R3-KN.2 **H** | KN | "For each payment, select its latest revision recorded **at or before** `known_at`; if none was yet recorded, that payment contributes nothing." | behaviour | prop: test_R3_KN_matrix |
+| R3-KN.3 **H** | KN | "Omission means everything known when the read begins." | behaviour | test_R3_KN_3_omitted_is_all_known (D-43) |
+| R3-KN.4 **H** | KN | "Then apply selected revisions according to their **effective** times. `as_of` retains its inclusive meaning; a statement retains its half-open window." | behaviour | prop: test_R3_KN_matrix (boundary cases at exactly effective_at / recorded_at) |
+| R3-KN.5 **H** | KN | "Both query instants may be in the future. Invalid/empty instants are 422." | behaviour | test_R3_KN_5_future_allowed_invalid_422 |
+| R3-KN.6 **H** | KN | "Statement ordering is now by selected `effective_at`, then payment id." | behaviour | test_R3_KN_6_order_follows_selected_effective (a backdated correction moves an entry earlier) |
+| R3-KN.7 **H** | KN | "Each entry retains `payment`, `delta` and `balance_after`, and adds the selected `revision`, `effective_at` and `recorded_at`." | format | test_R3_KN_7_entry_fields |
+| R3-KN.8 **H** | KN | "`payment.amount` is the selected amount for this statement." | behaviour | test_R3_KN_8_payment_amount_is_selected (and /activity still shows the original) |
+| R3-KN.9 **H** | KN | "Zero-amount revisions still appear as entries with zero delta." | behaviour | test_R3_MNY_10_zero_reverses |
+| R3-KN.10 **H** | KN | "No correction is counted alongside the revision it replaces." | invariant | test_R3_KN_10_one_entry_per_payment (never two entries for one payment) |
+| R3-KN.11 **H** | KN | "With no corrections and no `known_at`, previous behavior is unchanged." | behaviour | test_R3_KN_11_no_corrections_previous_behaviour |
+| R3-KN.12 **H** | KN | (derived) a correction moves a payment into or out of a window by its selected effective time — "A correction may move a payment into or out of a statement window." | behaviour | test_R3_KN_12_correction_moves_entry_across_window |
 
-### GET /me (ME)
-
-| id | section | requirement (verbatim quote) | kind | proof |
-|---|---|---|---|---|
-| R2-ME.1 | GET /me | `{ "user_id", "display_name", "handle", "balance", "total", "available", "held", "currency", "minor_units" }` | format | api_me.py::test_me_shape_with_seeded_hold (example values 10000/10000/8000/2000) |
-| R2-ME.2 **H** | GET /me | "`balance` and `total` are always equal. `held` is the sum of open holds, and `available` is `total − held`, never negative." | invariant | api_me.py::test_me_identities_after_every_operation (helper asserts on every /me read in the suite) |
-
-### POST /authorizations (AUTH)
+### Stable statement pagination (SNAP)
 
 | id | section | requirement (verbatim quote) | kind | proof |
 |---|---|---|---|---|
-| R2-AUTH.1 | POST /auth | "`Idempotency-Key` is required. The caller is the payer." | behaviour | api_idem.py[authorizations]; api_auth.py::test_authorize_201_shape |
-| R2-AUTH.2 | POST /auth | body `{ "to_handle", "amount", "note", "visibility" }`; "`note` and `visibility` are optional with the same defaults as `POST /payments`." | behaviour | api_auth.py::test_authorize_defaults |
-| R2-AUTH.3 **H** | POST /auth | 201 body: authorization_id, from_user_id, from_handle, to_user_id, to_handle, amount, captured_amount 0, currency, note, visibility, status "open", expires_at, payment_id null, created_at — plus `remaining_amount` and `payment_ids` (capture section) | format | api_auth.py::test_authorize_201_shape (exact key set) (D-32) |
-| R2-AUTH.4 **H** | POST /auth | "`expires_at` is `created_at` plus `authorization_ttl_seconds`." | behaviour | api_auth.py::test_expires_at_is_created_plus_ttl |
-| R2-AUTH.5 | POST /auth | "The caller's `available` is below `amount` \| 409 `insufficient_funds`" | error | api_auth.py::test_authorize_insufficient_available_409 (exact available ok; available+1 → 409; held funds don't count) |
-| R2-AUTH.6 | POST /auth | "`amount` below 1, above 1000000000, or not an integer \| 422 `validation_failed`" | error | api_auth.py::test_authorize_amount_rules (0, 1e9+1, 1.5, "5", true, null; 1e3/1000.0 accepted) |
-| R2-AUTH.7 | POST /auth | "`to_handle` is the caller's own handle \| 422 `self_payment`" | error | api_auth.py::test_authorize_self_422 |
-| R2-AUTH.8 | POST /auth | "`note` over 200 characters, or `visibility` neither `public` nor `private` \| 422 `validation_failed`" | error | api_auth.py::test_authorize_note_visibility_rules (incl. note null) |
-| R2-AUTH.9 | POST /auth | "No user has that handle \| 404 `not_found`" | error | api_auth.py::test_authorize_unknown_handle_404 |
-| R2-AUTH.10 **H** | POST /auth | "An open authorisation is **not** a feed item and never appears in `GET /activity`." | behaviour | api_auth.py::test_open_authorization_not_in_feed (all users' feeds) |
+| R3-SNAP.1 | Snapshot | "Every first `GET /statement` response additionally returns an opaque `snapshot` token." | format | test_R3_SNAP_1_token_returned (opaque non-empty string; D-50) |
+| R3-SNAP.2 **H** | Snapshot | "It freezes the caller's selected revisions, window, balances, entries and default `to` at that read." | invariant | test_R3_SNAP_2_frozen_after_payment_correction_capture (pages identical to the first read after new payments, corrections and hold events) |
+| R3-SNAP.3 **H** | Snapshot | "`GET /statement?snapshot=<token>&limit=...&offset=...` pages that exact result, even after payments or corrections." | behaviour | test_R3_SNAP_2_frozen_after_payment_correction_capture |
+| R3-SNAP.4 **H** | Snapshot | "Only limit and offset may accompany a snapshot; supplying `from`, `to` or `known_at` with it gives 422 `validation_failed`." | error | test_R3_SNAP_4_snapshot_with_window_params_422 (each, incl. empty values) |
+| R3-SNAP.5 **H** | Snapshot | "Unknown token, another user's token, or a token from before reset gives 404 `not_found`." | error | test_R3_SNAP_5_unknown_other_user_pre_reset_404 |
+| R3-SNAP.6 | Snapshot | "Tokens last until reset. No storage survival across container restarts is required." | behaviour | test_R3_SNAP_6_token_valid_until_reset (D-50 import rule) |
+| R3-SNAP.7 **H** | Snapshot | "Paging changes neither balances nor entries; the final partial page and offsets beyond the end must report `has_more` correctly." | behaviour | test_R3_SNAP_7_paging_has_more_and_beyond_end |
+| R3-SNAP.8 | Snapshot | "Unrecognized query parameters remain ignored under stage 1's general rule." | behaviour | test_R3_SNAP_8_unknown_params_ignored_with_snapshot |
+| R3-SNAP.9 **H** | Snapshot | "Existing snapshots remain unchanged during concurrent payments or corrections." | invariant | test_R3_SNAP_9_concurrent_writes_while_paging |
+| R3-SNAP.10 **H** | Historical holds | "Old snapshots remain unchanged after any lifecycle action or correction." | invariant | test_R3_SNAP_2_frozen_after_payment_correction_capture |
+| R3-SNAP.11 **H** | derived, D-50 | limit/offset with a snapshot follow the GET /requests rules (422); every non-snapshot read mints a new token | error | test_R3_SNAP_11_snapshot_paging_validation |
 
-### Capture (CAP)
-
-| id | section | requirement (verbatim quote) | kind | proof |
-|---|---|---|---|---|
-| R2-CAP.1 | Capture | "`Idempotency-Key` is required. Only the receiver (the `to` party) may capture." | behaviour | api_idem.py[capture]; api_capture.py::test_payer_or_third_party_capture_403 |
-| R2-CAP.2 **H** | Capture | "`amount` is optional and defaults to the authorisation's remaining amount." | behaviour | api_capture.py::test_capture_default_amount_is_remaining (fresh and after a non-final capture) |
-| R2-CAP.3 **H** | Capture | "**a replay must send the identical body** — `{}` and `{"amount": 2000}` are different JSON values even when they mean the same capture, so reusing a key across the two is 409 `idempotency_key_reuse`" | error | api_capture.py::test_empty_vs_explicit_amount_reuse_409 (also `{}` vs `{"final":true}`) |
-| R2-CAP.4 **H** | Capture | "Returns `201` with the created **payment**, in exactly the shape `POST /payments` returns, with `authorization_id` set to this authorisation and `request_id: null`." | format | api_capture.py::test_capture_returns_payment_shape (PAYMENT_KEYS + authorization_id; settlement_id null) |
-| R2-CAP.5 | Capture | "The payment's `amount` is the captured amount; its `note` and `visibility` are copied from the authorisation; it appears in the activity feed by the ordinary visibility rule." | behaviour | api_capture.py::test_capture_payment_in_feed_by_rule (private auth → third party can't see) |
-| R2-CAP.6 **H** | Capture | "Payments created without an authorisation carry `authorization_id: null`; their existing `request_id` semantics are unchanged." | format | api_capture.py::test_noncapture_payments_authorization_id_null (direct, request pay, settlement member, seeded) |
-| R2-CAP.7 | Capture | "By default the authorisation becomes `captured`, carries `captured_amount` and `payment_id`, and **releases the uncaptured remainder immediately**: capturing 1500 of 2000 returns 500 to the payer's `available` in the same step." | behaviour | api_capture.py::test_partial_final_capture_releases_rest (payer total −1500, held 0, available +500 vs before capture; receiver +1500) |
-| R2-CAP.8 | Capture | "**Default: one final capture per authorisation.** A second capture after a final capture is `409 authorization_not_open`." | error | api_capture.py::test_closed_cannot_capture |
-| R2-CAP.9 **H** | Capture | "To keep the remainder held, send `{"amount": 700, "final": false}`. `final` is boolean, default `true`" | behaviour | api_capture.py::test_nonfinal_keeps_remainder_held; api_capture.py::test_final_wrong_type_400 (D-33) |
-| R2-CAP.10 **H** | Capture | "With `final: false` and an uncaptured remainder, status stays `open`; further captures are allowed up to that remainder. Capturing the entire remainder closes it even with `final: false`." | behaviour | api_capture.py::test_nonfinal_sequence_closes_at_full |
-| R2-CAP.11 **H** | Capture | "A final capture closes it and releases any remainder." | behaviour | api_capture.py::test_nonfinal_then_final_releases_rest |
-| R2-CAP.12 **H** | Capture | "`capture_exceeds_authorization` compares with the **remaining** amount; omitted amount defaults to that remainder." | error | api_capture.py::test_exceeds_compares_remaining (2000 auth, 700 non-final, then 1301 → 422; 1300 ok) |
-| R2-CAP.13 **H** | Capture | "`captured_amount` is cumulative; `payment_id` is the latest capture; `payment_ids` lists every capture in order." | format | api_capture.py::test_cumulative_fields_after_each_capture |
-| R2-CAP.14 **H** | Capture | "Every authorization response adds `remaining_amount`: the amount still held, zero when closed." | format | api_capture.py::test_remaining_amount_everywhere (create, list, void, capture-closed, expired) |
-| R2-CAP.15 **H** | Capture | "Void and expiry can close a partially captured authorization, release only the remainder, and preserve all capture records." | behaviour | api_void.py::test_void_after_nonfinal_keeps_captures; api_expiry.py::test_partial_nonfinal_then_expiry_releases_only_remainder |
-| R2-CAP.16 **H** | Capture | "New fields do not change idempotency body equality." | behaviour | api_capture.py::test_replay_returns_original_even_after_more_captures (D-34) |
-| R2-CAP.17 | Capture | "The authorisation is not `open` \| 409 `authorization_not_open`" | error | api_capture.py::test_closed_cannot_capture (captured, voided) |
-| R2-CAP.18 | Capture | "`amount` above the authorisation's uncaptured remainder \| 422 `capture_exceeds_authorization`" | error | api_capture.py::test_exceeds_compares_remaining |
-| R2-CAP.19 | Capture | "`amount` below 1, or not an integer \| 422 `validation_failed`" | error | api_capture.py::test_capture_amount_rules (0, −1, 1.5, "5", true, null) |
-| R2-CAP.20 | Capture | "The caller is not the receiver \| 403 `forbidden`" | error | api_capture.py::test_payer_or_third_party_capture_403 |
-| R2-CAP.21 | Capture | "Unknown authorisation \| 404 `not_found`" | error | api_capture.py::test_unknown_authorization_404 |
-| R2-CAP.22 **H** | Capture | (derived, D-31) precedence: 401 → 400 body → 400/422 key → replay/reuse → 400 `final` type / 422 amount rules → 404 → 403 → 409 not_open / expired → 422 capture_exceeds | error | api_capture.py::test_capture_precedence |
-
-### Void (VOID)
+### Settlement and capture links (SET)
 
 | id | section | requirement (verbatim quote) | kind | proof |
 |---|---|---|---|---|
-| R2-VOID.1 | Void | "**Only the payer may void** — the `from` party releasing their own hold. No idempotency key, like decline and cancel." | behaviour | api_void.py::test_void_by_payer_no_key |
-| R2-VOID.2 | Void | "`200` with the authorisation, `status: "voided"`, the hold released." | behaviour | api_void.py::test_void_by_payer_no_key (available restored, total unchanged) |
-| R2-VOID.3 **H** | Void | "Voiding an already-voided authorisation is `200` with the current state." | behaviour | api_void.py::test_void_twice_200 |
-| R2-VOID.4 **H** | Void | "A `captured` or `expired` one is `409 authorization_not_open`." | error | api_void.py::test_void_captured_or_expired_409 (clock-expired and seeded expired) |
-| R2-VOID.5 **H** | Void | "For an existing authorization, capture and void return 403 `forbidden` when the caller is not the permitted party, including callers who are neither party." | error | api_void.py::test_receiver_or_third_party_void_403; api_capture.py::test_payer_or_third_party_capture_403 |
-| R2-VOID.6 | Void | (derived) unknown authorization id → 404 `not_found` | error | api_void.py::test_unknown_void_404 |
+| R3-SET.1 | Settlement | "Stage-1 settlements retain their original receipts and privacy rules." | behaviour | test_R3_SET_1_settlement_receipts_unchanged (replay 200 identical; feed visibility) |
+| R3-SET.2 **H** | Settlement | "Each member's original revision uses its shared committed_at as both effective_at and recorded_at." | format | test_R3_SET_2_member_revision1_committed_at |
+| R3-SET.3 **H** | Settlement | "Single-payment corrections reject settlement members with 422 `linked_payment_immutable`." | error | test_R3_SET_3_member_correction_422_linked (even by the member's sender, valid body) |
+| R3-SET.4 **H** | Settlement | "Captures are immutable linked payments: a correction of a capture gives 422 `linked_payment_immutable`." | error | test_R3_SET_4_capture_correction_422_linked |
+| R3-SET.5 **H** | Historical holds | "Captures appear exactly once with their links." | behaviour | test_R3_ST_14_settlement_members_and_captures_in_statement (authorization_id present) |
+| R3-SET.6 **H** | Historical holds | "`GET /statement` still contains money movements only: authorization, release and expiry are not payments." | behaviour | test_R3_SET_6_holds_not_in_statement |
 
-### GET /authorizations (LIST)
-
-| id | section | requirement (verbatim quote) | kind | proof |
-|---|---|---|---|---|
-| R2-LIST.1 | LIST | "`GET /authorizations` returns only authorizations involving the caller." / "Authorisations where the caller is the payer or the receiver, and no others." | invariant | api_list.py::test_only_own_authorizations |
-| R2-LIST.2 | LIST | "Newest first by `created_at`." | behaviour | api_list.py::test_newest_first |
-| R2-LIST.3 **H** | LIST | "`direction` is `outgoing` (the caller is the payer), `incoming` (the caller is the receiver), or absent for both." | behaviour | api_list.py::test_direction_filter |
-| R2-LIST.4 | LIST | "`status` is one of the four statuses, or absent for all." | behaviour | api_list.py::test_status_filter_all_four; api_list.py::test_unknown_direction_status_422 |
-| R2-LIST.5 | LIST | "`limit`, `offset` and `has_more` behave exactly as on `GET /requests`." | limit | api_list.py::test_limit_offset_has_more (bounds, plain digits, huge offset valid L3) |
-| R2-LIST.6 | LIST | (derived) response `{"authorizations": [...], "has_more": bool}` | format | api_list.py::test_list_shape (D-35) |
-
-### Authorizations UI (AUI)
+### Upgrades over populated state (UPG)
 
 | id | section | requirement (verbatim quote) | kind | proof |
 |---|---|---|---|---|
-| R2-AUI.1 | UI | "A new route `/authorizations`, and the wallet gains two numbers." | screen | ui_routes.py::test_required_routes_render_html[/authorizations] |
-| R2-AUI.2 | UI | "`wallet-balance` \| Formatted `total`, retaining the existing display and `data-amount`" | screen | ui_wallet.py::test_wallet_numbers_with_hold |
-| R2-AUI.3 **H** | UI | "`wallet-available` \| Formatted `available`, with `data-amount`. **Present this as the headline number** — it is what the user can actually spend" | screen | ui_wallet.py::test_wallet_numbers_with_hold; ui_visual.py::test_available_is_headline |
-| R2-AUI.4 **H** | UI | "`wallet-held` \| Formatted `held`, with `data-amount`. Absent when `held` is zero" | screen | ui_wallet.py::test_wallet_held_absent_when_zero_present_with_hold |
-| R2-AUI.5 | UI | "`authorize-handle`, `authorize-amount`, `authorize-note`, `authorize-visibility`, `authorize-submit` \| The authorise form. Same input rules as the pay form" | screen | ui_authz.py::test_authorize_form_creates_hold |
-| R2-AUI.6 | UI | "`authorize-error` \| Shown when the authorisation is refused, including insufficient available funds" | screen | ui_authz.py::test_authorize_error_insufficient_available |
-| R2-AUI.7 | UI | "`authorization-list` \| Container on `/authorizations`. Children newest first in the DOM" | screen | ui_authz.py::test_authorization_list_newest_first |
-| R2-AUI.8 | UI | "`authorization-item-{authorization_id}` \| Carries `data-status="{status}"`" | screen | ui_authz.py::test_items_status_incl_clock_expired |
-| R2-AUI.9 | UI | "`authorization-amount-{id}` \| Text is exactly the formatted authorised amount" | format | ui_authz.py::test_item_fields_exact |
-| R2-AUI.10 **H** | UI | "`authorization-captured-{id}` \| Formatted captured amount. Present only when `status` is `captured`" | screen | ui_authz.py::test_captured_element_only_when_captured (absent on open-with-partial and voided-with-partial) |
-| R2-AUI.11 **H** | UI | "`authorization-expires-{id}` \| Text is the RFC 3339 `expires_at`" | format | ui_authz.py::test_item_fields_exact (text == API expires_at) (D-36) |
-| R2-AUI.12 **H** | UI | "`authorization-capture-amount-{id}` \| Decimal input, pre-filled with the remaining amount. Present only on an incoming `open` authorisation" | screen | ui_authz.py::test_capture_controls_only_incoming_open (prefill `15.00` style, updates after non-final capture) (D-36) |
-| R2-AUI.13 | UI | "`authorization-capture-{id}` \| Button. Present only on an incoming `open` authorisation" | screen | ui_authz.py::test_capture_controls_only_incoming_open |
-| R2-AUI.14 | UI | "`authorization-void-{id}` \| Button. Present only on an outgoing `open` authorisation" | screen | ui_authz.py::test_void_button_only_outgoing_open |
-| R2-AUI.15 | UI | "`authorization-error` \| Shown when a capture or a void is refused" | screen | ui_authz.py::test_capture_refused_shows_error (expired behind the page; exceeds remainder) |
-| R2-AUI.16 | UI | "`empty-authorizations` \| Shown when the list is empty" | screen | ui_states.py::test_empty_states |
-| R2-AUI.17 **H** | UI | "The UI must reflect seeded and newly created holds. Show available funds as the user's spending balance, including immediately after reset with open holds." | screen | ui_wallet.py::test_seeded_hold_shown_right_after_reset |
-| R2-AUI.18 | UI | (derived) capture from the UI submits the decimal input as minor units with an Idempotency-Key; non-final capture is not required in the UI | behaviour | ui_authz.py::test_capture_from_ui_partial (D-37) |
+| R3-UPG.1 **H** | Settlement | "A stage-3 service must accept exports produced by the same team's stage-1 or stage-2 service." | behaviour | test_R3_UPG_1_populated_stage1_and_stage2_exports_import (real exports from the frozen images: payments, requests, splits, settlements, receipts; stage 2 adds holds and captures) |
+| R3-UPG.2 **H** | Settlement | "The ledger must import and account for authorizations and captures." | behaviour | test_R3_UPG_2_imported_holds_and_captures_accounted (/me current and as_of; statements include captures; held matches) |
+| R3-UPG.3 **H** | derived, D-52 | every imported payment has revision 1 with effective = recorded = created_at (members: committed_at); opening balances derived as current − net of all imported payments | behaviour | test_R3_UPG_3_imported_revision1_and_opening |
+| R3-UPG.4 **H** | derived, D-52 | imported receipts (all seven older paths) replay 200; tokens survive; imported pending requests payable; imported payments correctable unless linked | behaviour | test_R3_UPG_4_receipts_tokens_requests_corrections_after_import |
+| R3-UPG.5 **H** | derived, D-52 | a stage-3 export round-trips into stage 3 with revisions, recorded times, snapshots and closed_at preserved | behaviour | test_R3_UPG_5_stage3_round_trip |
+| R3-UPG.6 **H** | derived, D-52 + L5 | importing a stage-1 or stage-2 export keeps destination sessions whose user id, email and handle match; a stage-3 export is pure replacement | behaviour | test_R3_UPG_6_session_rule_by_source_stage |
 
-### Concurrency (CONC)
+### Historical holds (HH)
 
 | id | section | requirement (verbatim quote) | kind | proof |
 |---|---|---|---|---|
-| R2-CONC.1 **H** | Concurrent | "Concurrent requests must produce the same results as executing them one at a time in some order, and the requirements above hold at every read." | invariant | api_conc.py::test_capture_vs_void_race_single_outcome; api_conc.py::test_concurrent_captures_never_exceed; api_conc.py::test_authorize_vs_payment_available_never_negative; api_conc.py::test_totals_conserved_mixed_concurrent (reader threads assert ME identities on every read during load) |
+| R3-HH.1 **H** | Historical holds | "A hold starts at authorization creation" | behaviour | prop: test_R3_HH_model (held at created_at inclusive) |
+| R3-HH.2 **H** | Historical holds | "nonfinal capture reduces it at capture time" | behaviour | test_R3_HH_2_nonfinal_capture_reduces_at_capture_time |
+| R3-HH.3 **H** | Historical holds | "final capture, void or expiry releases the remainder at that event's time." | behaviour | test_R3_HH_3_release_at_event_time (final capture, void, expiry) |
+| R3-HH.4 **H** | Historical holds | "Expiry takes effect at `expires_at`." | behaviour | test_R3_HH_4_expiry_at_expires_at_even_without_request (as_of = expires_at → released; −1 µs → held) |
+| R3-HH.5 **H** | Historical holds | "Events other than clock expiry are known at their server-assigned event time." | behaviour | test_R3_HH_5_known_at_hides_later_events (known_at before a void: hold still active at as_of after the void) |
+| R3-HH.6 **H** | Historical holds | "Once creation is known, the expiry deadline is known too." | behaviour | test_R3_HH_6_expiry_known_with_creation (known_at = creation, as_of after deadline → released) |
+| R3-HH.7 **H** | Historical holds | "For queries beyond now, an open hold expires at its deadline." | behaviour | test_R3_HH_7_future_as_of_releases_at_deadline |
+| R3-HH.8 **H** | Historical holds | "Without `as_of`, use the instant the request began." | behaviour | test_R3_HH_8_known_at_only_uses_read_instant |
+| R3-HH.9 **H** | Historical holds | "Authorizations expose `closed_at` (null while open; event time when closed)." | format | test_R3_HH_9_closed_at (open null; captured = final capture time; voided = void time; expired = expires_at) (D-51) |
+| R3-HH.10 **H** | Historical holds | "Historical `total` follows stage-3 effective/recorded-time rules." | behaviour | prop: test_R3_HH_model |
+| R3-HH.11 **H** | Historical holds | "Seeded open holds are assumed created at reset unless `created_at` is supplied; seeded closed holds need not reconstruct a prior lifecycle." | behaviour | test_R3_HH_11_seeded_holds_history (D-51) |
+| R3-HH.12 **H** | derived, D-51 | a hold whose creation is not yet known at K contributes nothing; held never counts a hold before its created_at | behaviour | prop: test_R3_HH_model |
 
-## Part B — stage 1 rows changed by stage 2
+### Invariants across views (INV)
 
-Stage-1 rows not listed here are unchanged and carried. The carried stage-1 acceptance suite
-(`stage-2/acceptance/stage1/`) is updated only where a row below changes, each with a decision
-record citing the stage 2 row.
+| id | section | requirement (verbatim quote) | kind | proof |
+|---|---|---|---|---|
+| R3-INV.1 **H** | Corrections | "The sum of balances must equal the seeded total in every historical view." | invariant | prop: test_R3_INV_1_sum_conserved_every_view (every user's /me at every boundary ±1 µs × several known_at, after corrections incl. backdated and zero) |
+| R3-INV.2 **H** | stage 2 carried | `available = total − held ≥ 0` and `total ≥ 0` in every historical view (all corrections accepted only if they keep this) | invariant | prop: test_R3_INV_2_nonnegative_every_view |
+| R3-INV.3 **H** | derived | current `GET /me` balance equals `GET /me?as_of=<far future>` and the closing balance of an unbounded statement | invariant | test_R3_INV_3_current_equals_views |
+| R3-INV.4 **H** | stage 2 carried, "Concurrent operations" | concurrent payments, corrections, captures and statement reads behave as some serial order; snapshots unaffected | invariant | test_R3_INV_4_concurrent_mixed_serialisable |
 
-| id | stage 1 rule (short) | changed by | new rule |
+## Part B — stage 1 / stage 2 rows changed by stage 3
+
+| id | earlier rule (short) | changed by | new rule |
 |---|---|---|---|
-| R-1.6 | sum of balances = seeded total | R2-HOLD.5 | sum of `total` (= `balance`) = seeded total; holds move nothing |
-| R-1.7 | no negative balance | R2-HOLD.6 | `total ≥ 0` and `available = total − held ≥ 0` at every read |
-| R-3.5 | reset replaces state with fixture | R2-MOD.1–9 | fixture adds `authorization_ttl_seconds` and `authorizations`; holds over balance → 422 |
-| R-3.8 | requests and responses are JSON | R2-SCR.2/5/6 | UI routes return HTML; `/requests` and `/authorizations` negotiate on `Accept: text/html` |
-| R-3.12 | ids ≤ 64 chars | R2-AUTH.3 | applies to authorization ids too |
-| R-3.13 | generated ids never collide with fixture ids | R2-MOD.1 | applies to seeded authorization ids |
-| R-4.29 | fixture shape | R2-MOD.1 | + `authorization_ttl_seconds`, `authorizations[]` |
-| R-7.1 | five idempotent paths | R2-HOLD.16 | seven paths (+ `POST /authorizations`, `POST /authorizations/{id}/capture`) |
-| R-8.1 | `GET /me` shape | R2-ME.1 | + `total`, `available`, `held` |
-| R-8.5 | payment key set | R2-CAP.4/6 | + `authorization_id` (null unless a capture) on every payment object |
-| R-8.6 | payments 409 when balance < amount | R2-HOLD.13 | compared with `available` |
-| R-8.26 | pay returns payment shape | R2-CAP.6 | payment carries `authorization_id: null` |
-| R-8.29 | request pay 409 when balance < amount | R2-HOLD.13 | compared with `available` |
-| R-8.41/R-8.48 | `GET /requests` JSON list | R2-SCR.5 | JSON unless `Accept: text/html` |
-| R-8.62 | feed items are payment objects | R2-CAP.4/6 | items carry `authorization_id`; captures appear, open authorizations never |
-| R-10.2 | export `{track, format_version: 1, state}` | R2-UPG.1/7 | unchanged envelope (D-38); state also carries holds, ttl |
-| R-10.3/R-10.11 | import accepts own export, preserves everything | R2-UPG.1–7 | also accepts the stage-1 service's export; preserves authorizations, holds, captures |
-| R-10.16 | import removes destination credentials | R2-UPG.2 | see D-22 (signed-in browser across the upgrade) |
-| R-11.11/R-11.12 | settlement affordable on net ≥ 0 of balance | R2-HOLD.7/13 | net debit must fit within `available` |
-| R-11.16 | members carry settlement_id | R2-CAP.6 | members also carry `authorization_id: null` |
-| R-X.1 | precedence | R2-CAP.22 | extended to authorization/capture paths |
+| R-3.9 / D-16 | timestamps RFC 3339, server emits whole seconds | R3-TS.10, D-41 | server-assigned instants carry microseconds, strictly increasing; still RFC 3339 with offset |
+| R-3.5 / R-4.29 / R2-MOD.1 | fixture shape | R3-TS.4–9, R3-HH.11 | payments may carry `created_at` (future → 422); seeded history must be consistent; authorizations may carry `created_at` |
+| R-4.27 | negative fixture balance → 422 | R3-TS.6, R3-TS.9 | also future `created_at` and negative seeded history → 422, nothing changes |
+| R-7.1 / R2-HOLD.16 | seven idempotent paths | R3-COR.1/14 | eight: + `POST /payments/{id}/corrections` |
+| R-8.1 / R2-ME.1 | `GET /me` shape | R3-ME.*, R3-KN.* | optional `as_of`/`known_at`; shape unchanged without them; echoes when supplied |
+| R-8.62 / R2-FEED | feed items are original payments | R3-KN.8, R3-REV.9 | still the original payment and amount; corrections are not feed items |
+| R-1.6 / R2-HOLD.5 | sum of totals = seeded total | R3-INV.1 | in every historical view |
+| R-1.7 / R2-HOLD.6 | total, available ≥ 0 | R3-INV.2, R3-MNY.4/8 | in every historical view; corrections rejected otherwise |
+| R-5.1 table | error codes | R3-COR.11, R3-MNY.4, R3-SET.3/4 | + `stale_revision`, `historical_overdraft`, `linked_payment_immutable` |
+| R-10.3/R-10.11 / R2-UPG.1/7 | import accepts own (and stage-1) exports | R3-UPG.1–5 | accepts stage-1 and stage-2 exports; preserves revisions, recorded times, snapshots |
+| R-10.16 / D-22 (L5) | older-format import keeps matching sessions | R3-UPG.6 | applies to stage-1 and stage-2 exports imported into stage 3 |
+| R-11.15/R-11.16 | settlement members | R3-SET.2/3 | revision 1 at committed_at; members immutable to corrections |
+| R2-AUTH.3 / D-32 | authorization key set | R3-HH.9 | + `closed_at` |
+| R2-CAP.4 | capture payment | R3-SET.4/5 | captures immutable to corrections; appear once in statements |
+| R-8.42 / R-8.61 | list ordering | R3-TS.3 | unchanged: /activity by created_at; statements by selected effective_at then id |
 
 ## Coverage table
 
-| area | rows | tested (api) | tested (ui) | review / untestable | hidden (H) |
+| area | rows | example/edge tests | property tests | untestable | hidden (H) |
 |---|---|---|---|---|---|
-| SCR | 8 | 2 | 5 | 1 | 3 |
-| VIS | 13 | 0 | 11 | 2 | 7 |
-| SIGN | 6 | 0 | 6 | 0 | 3 |
-| PAY | 8 | 0 | 8 | 0 | 3 |
-| AMT | 8 | 0 | 8 | 0 | 7 |
-| FEED | 8 | 0 | 7 | 1 | 3 |
-| REQ | 8 | 0 | 8 | 0 | 2 |
-| SPL | 6 | 0 | 6 | 0 | 4 |
-| SYNC | 3 | 0 | 2 | 1 | 2 |
-| RACE | 10 | 0 | 9 | 1 | 8 |
-| UPG | 7 | 2 | 4 | 1 | 6 |
-| HOLD | 16 | 16 | 0 | 0 | 10 |
-| MOD | 9 | 9 | 0 | 0 | 6 |
-| EXP | 7 | 7 | 0 | 0 | 6 |
-| ME | 2 | 2 | 0 | 0 | 1 |
-| AUTH | 10 | 10 | 0 | 0 | 3 |
-| CAP | 22 | 22 | 0 | 0 | 13 |
-| VOID | 6 | 6 | 0 | 0 | 3 |
-| LIST | 6 | 6 | 0 | 0 | 1 |
-| AUI | 18 | 0 | 18 | 0 | 6 |
-| CONC | 1 | 1 | 0 | 0 | 1 |
-| **Total** | **182** | **83** | **92** | **7** | **98** |
+| TS | 11 | 11 | 0 | 0 | 8 |
+| ME | 10 | 8 | 2 | 0 | 8 |
+| ST | 14 | 11 | 3 | 0 | 6 |
+| REV | 9 | 8 | 1 | 0 | 7 |
+| COR | 16 | 16 | 0 | 0 | 9 |
+| MNY | 12 | 11 | 1 | 0 | 12 |
+| RVL | 5 | 5 | 0 | 0 | 2 |
+| KN | 12 | 10 | 2 | 0 | 11 |
+| SNAP | 11 | 11 | 0 | 0 | 8 |
+| SET | 6 | 6 | 0 | 0 | 5 |
+| UPG | 6 | 6 | 0 | 0 | 6 |
+| HH | 12 | 9 | 3 | 0 | 12 |
+| INV | 4 | 2 | 2 | 0 | 4 |
+| **Total** | **128** | **114** | **14** | **0** | **98** |
 
-Review/untestable rows: R2-SCR.4, R2-VIS.4, R2-VIS.13, R2-FEED.7, R2-SYNC.3, R2-RACE.9,
-R2-UPG.5 (permissions; R2-VIS.4 is review only). R2-VIS.1 is counted as ui (screenshots taken
-for the verifier's review), as are R2-VIS.3/R2-VIS.6 for their automatable part. Recompute rows with `grep -c '^| R2-' ledger.md`.
+"Tokens last until reset. No storage survival across container restarts is required." (R3-SNAP.6) is
+a permission for restarts and is not tested for restarts. Recompute: `grep -c '^| R3-' ledger.md`.
 
 ## Hidden requirements to watch
 
-Latest-refresh-wins with out-of-order responses (R2-RACE.2/10) · `pay-uncertain` after a
-committed-but-lost response and same-key, same-body retry (R2-RACE.5–8) · form and retry
-identity surviving a stage-1→stage-2 export/import without reload (R2-UPG.2/4/6) · decimal
-input rules incl. `15.005` and `minor_units` 0/3 (R2-AMT.6–8) · exact formatted amounts,
-no grouping, no sign (R2-AMT.2–5, FEED.4, REQ.3, SPL.4, AUI.9) · expiry evaluated at read
-time with no request at the deadline (R2-EXP.2/3/6) · seeded open holds over balance → reset
-422 (R2-MOD.6) · `available` derived, never seeded (R2-MOD.5) · held funds refuse payments,
-request pay, authorizations and settlement net debits (R2-HOLD.7/13) · `{}` vs
-`{"amount": n}` reuse 409 (R2-CAP.3) · `capture_exceeds_authorization` against the remainder
-(R2-CAP.12) · `authorization_id: null` on every non-capture payment (R2-CAP.6) · 403 (not
-404) for third parties on capture/void (R2-VOID.5) · `direction` meaning inverted vs requests
-(R2-LIST.3) · `wallet-held` absent at zero (R2-AUI.4) · `authorization-captured` only when
-`captured` (R2-AUI.10) · 375 px with no horizontal scroll, visible labels, focus, contrast
-(R2-VIS.7–10) · Accept negotiation on `/requests` and `/authorizations` (R2-SCR.5/6) · same
-results as some serial order (R2-CONC.1).
+Inclusive `as_of` vs half-open `[from, to)` at the exact instant, in any offset (R3-ME.5, R3-ST.3,
+R3-KN.4) · selected-revision rule "recorded at or before known_at", payment absent before its revision 1
+is recorded (R3-KN.2) · opening balance = seeded ending − net of ORIGINAL seeded payments, untouched by
+corrections (R3-REV.4/5) · future seeded `created_at` → 422 (R3-TS.6) · seeded omitted `created_at`
+before any API payment (R3-TS.5) · recorded_at strictly increasing within one second (R3-REV.8) ·
+correction wrong JSON types are 422 not 400 (R3-COR.9) · replay of a correction after newer revisions
+(R3-COR.12) · `historical_overdraft` evaluated at every past boundary for total AND available, with
+same-instant movements combined, after `insufficient_funds` (R3-MNY.4/5/8/9) · failures change nothing
+(R3-MNY.6) · third party gets 404 (not 403) on revisions, 403 on corrections (R3-RVL.2, R3-COR.2) ·
+`payment.amount` in statements is the selected amount while /activity keeps the original (R3-KN.8) ·
+snapshot rejects `from`/`to`/`known_at` with 422, 404 across users and resets, frozen after every kind of
+write (R3-SNAP.*) · members and captures immutable 422 (R3-SET.3/4) · populated stage-1 and stage-2
+upgrades with captures, holds and receipts (R3-UPG.*) · historical holds incl. known-time of events,
+expiry at deadline beyond now, `closed_at` (R3-HH.*) · Σ totals = seeded total in every (as_of, known_at)
+view (R3-INV.1).
 
 ## Risk list — the five most likely to be built wrong
 
-1. **R2-UPG.2/4/6 upgrade continuity.** The browser's session, its in-memory pay form and the
-   pending Idempotency-Key must survive a stage-1 export imported into the stage-2 service with
-   no reload. Stage 1's import removes destination credentials (R-10.16); unless the session
-   the browser holds is one that the stage-1 export contains, the browser is logged out
-   (D-22). The retry must then get 200 with the stored stage-1 receipt (which lacks
-   `authorization_id`) and the UI must accept it as success.
-2. **R2-RACE.2/5/6 client state machine.** Latest-refresh-wins needs a per-read sequence guard
-   (not "last response wins"); lost responses (network error, abort after commit, 5xx) must
-   produce `pay-uncertain`, keep the key, and retry with the byte-identical JSON value; only a
-   field change mints a new key.
-3. **R2-EXP.2/3, R2-MOD.5/6 time-derived holds.** `held`/`available`/status must be computed
-   from `expires_at` vs now on every read and write (no sweeper dependency), including in list
-   filters, capture (409 `authorization_expired`), void (409 `authorization_not_open`), the
-   seeded-holds-over-balance check (only unexpired open holds count), and settlement/payment
-   affordability.
-4. **R2-CAP.2/3/9–14 capture arithmetic.** Default amount = remaining; final default true;
-   non-final keeps remainder open; full remainder closes even when non-final; exceeds compares
-   with remaining; cumulative `captured_amount`, latest `payment_id`, ordered `payment_ids`,
-   `remaining_amount` 0 when closed; `{}` ≠ `{"amount": n}` ≠ `{"final": true}` for replay.
-5. **R2-AMT/R2-SPL.6 money formatting and preview.** Decimal parsing without floats (string
-   arithmetic), rejection of `15.005`/nonnumeric without a request, exact `minor_units`
-   formatting (`1200 JPY`, `1.500 BHD`), and a client-side §9 preview identical to the
-   server's shares in handle order.
-
-Runner-up: R2-VIS.7–10 at 375 px (long notes, 1e9 amounts and handles of 20 characters must
-wrap, not scroll) and contrast/focus on every control.
+1. **R3-KN.2/4, R3-ME.4/5, R3-ST.3 two-time selection.** Selecting the latest revision with
+   recorded_at ≤ K *per payment*, then applying it at its effective time with inclusive `as_of` and
+   half-open `[from, to)`, compared by instant across offsets and at microsecond precision. Off-by-one at
+   exactly the boundary and string comparison of timestamps are the classic failures.
+2. **R3-MNY.4/5/8 historical_overdraft.** Must replay both parties' full corrected history (opening +
+   selected movements + hold intervals) and check every past boundary with same-instant movements
+   combined, for total and available, only after the current-available `insufficient_funds` check — and
+   leave no trace on failure.
+3. **R3-UPG.1–3 populated upgrades.** Stage-1/2 exports carry no revisions, opening balances or hold
+   event times; the importer must synthesise revision 1 (members at committed_at), derive openings, link
+   captures, give authorizations created/closed times that keep history nonnegative (D-52), keep receipts
+   and sessions.
+4. **R3-SNAP.2/9/10 snapshots.** Freezing the default `to` and `known_at` at the first read; paging must
+   be immune to later payments, corrections (including backdated ones recorded later) and hold events;
+   strict 422 for window params; 404 across users/reset.
+5. **R3-HH.* historical holds.** Hold intervals with known-time rules (events known at event time, expiry
+   known with creation, future as_of expires at deadline), seeded open holds at reset, closed_at for
+   every closing path, and available/held consistent with total in every view.

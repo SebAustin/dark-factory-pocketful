@@ -66,3 +66,30 @@ Domain terms as the specification uses them. No implementation detail.
 | decimal input | What a person types in an amount field (`15`, `15.5`, `15.00`), converted to minor units; more than `minor_units` places or nonnumeric is refused before any request. | API amount (integer minor units) |
 | split preview | Client-side shares computed by the §9 rule before posting; must equal the server's shares. | split response `shares` |
 | content negotiation | `/requests` and `/authorizations` return HTML for `Accept: text/html`, JSON otherwise. | separate UI routes |
+
+## Stage 3 additions (time model)
+
+All instants are compared as absolute points in time (UTC), never as strings; offsets only change the
+rendering (D-42). Server-assigned instants have microsecond precision and strictly increase (D-41).
+
+| term | meaning | not to be confused with |
+|---|---|---|
+| created_at | The instant a payment moved money: server-assigned for API payments (members: the settlement's committed_at; captures: the capture instant), supplied or reset time for seeded payments, carried for imported ones. Never changes, even after corrections. | effective_at of a later revision |
+| revision | One immutable version of a payment's amount and effective time. Revision 1 is the original (`amount` as paid, `effective_at = recorded_at = created_at`, `reason ""`); each correction appends revision n+1. | the payment object (original, unchanged) |
+| effective_at | When a revision's money is deemed to have taken effect; drives `as_of`, statement windows and ordering. Revision 1: created_at; corrections: supplied, ≤ now. | recorded_at |
+| recorded_at | When the service learned a revision (server-assigned; revision 1 = created_at). Strictly increasing per payment. Drives `known_at` selection. | effective_at |
+| selected revision | For a payment and a `known_at` K: its latest revision with `recorded_at ≤ K`; none → the payment contributes nothing. Without K: the latest revision known at the read instant. | latest revision overall |
+| as_of (T) | Inclusive instant for `GET /me`: balance after every selected revision with `effective_at ≤ T`, before every later one. Echoed exactly as given. | statement `to` (exclusive) |
+| known_at (K) | Knowledge cut-off for `GET /me` and `GET /statement`: only revisions recorded at or before K count (and only hold events known by K). Echoed exactly as given. | as_of |
+| statement window [from, to) | Half-open: entries with selected `from ≤ effective_at < to`. `from` default: before the wallet opened; `to` default: the read instant. | as_of (inclusive) |
+| opening balance (wallet) | What the wallet held before anything moved: seeded ending balance minus the net of the ORIGINAL (revision 1) seeded payments; 0 for signed-up users; for imported states: imported balance minus the net of all imported payments. Corrections never change it. | statement `opening_balance` (balance just before `from`) |
+| opening_balance / closing_balance (statement) | The caller's balance immediately before `from` / immediately before `to`, under the selected revisions. | wallet opening balance |
+| delta | A statement entry's signed effect on the caller: −amount if the caller sent it, +amount if received (selected amount; may be 0). | correction difference |
+| boundary | One distinct instant at which money or holds change; all movements and hold events at that instant are applied together before the balance is judged. | a single payment |
+| event time | The server-assigned instant of an authorization lifecycle event (creation, capture, void); expiry's event time is `expires_at`. | recorded_at of a payment revision |
+| closed_at | An authorization's closing event time: null while open; final-capture instant, void instant, or `expires_at` for expiry. | expires_at of an open hold |
+| historical view | The balances (and holds) computed for one pair (as_of, known_at). | the current wallet |
+| historical_overdraft | Rejection of a correction that would make total or available negative at any past boundary under the latest known revisions. | insufficient_funds (current available) |
+| linked payment | A settlement member or a capture; immutable to single-payment corrections (422 `linked_payment_immutable`). | request-pay payment (correctable) |
+| snapshot | Opaque token minted by every first `GET /statement`; pages exactly that read's frozen result (window, resolved `to` and `known_at`, selected revisions, entries, balances). Valid until reset (and across export/import of the same state). | idempotency key |
+| read instant | The single instant at which a read is evaluated (taken from the service's monotonic clock while the state is consistent); defines "now" for default `to`, default `known_at` and default `as_of`. | client clock |
