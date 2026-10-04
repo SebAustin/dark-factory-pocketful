@@ -21,7 +21,10 @@ COUNTER_KINDS = ("p", "rq", "sp", "st", "u")
 # Stage 2 keys a stage-1 export does not have: filled with these defaults on import (D10).
 STAGE2_DEFAULTS = {"authorizations": {}, "settings": {"authorization_ttl_seconds": DEFAULT_TTL}}
 DERIVED_KEYS = ("user_payments",)  # rebuilt on import, never trusted
-STATE_KEYS = tuple(k for k in empty_state() if k not in STAGE2_DEFAULTS and k not in DERIVED_KEYS)
+STAGE3_DEFAULTS = {"snapshots": {}}  # an older export has none (D-50, L8)
+STATE_KEYS = tuple(k for k in empty_state()
+                   if k not in STAGE2_DEFAULTS and k not in DERIVED_KEYS
+                   and k not in STAGE3_DEFAULTS)
 EVENT_KINDS = ("created", "capture", "release")
 MAX_EXPONENT = 18  # 2^53 has 16 digits; anything past 1e18 can never be a valid state value
 
@@ -307,6 +310,27 @@ def _check_events(state: dict) -> None:
         a.setdefault("closed_at", None)
 
 
+def _check_snapshots(state: dict) -> None:
+    """Snapshots of a stage-3 export: [payment id, revision, delta, balance_after] rows."""
+    for token, snap in _dict(state["snapshots"], "snapshots").items():
+        _str(token, "snapshot token", True)
+        _dict(snap, "snapshot")
+        _user_ref(state["users"], snap.get("user"), "snapshot user")
+        _int(snap.get("opening_balance"), -BALANCE_LIMIT, BALANCE_LIMIT, "snapshot opening")
+        _int(snap.get("closing_balance"), -BALANCE_LIMIT, BALANCE_LIMIT, "snapshot closing")
+        _opt_str(snap.get("known_at"), "snapshot known_at")
+        snap.setdefault("known_at", None)
+        for row in _list(snap.get("entries"), "snapshot entries"):
+            if not isinstance(row, list) or len(row) != 4:
+                _bad("snapshot entry must be [payment, revision, delta, balance_after]")
+            p = state["payments"].get(row[0]) if isinstance(row[0], str) else None
+            if p is None:
+                _bad("snapshot entry names an unknown payment")
+            _int(row[1], 1, len(p["revisions"]), "snapshot revision")
+            _int(row[2], -BALANCE_LIMIT, BALANCE_LIMIT, "snapshot delta")
+            _int(row[3], -BALANCE_LIMIT, BALANCE_LIMIT, "snapshot balance_after")
+
+
 def is_stage1_state(submitted) -> bool:
     """A stage-1 export's state has none of the keys stage 2 added."""
     return isinstance(submitted, dict) and not any(k in submitted for k in STAGE2_DEFAULTS)
@@ -336,7 +360,7 @@ def validated_state(submitted) -> dict:
     if any(key not in full for key in STATE_KEYS):
         _bad("a required key is missing")
     state = {key: full[key] for key in STATE_KEYS}  # unknown keys are ignored
-    for key, default in STAGE2_DEFAULTS.items():  # a stage-1 export lacks these
+    for key, default in {**STAGE2_DEFAULTS, **STAGE3_DEFAULTS}.items():  # older exports lack these
         state[key] = full[key] if key in full else json.loads(json.dumps(default))
     _str(state["currency"], "currency", True)
     if _int(state["minor_units"], 0, 3, "minor_units") not in MINOR_UNITS:
@@ -359,6 +383,7 @@ def validated_state(submitted) -> dict:
     ledger.rebuild_user_payments(state)
     ledger.compute_openings(state)
     # D-52: no history validation on import; the source service enforced its own rules.
+    _check_snapshots(state)
     if any(u["held"] > u["balance"] for u in state["users"].values()):
         _bad("open holds exceed a balance (available would be negative)")
     return state

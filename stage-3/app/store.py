@@ -36,7 +36,7 @@ def empty_state(currency: str = "EUR", minor_units: int = 2) -> dict:
         "settlements": {}, "idem": {}, "seq": 0,
         "counters": {k: 0 for k in ID_PREFIX},
         "authorizations": {}, "settings": {"authorization_ttl_seconds": DEFAULT_TTL},
-        "user_payments": {},
+        "user_payments": {}, "snapshots": {},
     }
 
 
