@@ -70,6 +70,7 @@ def world(B):
     w["refunded"] = pay("a", "b", 200)
     w["refund"] = call(B, "POST", "/payments/%s/refunds" % w["refunded"], {"amount": 150}, T["b"], uuid.uuid4().hex)[1]["payment_id"]
     w["poor_recv"] = pay("a", "poor", 500)                                         # poor then spends it all
+    w["poor_recv_at"] = call(B, "GET", "/payments/%s/revisions" % w["poor_recv"], t=T["a"])[1]["revisions"][0]["effective_at"]
     call(B, "POST", "/payments", {"to_handle": "c", "amount": 600}, T["poor"], uuid.uuid4().hex)
     w["early"] = pay("b", "poor", 1)
     return w
@@ -104,14 +105,16 @@ def sequential(B):
         ("incomplete settlement", [item(P[0]), item(M[0], eff=same)], (422, "incomplete_settlement")),
         ("members at different instants", [item(P[0]), item(M[0], eff=same), item(M[1], eff=ago(3))], (422, "validation_failed")),
         ("current unaffordable", [item(P[0]), item(w["poor_recv"], amount=0)], (409, "insufficient_funds")),
-        ("historical overdraft", [item(P[0]), item(w["early"], amount=600, eff=ago(3600 * 24))], None),
+        # poor: opening 100, +500 (poor_recv) at t1, -600 at t2, +1 at t3 -> now 1. Reducing poor_recv by 1 debits 1 (affordable now)
+        # but leaves poor at -1 after t2: historical_overdraft.
+        ("historical overdraft", [item(P[0]), item(w["poor_recv"], amount=499, eff=w["poor_recv_at"])], (409, "historical_overdraft")),
     ]
     for name, items, want in cases:
         before = observe(B, w)
         key = uuid.uuid4().hex
         st, body = call(B, "POST", "/correction-batches", {"corrections": items}, T["op"], key)
         got = (st, (body or {}).get("error", {}).get("code"))
-        ok_status = got == want if want else got in ((409, "historical_overdraft"), (409, "insufficient_funds"))
+        ok_status = got == want
         after = observe(B, w)
         unchanged = after == before
         reuse = call(B, "POST", "/correction-batches", {"corrections": [item(P[3], rev=len(after[0][P[3]]["revisions"]), amount=99)]}, T["op"], key)
