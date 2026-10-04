@@ -21,6 +21,7 @@ Last accepted revision: 36547b6451dab2843338683d4226b7fbc1349250 (stage 3). Stag
 | S4.0 | Carry forward + RUN.md | builder | stage-4/ | in review | 2cdac7b+bb32d6a | 0 |
 | S4.L | Ledger (64 R4 rows, D-62..D-75) | analyst | stage-4/docs/ledger.md | done | 200efad | 0 |
 | S4.A | Acceptance (s1-3 carried, s4 new) | analyst | stage-4/acceptance/ | assigned | - | 0 |
+| S4.PG | Plan gate | analyst | - | assigned | - | 0 |
 | S4.P | Plan | builder | stage-4/docs/plan.md | built | 8ea5e3c | 0 |
 | S4.1 | Refunds | builder | app | in review | 95cde7e | 0 |
 | S4.2+ | Batches, upgrade, load | builder | app | assigned | - | 0 |
