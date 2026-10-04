@@ -123,6 +123,8 @@ import restores them (overrides stage 3's L8 for stage 4).
   carry a `generation`; each such state is exported **once** as a compact ledger view — the
   snapshot owners' payments with their revisions, the openings and handles involved, the
   currency — so the export grows with retained states, never with reads × window (verifier F9).
+  In memory the same holds: an import repoints the recipes of the outgoing state to one shared
+  compact view of it, so the rest of the replaced state is freed.
 - **Import of a stage-4 export merges** its snapshots into the in-process store (lead L12, which
   amends D-74): recipes bind to the imported state or to their generation's view; destination
   tokens keep paging; on a clash the imported token wins. Importing a stage-1/2/3 export adds

@@ -391,6 +391,7 @@ def import_state(ctx, state, user):
         # process store, the imported token winning a clash (L10, L12).
         if upgrade:
             carry_sessions(old, new)
+        statements.retain_generation(old)
         STORE.snapshots.update(snapshots)
     STORE.replace_state(fresh, carry=carry)
     return 204, None

@@ -119,6 +119,19 @@ def _ledger_view(state: dict, uids) -> dict:
             "payments": payments}
 
 
+def retain_generation(old: dict) -> None:
+    """Called in the import's swap hold: recipes that read the outgoing state now read one
+    shared compact view of it (their owners' payments, openings, handles, currency), so the rest
+    of the replaced state can be freed (stage 3 note; lead's F9 direction)."""
+    owners = sorted({snap["user"] for snap in STORE.snapshots.values() if snap["state"] is old})
+    if not owners:
+        return
+    view = _ledger_view(old, owners)
+    for snap in STORE.snapshots.values():
+        if snap["state"] is old:
+            snap["state"] = view
+
+
 def export_snapshots(current: dict) -> dict:
     """Every live token as a recipe. Recipes reading the exported state need nothing more; each
     older state that recipes still read (they survived an import, L12) is exported once as a

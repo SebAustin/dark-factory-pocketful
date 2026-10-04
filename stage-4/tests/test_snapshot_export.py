@@ -68,6 +68,19 @@ class ExportTest(Base):
         self.assertEqual(self.page(self.ada, old[2], limit=1)["entries"], before["entries"][:1])
         self.assertEqual(call("GET", "/_test/export").body, exported)  # stable round trip
 
+    def test_import_keeps_one_compact_generation_in_memory(self):
+        exported = call("GET", "/_test/export").body  # before the tokens exist
+        tokens = [statement(self.ada).body["snapshot"] for _ in range(3)]
+        before = self.page(self.ada, tokens[0])
+        self.assertEqual(call("POST", "/_test/import", exported).status, 204)
+        with STORE.lock:
+            views = {id(STORE.snapshots[t]["state"]) for t in tokens}
+            view = STORE.snapshots[tokens[0]]["state"]
+            self.assertEqual(len(views), 1)  # one shared object per import
+            self.assertNotIn("idem", view)  # not the whole replaced state
+            self.assertNotIn("tokens", view)
+        self.assertEqual(self.page(self.ada, tokens[0]), before)
+
     def test_export_grows_with_retained_states_not_reads(self):  # F9 repro, scaled down
         for i in range(120):
             call("POST", "/payments", {"to_handle": "bob", "amount": 1}, token=self.ada,
