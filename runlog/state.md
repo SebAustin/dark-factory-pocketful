@@ -1,5 +1,38 @@
 # Run state (lead's durable memory)
 
+Track: pocketful. CURRENT STAGE: 3. Stage 3 dispatch: 2026-10-04T01:12:36Z.
+Room: af150286-bfd0-4fd8-8ae1-c57d84bf2e91. Seats: henry.sebastien1982/{analyst,builder,designer,verifier}.
+Spec copies: runlog/stage1-spec.md, stage2-spec.md, stage3-spec.md.
+Last accepted revision: 6a3fd334b9a64588b9d821ba654ae47538cba7bc (stage 2). Stage 1: 9d7ab5e. stage-1/ and stage-2/ FROZEN.
+
+## Stage 3 phase
+
+- [ ] Carry forward (builder copies stage-2 -> stage-3)
+- [ ] Ledger (analyst, given the most time) S3.L
+- [ ] Plan (builder) S3.P ; reference oracle (designer) S3.O
+- [ ] Plan gate
+- [ ] Items
+- [ ] Stage gate
+- [ ] Run log
+
+## Stage 3 work items
+
+| Id | Title | Owner | Paths | State | Last rev | Rejections |
+|---|---|---|---|---|---|---|
+| S3.0 | Carry forward | builder | stage-3/ | assigned | - | 0 |
+| S3.L | Ledger + glossary + decisions | analyst | stage-3/docs/ledger.md | assigned | - | 0 |
+| S3.P | Plan | builder | stage-3/docs/plan.md | assigned | - | 0 |
+| S3.O | Independent reference model + differential/stress tool | designer | stage-3/tools/oracle/ | assigned | - | 0 |
+
+## Stage 3 decisions
+
+none yet
+
+---
+
+# STAGE 2 (accepted, archived below)
+
+
 Track: pocketful. CURRENT STAGE: 2. Stage 2 dispatch: 2026-10-03T22:54:33Z.
 Room: af150286-bfd0-4fd8-8ae1-c57d84bf2e91. Seats: henry.sebastien1982/{analyst,builder,designer,verifier}.
 Spec copies: runlog/stage1-spec.md, runlog/stage2-spec.md.
