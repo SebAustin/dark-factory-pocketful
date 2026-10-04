@@ -26,7 +26,7 @@ Last accepted revision: 36547b6451dab2843338683d4226b7fbc1349250 (stage 3). Stag
 | S4.P | Plan | builder | stage-4/docs/plan.md | built | 8ea5e3c | 0 |
 | S4.1 | Refunds | builder | app | accepted | 95cde7e | 0 |
 | S4.2 | Correction batches | builder | app | accepted | 4f6e16d | 0 |
-| S4.3 | Snapshots in exports (L10/L12) | builder | app | fix resubmitted (0.7 MB) | 1c27568 | 1 |
+| S4.3 | Snapshots in exports (L10/L12) | builder | app | fix resubmitted (0.7 MB; shared generation 2793971) | 2793971 | 1 |
 | S4.2a | Prepare-then-apply (plan note) | builder | batches | in review | 6eeafdd | 0 |
 | S4.4 | Populated stage-1/2/3 upgrades | builder | tests | accepted | 2b8d873 | 0 |
 | S4.5 | Load | builder | tools | accepted | a2e2ac4 | 0 |
