@@ -95,6 +95,27 @@ class ExportTest(Base):
         self.assertEqual(len(states), 1)
         self.assertEqual(len(set(sizes)), 1)  # the record table does not grow per import
 
+    def test_drifting_generations_share_their_index(self):  # F10 --drift, scaled down
+        from app import statements
+        for _ in range(3 * statements.CHUNK):  # a long history: several full chunks
+            call("POST", "/payments", {"to_handle": "bob", "amount": 1}, token=self.ada,
+                 key=key())
+        exported = call("GET", "/_test/export").body
+        counts = []
+        for _ in range(6):  # each replaced state = the export plus one more payment
+            call("POST", "/payments", {"to_handle": "bob", "amount": 1}, token=self.ada,
+                 key=key())
+            statement(self.ada)
+            self.assertEqual(call("POST", "/_test/import", exported).status, 204)
+            with STORE.lock:
+                counts.append((len(STORE.chunks), len(STORE.interned)))
+        growth = [b[0] - a[0] for a, b in zip(counts, counts[1:])]
+        self.assertTrue(all(g <= 2 for g in growth), counts)  # the tail chunk only
+        record_growth = [b[1] - a[1] for a, b in zip(counts, counts[1:])]
+        self.assertTrue(all(g <= 2 for g in record_growth), counts)
+        out = call("GET", "/_test/export").body
+        self.assertEqual(call("POST", "/_test/import", out).status, 204)
+
     def test_export_grows_with_retained_states_not_reads(self):  # F9 repro, scaled down
         for i in range(120):
             call("POST", "/payments", {"to_handle": "bob", "amount": 1}, token=self.ada,

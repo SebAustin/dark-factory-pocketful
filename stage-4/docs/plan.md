@@ -125,9 +125,10 @@ import restores them (overrides stage 3's L8 for stage 4).
   currency — so the export grows with retained states, never with reads × window (verifier F9).
   In memory the same holds: an import repoints the recipes of the outgoing state to one shared
   compact view of it, so the rest of the replaced state is freed. Views are shared by content
-  (verifier F10): payment records are interned by digest and identical views deduplicated, both
-  in memory and in the export (generations reference one table of distinct records), so size grows
-  with distinct ledger content, not with the number of imports. Reset clears all of it.
+  (verifier F10): a view's per-owner index is a tuple of fixed-size chunks (256 records);
+  records and chunks are interned by content digest and whole views deduplicated, in memory and
+  in the export (generations -> chunk digests -> record digests, each table written once). A
+  generation that adds k payments costs O(k + chunk), never the whole index. Reset clears it all.
 - **Import of a stage-4 export merges** its snapshots into the in-process store (lead L12, which
   amends D-74): recipes bind to the imported state or to their generation's view; destination
   tokens keep paging; on a clash the imported token wins. Importing a stage-1/2/3 export adds

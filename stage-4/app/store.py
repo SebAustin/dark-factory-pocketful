@@ -55,8 +55,11 @@ class Store:
         self.snapshots: dict = {}
         # Retained ledger content shared by every snapshot generation (F10): payment records and
         # whole generation views, each kept once per distinct content; reset clears them.
-        self.interned: dict = {}
-        self.views: dict = {}
+        self.interned: dict = {}       # record digest -> record
+        self.record_digest: dict = {}  # id(record) -> digest
+        self.chunks: dict = {}         # chunk digest -> tuple of records
+        self.chunk_digest: dict = {}   # id(chunk) -> digest
+        self.views: dict = {}          # view digest -> view
 
     def tick(self) -> str:
         """A server-assigned instant later than every earlier one."""
@@ -81,6 +84,7 @@ class Store:
             self._due = due
             if clear_snapshots:
                 self.snapshots, self.interned, self.views = {}, {}, {}
+                self.record_digest, self.chunks, self.chunk_digest = {}, {}, {}
             self.clock.advance_past(latest_known)
 
     def schedule(self, authorization: dict) -> None:
