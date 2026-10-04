@@ -21,7 +21,7 @@ Last accepted revision: 6a3fd334b9a64588b9d821ba654ae47538cba7bc (stage 2). Stag
 |---|---|---|---|---|---|---|
 | S3.0 | Carry forward | builder | stage-3/ | accepted | 1a674f4 | 0 |
 | S3.V | Upgrade driver + hist probe | verifier | reviews/stage3/tools | done | 2ae1c9d | 0 |
-| S3.L | Ledger + glossary + decisions | analyst | stage-3/docs/ledger.md | assigned | - | 0 |
+| S3.L | Ledger (128 R3 rows, D-41..D-60) | analyst | stage-3/docs/ledger.md | done | 754b18f | 0 |
 | S3.P | Plan | builder | stage-3/docs/plan.md | assigned | - | 0 |
 | S3.O | Independent reference model + differential/stress tool | designer | stage-3/tools/oracle/ | assigned | - | 0 |
 
