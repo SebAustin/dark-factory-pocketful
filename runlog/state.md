@@ -11,9 +11,9 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 - [x] Ledger f146c3b
 - [x] Plans 0cfc980 / 624aa75
 - [x] Plan gate: closed L6 after one round
-- [ ] Work items split
-- [ ] Item reviews
-- [ ] Stage gate
+- [x] Work items split
+- [x] Item reviews (all accepted)
+- [ ] Stage gate: packet sent on 6c295d6fb5f0d1b178b9c3597a3a9da97e59a9de
 - [ ] Run log recorded
 
 ## Stage 2 work items
@@ -38,8 +38,8 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 | S2.U7 | Competing clients / uncertain / upgrade | designer | web/** | accepted | 46b6e6f | 0 |
 | S2.PG | Plan gate | analyst | - | done: 1 blocking (D-22 -> L5) + 5 minor -> S2.8, S2.U10 (L6) | - | 0 |
 | S2.A | Acceptance (stage1 carried 425 + stage2 264) | analyst | stage-2/acceptance/ | re-run on 79a7bf6: stage1 422/0/3, stage2 262/268 (4 = S2.8, 2 = refresh button -> S2.U10) | 29db0cd | 0 |
-| S2.U10 | Plan-gate UI fixes (dirty key, split parse, list DOM, refresh enabled) | designer | web/** | rejected R1 (F4 lost click after edit; same root as S2.U11) | 74d83a5 | 1 |
-| S2.U11 | Edit during in-flight submit loses next click (+ closes U10 F4) | designer | web/** | fix resubmitted (in review) | 8fda234 | 1 |
+| S2.U10 | Plan-gate UI fixes (dirty key, split parse, list DOM, refresh enabled) | designer | web/** | accepted via S2.U11 8fda234 (F4 closed) | 74d83a5 | 1 |
+| S2.U11 | Edit during in-flight submit loses next click (+ closes U10 F4) | designer | web/** | accepted | 8fda234 | 1 |
 | S2.U1 | Shell, visual system, nav, auth screens | designer | web/** | accepted (F1/F2 closed in U2-U3 review) | 773f649 | 1 |
 | S2.U2+U3 | Client core + wallet screen | designer | web/** | accepted (F3 closed; 0259400 nowrap included) | b0aae37 | 1 |
 | S2.U4+U5 | Requests + split screens | designer | web/** | accepted | 1ef373b | 0 |

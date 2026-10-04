@@ -42,6 +42,8 @@ Round 1 (analyst): 1 blocking (D-22 browser session across stage-1 import -> lea
 | S2.U7 | Competing clients, uncertain, upgrade | designer | 23:03 | yes | ACCEPT 46b6e6f |
 | S2.U9 | /signup,/login reachable while signed in | designer | 23:3x | yes | ACCEPT 77250c4 |
 | S2.8 | Upgrade sessions (L5), ttl, pay replay | builder | 23:5x | yes | ACCEPT bf2e57d |
+| S2.U10 | Plan-gate UI fixes | designer | 23:5x | yes | REJECT 74d83a5, closed by S2.U11 8fda234 |
+| S2.U11 | Lost click / feedback under tab bar | designer | 00:0x | yes | REJECT c6a8996, ACCEPT 8fda234 |
 | S2.5A | Import hold check | builder | 23:2x | yes | ACCEPT eab708e |
 
 ## Rejections and what they caught
@@ -53,6 +55,10 @@ Round 1 (analyst): 1 blocking (D-22 browser session across stage-1 import -> lea
 - S2.U2+U3 @0fa1361 REJECT (verifier): signed-in header overflowed horizontally between 641 px and ~1030 px (Log out off-screen / over the name at 1024) — spec '375 CSS-pixel viewport and at conventional desktop widths, without horizontal page scrolling'. Verifier now walks 768 and 1024 too.
 
 - S2.U1 @b776a89 REJECT (verifier, from screenshots then measured): 'Log out' wrapped to two lines at 375 and 1280 px; brand icon squeezed to 7x22 at 1280 — product/visual direction 'presentation-ready', 'consistent visual system'.
+
+## Stage gate
+
+- Gate packet sent on 6c295d6fb5f0d1b178b9c3597a3a9da97e59a9de (stage 2 spec pasted 3 parts + packet); seats told to quiet host.
 
 ## Gate table at acceptance
 
