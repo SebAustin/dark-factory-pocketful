@@ -74,17 +74,19 @@ payments.
 token, 403 `forbidden` for an authenticated non-operator (as settlements). Body
 `{"corrections": [...]}`; unknown fields ignored.
 
-**Validation pipeline** (all inside the one lock hold, before any write; first failure answers):
+**Validation pipeline** (D-66; all inside the one lock hold, before any write; first failure
+answers). Before the items: 401 → 403 not an operator (no body needed) → 400 body → 400/422 key →
+replay/reuse, then:
 1. Shape: `corrections` an array of 1..32 objects; every `payment_id` a string, all distinct →
    else 422 `validation_failed`.
 2. Item errors in input order. For each item, in this order: fields (as a single correction:
    `expected_revision`, `amount` 0..1e9, `effective_at` ≤ N, `reason` 1..200 → 422
    `validation_failed`) → 404 unknown payment → 422 `linked_payment_immutable` (capture or refund)
    → 409 `stale_revision` → 422 `refund_exceeds_payment`. The first item with any error decides.
-3. Settlement completeness: for every settlement with a member in the batch, every member must be
-   in the batch → else 422 `incomplete_settlement`; then all of that settlement's items must share
-   one effective instant (compared by key, offsets may differ) → else 422 `validation_failed`
-   (D4-3).
+3. Settlement checks, per settlement in order of its first member's appearance: every member
+   must be in the batch → else 422 `incomplete_settlement`; then all of that settlement's items
+   must share one effective instant (compared by key, offsets may differ) → else 422
+   `validation_failed` (D-66).
 4. Current available funds: net change per wallet over **all** items (Σ of `new − current` with the
    sender/receiver signs); every wallet whose net is negative needs `available + net ≥ 0` → else
    409 `insufficient_funds`.
@@ -121,9 +123,11 @@ import restores them (overrides stage 3's L8 for stage 4).
   state object (taken before an import), its frozen rows `[pid, revision, delta, balance_after]`
   plus opening/closing, materialised at export time. Identical frozen results are written once and
   shared by reference (D4-6).
-- **Import** restores every exported token: recipes bind to the imported state, frozen rows are
-  rendered from it. Destination tokens not in the export remain until reset ("Tokens last until
-  reset"); an imported token wins on a clash (D4-7).
+- **Import of a stage-4 export replaces the snapshot store** with the imported tokens (D-74):
+  recipes bind to the imported state, frozen rows are rendered from it, so a token minted before
+  the export pages identically after the import, even with a reset in between; tokens not in the
+  imported state are 404. Importing a stage-1/2/3 export leaves the destination's snapshot store
+  untouched (nothing to restore).
 - Tokens are opaque random strings and are carried verbatim (deterministic across export/import).
 - **Stage-3-format imports** carry no snapshots (stage 3 L8 never exported them): nothing to
   restore; stage-3 tokens cannot survive that upgrade. Known limitation, recorded, not worked
@@ -158,17 +162,25 @@ with `--cpus 2 --memory 2g`; carried acceptance suites (stage 1–3) green; desi
 
 Order: S4.1 → S4.2 → S4.3 → S4.4 → S4.5.
 
-## 7. Decisions recorded (align with the analyst's records when they land)
+## 7. Decisions (binding: analyst D-62..D-75 at 200efad; lead L10, L11)
 
-- D4-1 refund `amount` defects incl. wrong JSON type → 422 `validation_failed`.
-- D4-2 single-correction order adds `refund_exceeds_payment` after `stale_revision`.
-- D4-3 batch: completeness before the identical-effective-instant check.
-- D4-4 no failure-injection hook: validation is read-only and the commit cannot fail.
-- D4-5 every revision view includes `correction_batch_id` (null unless set by a batch).
-- D4-6 exported snapshots: recipe when bound to the current state, frozen rows otherwise; identical
-  rows shared.
-- D4-7 import merges: imported tokens restored, destination tokens kept until reset.
-- D4-8 L5 session carry-over for stage-3-format imports too.
+- D-62 refund order; D-73 refund amount rules (all defects 422) — my D4-1.
+- D-63 cap = target's latest revision at the read instant.
+- D-64/D-65 single path: members, captures, refunds → linked; stale before refund_exceeds — my D4-2.
+- D-66 batch precedence incl. in-item order and per-settlement checks by first appearance — my D4-3.
+- D-67 per-item difference between its own wallets; combined net per wallet for the checks.
+- D-68/D-69 batch response; `correction_batch_id` on every revision object and statement entry
+  (null unless a batch) — my D4-5.
+- D-70 one lock: exactly one winner among overlapping single corrections and batches.
+- D-71/D-72 a refund is an ordinary payment; `refund_of` on every new payment object (14 keys);
+  stored receipts replay verbatim.
+- D-74 upgrades and L10: stage-4 exports carry snapshots, import of a stage-4 export replaces the
+  snapshot store; stage-1/2/3 imports leave it untouched; L5 sessions for stage-1/2/3 imports
+  (my D4-8); stage-3 tokens cannot survive (limitation). Replaces my D4-7 (merge).
+- D-75 carried suite changes.
+- My D4-4 (no failure-injection hook: validation is read-only, the commit cannot fail) and D4-6
+  (exported snapshots: recipe when bound to the current state, frozen rows otherwise, identical
+  rows shared) stand as implementation choices.
 
 ## 8. Risks
 
