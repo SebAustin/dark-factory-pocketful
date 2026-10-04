@@ -1,0 +1,45 @@
+/* Design tokens. Direction: "paper ledger" (docs/ui-plan.md §1). Contrast ratios are in the plan. */
+:root {
+  --paper: #F5F2EB;
+  --surface: #FFFFFF;
+  --ink: #1D2B29;
+  --ink-2: #4B5B58;
+  --ink-3: #5C6B68;
+  --accent: #0E5A53;
+  --accent-ink: #FFFFFF;
+  --rule: #D8D2C4;
+  --field: #6E7D78;
+  --focus: #1F5FBF;
+  --ok: #1B6636;       --ok-bg: #E3F1E6;
+  --held: #7A4E00;     --held-bg: #F8EACB;
+  --pending: #2F538C;  --pending-bg: #E2E9F5;
+  --refused: #9C2226;  --refused-bg: #FBE3E1;
+  --unsure: #5E3592;   --unsure-bg: #EDE5F7;
+  --nav-inactive: #C9D3CF;
+
+  --font-display: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-text: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --t-xs: .75rem;
+  --t-sm: .875rem;
+  --t-md: 1rem;
+  --t-lg: 1.25rem;
+  --t-xl: 1.75rem;
+  --t-hero: clamp(1.75rem, 11cqw, 4rem);
+
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 20px;
+  --s5: 32px;
+  --s6: 56px;
+
+  --r-sm: 6px;
+  --r-lg: 14px;
+  --shadow-bar: 0 -1px 0 var(--rule), 0 -8px 24px rgb(29 43 41 / .08);
+
+  --tap: 44px;
+  --header-h: 60px;
+  --tabbar-h: 60px;
+  --measure: 1200px;
+}
