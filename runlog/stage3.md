@@ -17,6 +17,7 @@
 | Id | Title | Owner | Assigned | Accepted | Verdicts |
 |---|---|---|---|---|---|
 | S3.0 | Carry forward | builder | 01:14 | yes | ACCEPT 1a674f4 |
+| S3.1 | Bitemporal foundation | builder | 01:2x | yes | ACCEPT aa3922c |
 
 ## Rejections and what they caught
 
