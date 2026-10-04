@@ -137,9 +137,12 @@ def test_R4_UPG_2_stage4_snapshots_round_trip(world, api):
     ada = api.login("ada@example.com")
     other = api.statement(ada, limit=200).json()
     assert api.import_(exported).status_code == 204
-    again = api.statement(ada, snapshot=other["snapshot"], limit=200).json()
+    # the session minted after the reset does not survive a stage-4 import (pure replacement,
+    # D-74); the snapshot belongs to user u_ada, so page it with ada's exported session
+    again = api.statement(tk["ada"], snapshot=other["snapshot"], limit=200).json()
     assert again["entries"] == other["entries"]
-    assert api.statement(ada, snapshot=snap, limit=200).json()["entries"] == full
+    assert api.statement(tk["ada"], snapshot=snap, limit=200).json()["entries"] == full
+
 
 def test_R4_UPG_3_stage3_export_imports_without_snapshots(api):
     src = source(3)
