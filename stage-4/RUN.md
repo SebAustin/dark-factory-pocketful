@@ -1,8 +1,9 @@
-# Pocketful — stage 3
+# Pocketful — stage 4
 
 Wallet service and browser screens: payments, requests, splits, settlements, payment
-authorizations (holds), and now a bitemporal ledger — historical balances, paginated statements
-with frozen snapshots, and payment corrections that keep the original receipt. One container
+authorizations (holds), a bitemporal ledger — historical balances, paginated statements with
+frozen snapshots, payment corrections that keep the original receipt — and now refunds by the
+receiver and operator correction batches (including whole settlements). One container
 serves the JSON API and the screens; every script, stylesheet and font is inside the image.
 Python 3.12 standard library only; state is in memory; no network access needed at run time.
 
@@ -11,13 +12,13 @@ Python 3.12 standard library only; state is in memory; no network access needed 
 Run from the directory containing this `RUN.md` (the one holding the `Dockerfile`):
 
 ```sh
-docker build -t pocketful-s3 . && docker run --rm -e PORT=8080 -p 8080:8080 pocketful-s3
+docker build -t pocketful-s4 . && docker run --rm -e PORT=8080 -p 8080:8080 pocketful-s4
 ```
 
 Or from the repository root:
 
 ```sh
-docker build -t pocketful-s3 stage-3 && docker run --rm -e PORT=8080 -p 8080:8080 pocketful-s3
+docker build -t pocketful-s4 stage-4 && docker run --rm -e PORT=8080 -p 8080:8080 pocketful-s4
 ```
 
 The service listens on `0.0.0.0:$PORT` (default `8080`) and answers `GET /health` with
@@ -36,9 +37,13 @@ The service listens on `0.0.0.0:$PORT` (default `8080`) and answers `GET /health
     oldest first, with running balances and an opaque `snapshot` token;
     `GET /statement?snapshot=<token>&limit=&offset=` pages that frozen result until the next reset;
   - `POST /payments/{id}/corrections` (idempotent; original sender) and
-    `GET /payments/{id}/revisions`.
+    `GET /payments/{id}/revisions`;
+  - `POST /payments/{id}/refunds` (idempotent; original receiver) — a new payment in the
+    opposite direction with `refund_of` naming the target;
+  - `POST /correction-batches` (idempotent; settlement operator) — several corrections in one
+    atomic step, including every member of a settlement.
 - Server-assigned instants have microsecond precision and strictly increase.
-- `POST /_test/import` accepts exports from this team's stage 1, stage 2 and stage 3 services.
+- `POST /_test/import` accepts exports from this team's stage 1, 2, 3 and 4 services.
 
 ## Run without Docker
 
@@ -58,11 +63,11 @@ Acceptance suites (from the repository root; `STAGE1_URL` and `STAGE2_URL` are y
 stage 1 and stage 2 containers, used as sources of real exports):
 
 ```sh
-TARGET_URL=http://127.0.0.1:<port> python -m pytest stage-3/acceptance/stage1 -q
+TARGET_URL=http://127.0.0.1:<port> python -m pytest stage-4/acceptance/stage1 -q
 TARGET_URL=http://127.0.0.1:<port> STAGE1_URL=http://127.0.0.1:<port1> \
-  python -m pytest stage-3/acceptance/stage2 -q
+  python -m pytest stage-4/acceptance/stage2 -q
 TARGET_URL=http://127.0.0.1:<port> STAGE1_URL=http://127.0.0.1:<port1> \
-  STAGE2_URL=http://127.0.0.1:<port2> python -m pytest stage-3/acceptance/stage3 -q
+  STAGE2_URL=http://127.0.0.1:<port2> python -m pytest stage-4/acceptance/stage3 -q
 ```
 
 ## Load and upgrade checks
@@ -70,15 +75,15 @@ TARGET_URL=http://127.0.0.1:<port> STAGE1_URL=http://127.0.0.1:<port1> \
 Against a running container (example on port 18200), from the repository root:
 
 ```sh
-docker run -d --rm --name pocketful -e PORT=18200 -p 18200:18200 --cpus 2 --memory 2g pocketful-s3
-TARGET_URL=http://127.0.0.1:18200 python stage-3/tools/stress.py             # needs httpx
-TARGET_URL=http://127.0.0.1:18200 python stage-3/tools/soak.py soak          # needs httpx
-TARGET_URL=http://127.0.0.1:18200 HOLDS_SECONDS=60 python3 stage-3/tools/holds_stress.py
-TARGET_URL=http://127.0.0.1:18200 LEDGER_SECONDS=60 python3 stage-3/tools/ledger_stress.py
-TARGET_URL=http://127.0.0.1:18200 python3 stage-3/tools/ledger_stress.py big
-TARGET_URL=http://127.0.0.1:18200 python stage-3/tools/oracle/diff_run.py
+docker run -d --rm --name pocketful -e PORT=18200 -p 18200:18200 --cpus 2 --memory 2g pocketful-s4
+TARGET_URL=http://127.0.0.1:18200 python stage-4/tools/stress.py             # needs httpx
+TARGET_URL=http://127.0.0.1:18200 python stage-4/tools/soak.py soak          # needs httpx
+TARGET_URL=http://127.0.0.1:18200 HOLDS_SECONDS=60 python3 stage-4/tools/holds_stress.py
+TARGET_URL=http://127.0.0.1:18200 LEDGER_SECONDS=60 python3 stage-4/tools/ledger_stress.py
+TARGET_URL=http://127.0.0.1:18200 python3 stage-4/tools/ledger_stress.py big
+TARGET_URL=http://127.0.0.1:18200 python stage-4/tools/oracle/diff_run.py
 STAGE1_URL=http://127.0.0.1:<stage-1 port> STAGE2_URL=http://127.0.0.1:<stage-2 port> \
-  STAGE3_URL=http://127.0.0.1:18200 python3 stage-3/tests/upgrade_check3.py
+  STAGE3_URL=http://127.0.0.1:18200 python3 stage-4/tests/upgrade_check3.py
 ```
 
 `ledger_stress.py` races corrections, re-pages snapshots under writes and checks that balances sum
