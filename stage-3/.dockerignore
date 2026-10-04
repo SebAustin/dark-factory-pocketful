@@ -1,0 +1,7 @@
+tests/
+docs/
+acceptance/
+tools/
+**/__pycache__
+**/.pytest_cache
+*.md
