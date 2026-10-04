@@ -12,5 +12,5 @@ def health(ctx, state, user):
 def reset(ctx, state, user):
     # Validate and hash off to the side, then swap in one step: a failed reset changes nothing.
     fresh = load_fixture(ctx.json_object())
-    STORE.replace_state(fresh)
+    STORE.reset_state(fresh)
     return 204, None

@@ -197,6 +197,60 @@ class HoldEventsTest(ClockCase):
         self.assertEqual(a["a_3"]["closed_at"], a["a_3"]["expires_at"])
 
 
+class AppendOnlyTest(unittest.TestCase):
+    """Snapshot recipes rely on this: payment and revision records are never edited in place."""
+
+    def test_existing_payment_and_revision_records_never_change(self):
+        f = copy.deepcopy(FIXTURE)
+        f["settlement_operator_ids"] = ["u_cy"]
+        reset(f)
+        ada, bob, cy = (token(e + "@example.com") for e in ("ada", "bob", "cy"))
+        call("POST", "/payments", {"to_handle": "bob", "amount": 10}, token=ada, key=key())
+        before = payments()
+        call("POST", "/payments/p_1/corrections", {"expected_revision": 1, "amount": 400,
+                                                   "effective_at": ago(60), "reason": "fix"},
+             token=ada, key=key())
+        rq = call("POST", "/requests", {"payer_handle": "ada", "amount": 5}, token=bob,
+                  key=key()).body["request_id"]
+        call("POST", "/requests/%s/pay" % rq, {}, token=ada, key=key())
+        call("POST", "/settlements", {"transfers": [{"from_handle": "bob", "to_handle": "cy",
+                                                     "amount": 3}]}, token=cy, key=key())
+        a = call("POST", "/authorizations", {"to_handle": "bob", "amount": 20}, token=ada,
+                 key=key()).body["authorization_id"]
+        call("POST", "/authorizations/%s/capture" % a, {}, token=bob, key=key())
+        call("GET", "/statement", token=ada)
+        after = payments()
+        for pid, old in before.items():
+            new = after[pid]
+            self.assertEqual({k: v for k, v in new.items() if k != "revisions"},
+                             {k: v for k, v in old.items() if k != "revisions"}, pid)
+            self.assertEqual(new["revisions"][:len(old["revisions"])], old["revisions"], pid)
+
+
+class NegativeSeededHistoryTest(unittest.TestCase):
+    """Designer's oracle repro (D-45): x_b at 0 pays 50 to x_a."""
+
+    def fixture(self, balance_a, payments_):
+        return {"currency": "EUR", "minor_units": 2, "users": [
+            {"id": "x_a", "email": "a@x.com", "password": "password1", "display_name": "A",
+             "handle": "x_a", "balance": balance_a},
+            {"id": "x_b", "email": "b@x.com", "password": "password1", "display_name": "B",
+             "handle": "x_b", "balance": 0}], "payments": payments_}
+
+    def test_negative_opening_and_negative_boundary_are_422(self):
+        one = [{"id": "p1", "from_user_id": "x_b", "to_user_id": "x_a", "amount": 50}]
+        for balance in (0, 30, 49):  # x_a opening = balance - 50 < 0
+            r = call("POST", "/_test/reset", self.fixture(balance, one))
+            self.assertEqual((r.status, r.code), (422, "validation_failed"), balance)
+        self.assertEqual(call("POST", "/_test/reset", self.fixture(50, one)).status, 204)
+        two = [{"id": "p1", "from_user_id": "x_b", "to_user_id": "x_a", "amount": 50,
+                "created_at": "2026-01-01T00:00:00Z"},
+               {"id": "p2", "from_user_id": "x_a", "to_user_id": "x_b", "amount": 50,
+                "created_at": "2025-01-01T00:00:00Z"}]  # x_a pays 50 before receiving it
+        r = call("POST", "/_test/reset", self.fixture(0, two))
+        self.assertEqual((r.status, r.code), (422, "validation_failed"))
+
+
 class SeededClosedAtTest(unittest.TestCase):
     def test_closed_at_fallbacks(self):  # D-51
         made, closed = ago(7200), ago(3600)
@@ -207,6 +261,8 @@ class SeededClosedAtTest(unittest.TestCase):
         a = auths()
         self.assertEqual(a["a_1"]["closed_at"], closed)
         self.assertEqual(a["a_2"]["closed_at"], a["a_2"]["expires_at"])
+        reset(fixture(hold("a_5", status="expired", expires=-60, closed_at=closed)))
+        self.assertEqual(auths()["a_5"]["closed_at"], auths()["a_5"]["expires_at"])
         self.assertEqual(a["a_3"]["closed_at"], made)
         self.assertIsNotNone(instants.key(a["a_4"]["closed_at"]))
 

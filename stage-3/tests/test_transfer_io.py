@@ -231,9 +231,9 @@ class InvalidImportTest(unittest.TestCase):
         self.assertEqual(dump_state(), self.before)
 
     def test_every_missing_state_key(self):
-        from app.transfer_io import DERIVED_KEYS, STAGE2_DEFAULTS, STAGE3_DEFAULTS
+        from app.transfer_io import DERIVED_KEYS, STAGE2_DEFAULTS
         for key in self.snap["state"]:
-            if key in STAGE2_DEFAULTS or key in STAGE3_DEFAULTS or key in DERIVED_KEYS:
+            if key in STAGE2_DEFAULTS or key in DERIVED_KEYS:
                 continue
             self.rejects(lambda b, key=key: b["state"].pop(key))
 

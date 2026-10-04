@@ -1,9 +1,11 @@
 """GET /statement and its snapshots (stage 3; D-48, D-49, D-50, D-54).
 
-A first read computes the whole window, freezes it in state["snapshots"] (exported, so an import of
-the same state restores it; only reset clears it) and returns a page. A snapshot read pages that
-frozen result. Frozen entries are stored compactly as [payment id, revision number, delta,
-balance_after]; pages are rendered from the immutable payment and revision records.
+A first read freezes a *recipe* — (user, from, resolved to, K' = min(known_at, N), the known_at
+echo, and the ledger state object it read) — and returns a page of its result. A snapshot read
+recomputes from the recipe. That reproduces the first result exactly: payments and revisions are
+append-only and never edited in place, every later write is recorded after N, so selection at
+K' <= N sees the same revisions. O(1) memory per snapshot; not exported; only reset ends them
+(D-50, final L8). An import swaps in a new state object; recipes keep the one they read.
 """
 import secrets
 
@@ -11,7 +13,7 @@ from . import errors, instants, validation
 from .ledger import selected, signed
 from .payments import page
 from .routes import route
-from .store import now_ts, payment_view
+from .store import STORE, now_ts, payment_view
 
 WINDOW_PARAMS = ("from", "to", "known_at")
 
@@ -65,6 +67,13 @@ def _limit_offset(query: dict):
     return limit, offset
 
 
+def _page(snap: dict, token: str, limit: int, offset: int) -> dict:
+    state = snap["state"]
+    result = _compute(state, snap["user"], snap["start"], snap["end"], snap["known"])
+    result["known_at"] = snap["known_echo"]
+    return _render(state, result, token, limit, offset)
+
+
 @route("GET", "/statement")
 def statement(ctx, state, user):
     query = ctx.query
@@ -72,10 +81,10 @@ def statement(ctx, state, user):
         if any(name in query for name in WINDOW_PARAMS):
             raise errors.validation("only limit and offset may accompany a snapshot")
         limit, offset = _limit_offset(query)
-        snap = state["snapshots"].get(query["snapshot"])
+        snap = STORE.snapshots.get(query["snapshot"])
         if snap is None or snap["user"] != user["id"]:
             raise errors.not_found("no such snapshot")
-        return 200, _render(state, snap, query["snapshot"], limit, offset)
+        return 200, _page(snap, query["snapshot"], limit, offset)
     start = validation.query_instant(query, "from")
     end = validation.query_instant(query, "to")
     known = validation.query_instant(query, "known_at")
@@ -83,9 +92,10 @@ def statement(ctx, state, user):
         raise errors.validation("from must not be later than to")
     limit, offset = _limit_offset(query)
     now = instants.key(now_ts())  # the read instant N (D-43)
-    snap = _compute(state, user["id"], start[1] if start else instants.NEG_INF,
-                    end[1] if end else now, known[1] if known else now)
-    snap["known_at"] = known[0] if known else None
+    snap = {"user": user["id"], "start": start[1] if start else instants.NEG_INF,
+            "end": end[1] if end else now,
+            "known": min(known[1], now) if known else now,  # nothing is recorded after N yet
+            "known_echo": known[0] if known else None, "state": state}
     token = secrets.token_urlsafe(24)
-    state["snapshots"][token] = snap
-    return 200, _render(state, snap, token, limit, offset)
+    STORE.snapshots[token] = snap
+    return 200, _page(snap, token, limit, offset)

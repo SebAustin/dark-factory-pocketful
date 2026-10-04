@@ -91,7 +91,8 @@ authorizations[aid] += {
   authorization response (new field, additive).
 - Seeded **open** holds: created at their `created_at` if supplied, else reset time. Seeded
   **closed** holds have no lifecycle: they contribute no held at any instant ("need not
-  reconstruct a prior lifecycle"); `closed_at` = supplied value or null-safe reset time.
+  reconstruct a prior lifecycle"). `closed_at` (D-51): expired → `expires_at`; captured or
+  voided → supplied `closed_at`, else supplied `created_at`, else the reset instant.
 
 ## 2. Read algorithm — `GET /me` and `GET /statement`
 
@@ -171,16 +172,18 @@ same `expected_revision` serialise on the lock; the second sees `stale_revision`
 `GET /payments/{id}/revisions` → `{"revisions": [...]}` in revision order, revision 1 with
 `reason: ""`. Parties only; third party → 404 (even public); no token → 401.
 
-## 4. Snapshots
+## 4. Snapshots (D-50, final L8; verifier S3.3 F1/F2)
 
-- In the state (`state["snapshots"]`, exported; D-50, L8): `token → {user_id, result}`;
-  token = `secrets.token_urlsafe(24)`. Reset starts with none; an import restores exactly the
-  snapshots its state contains (stage 1/2 exports: none).
-- Frozen result = list of rendered entries + balances + echoes; paging slices it; `has_more =
-  offset + limit < len(entries)`; offsets past the end → empty page, `has_more: false`.
-- Memory: stored compactly (per entry: payment id, selected revision number, delta,
-  balance_after; payment views rendered at page time from the immutable payment record with the
-  frozen amount). No cap: tokens last until reset (L8).
+- Process-wide store on the `Store` object, **not exported**: `token → recipe` with
+  `{user, start, end (resolved to or N), known = min(known_at, N), known_echo, state}` where
+  `state` is the ledger object the first read used. Token = `secrets.token_urlsafe(24)`.
+- A snapshot page recomputes from the recipe. This reproduces the first result exactly because
+  payments and revisions are append-only and never edited in place (unit-tested), and every later
+  write is recorded after N, so selection at `known <= N` sees the same revisions; statements
+  contain no hold events. O(1) memory per token; the export never grows with reads.
+- Only reset ends snapshots. An import swaps in a new state object and leaves the store alone, so
+  a token minted before an import keeps paging the state it read; that old state object stays
+  reachable only through such recipes until the next reset. No cap, no eviction.
 
 ## 5. Upgrade and import
 
@@ -198,7 +201,7 @@ same `expected_revision` serialise on the lock; the second sees `stale_revision`
 - **stage-3 state**: revisions, events, `closed_at` validated (revision numbers contiguous,
   recorded keys strictly increasing, amounts 0..1e9 except revision 1 which keeps the original,
   instants parse); openings recomputed and checked against the history; replacement as before.
-- Snapshots are not exported; the monotonic clock continues from `max(now, latest instant in
+- Snapshots are not exported (§4); the monotonic clock continues from `max(now, latest instant in
   the imported state + 1 µs)`.
 
 ## 6. Changes to existing endpoints
@@ -244,8 +247,8 @@ Where this plan's first draft differed, the analyst's records and lead rulings w
   409 insufficient_funds → 409 historical_overdraft (my S3-D4, S3-D9).
 - D-47 revision shape `{payment_id, revision, amount, effective_at, recorded_at, reason}`.
 - D-48 selection algorithm; D-49 statement shape; D-54 `from > to` → 422 (my S3-D3).
-- D-50 + L8: snapshots are part of the exported state; only reset invalidates them; an import
-  restores the snapshots it contains (none for stage 1/2); no cap (S3-D5/S3-D6 withdrawn).
+- D-50 + final L8: snapshots are process-wide recipes, not exported; only reset ends them; an
+  import neither clears nor restores them; no cap (S3-D5/S3-D6 withdrawn).
 - D-51 holds; seeded closed holds: closed_at = supplied, else expires_at (expired), else
   supplied created_at, else R.
 - D-52 + L8: imports are not history-validated; voided stage-2 holds close at their last capture

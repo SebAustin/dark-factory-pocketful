@@ -36,7 +36,7 @@ def empty_state(currency: str = "EUR", minor_units: int = 2) -> dict:
         "settlements": {}, "idem": {}, "seq": 0,
         "counters": {k: 0 for k in ID_PREFIX},
         "authorizations": {}, "settings": {"authorization_ttl_seconds": DEFAULT_TTL},
-        "user_payments": {}, "snapshots": {},
+        "user_payments": {},
     }
 
 
@@ -48,12 +48,20 @@ class Store:
         self.state = empty_state()
         self._due: list = []  # heap of (expires instant, authorization id)
         self.clock = instants.Clock()  # service-wide monotonic µs clock (S3-D1)
+        # Statement snapshots (D-50, final L8): process-wide, not exported, ended only by reset.
+        # token -> recipe {user, start, end, known, known_echo, state}; `state` is the ledger
+        # object the snapshot was taken from (append-only, so recomputing reproduces it).
+        self.snapshots: dict = {}
 
     def tick(self) -> str:
         """A server-assigned instant later than every earlier one."""
         return self.clock.tick(clock())
 
-    def replace_state(self, state: dict, carry=None) -> None:
+    def reset_state(self, state: dict) -> None:
+        """POST /_test/reset: a new state, and every statement snapshot ends."""
+        self.replace_state(state, clear_snapshots=True)
+
+    def replace_state(self, state: dict, carry=None, clear_snapshots: bool = False) -> None:
         """Swap in a new state in one lock hold. carry(old, new), if given, runs inside that
         same hold just before the swap (used to keep sessions across an upgrade import)."""
         due = [(instant(a["expires_at"]), aid)
@@ -66,6 +74,8 @@ class Store:
                 carry(self.state, state)
             self.state = state
             self._due = due
+            if clear_snapshots:
+                self.snapshots = {}
             self.clock.advance_past(latest_known)
 
     def schedule(self, authorization: dict) -> None:
@@ -507,9 +517,9 @@ def _load_authorizations(state, authorizations, ts):
             supplied = a.get("closed_at")
             if supplied is not None and parse_rfc3339(supplied) is None:
                 _fail("authorization {} has an invalid closed_at".format(aid))
-            seeded["closed_at"] = supplied or (
-                seeded["expires_at"] if status == "expired"
-                else a.get("created_at") or ts)
+            # expired: its deadline; captured/voided: supplied closed_at, else created_at, else R
+            seeded["closed_at"] = seeded["expires_at"] if status == "expired" \
+                else supplied or a.get("created_at") or ts
     recompute_held(state, now_key())
     for u in state["users"].values():
         if u["held"] > u["balance"]:

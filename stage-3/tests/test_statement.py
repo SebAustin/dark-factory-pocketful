@@ -142,13 +142,32 @@ class SnapshotTest(Base):
         ada = token("ada@example.com")
         self.assertEqual(statement(ada, snapshot=token_).code, "not_found")
 
-    def test_snapshot_survives_export_import_of_the_same_state(self):  # D-50, L8
+    def test_tokens_last_until_reset_not_across_it(self):  # D-50, final L8
         token_ = self.ok(self.ada, limit=2)["snapshot"]
         before = self.ok(self.ada, snapshot=token_, limit=10)
         exported = call("GET", "/_test/export").body
+        self.assertNotIn("snapshots", exported["state"])  # not exported
+        self.assertNotIn(token_, str(exported))
+        # an import (of any state) neither clears nor replaces them
+        other = copy.deepcopy(exported)
+        self.assertEqual(call("POST", "/_test/import", other).status, 204)
+        call("POST", "/payments", {"to_handle": "bob", "amount": 1}, token=self.ada,
+             key=uuid.uuid4().hex)
+        self.assertEqual(self.ok(self.ada, snapshot=token_, limit=10), before)
         reset()
         self.assertEqual(call("POST", "/_test/import", exported).status, 204)
-        self.assertEqual(self.ok(self.ada, snapshot=token_, limit=10), before)
+        self.assertEqual(statement(self.ada, snapshot=token_).code, "not_found")
+
+    def test_snapshot_reproduces_after_backdated_correction(self):
+        first = self.ok(self.ada)
+        r = call("POST", "/payments/p_2/corrections",
+                 {"expected_revision": 1, "amount": 0, "effective_at": self.t[0],
+                  "reason": "undo"}, token=self.ada, key=uuid.uuid4().hex)
+        self.assertEqual(r.status, 201, r.raw)
+        again = self.ok(self.ada, snapshot=first["snapshot"])
+        self.assertEqual(again, first)
+        fresh = self.ok(self.ada)
+        self.assertNotEqual(fresh["entries"], first["entries"])
 
     def test_known_at_echo_kept_on_snapshot_pages(self):
         first = self.ok(self.ada, known_at=self.t[0])
