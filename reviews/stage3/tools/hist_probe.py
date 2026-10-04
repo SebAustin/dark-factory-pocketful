@@ -143,8 +143,13 @@ def check_snapshot_paging(tok, label):
     if s != 200 or "snapshot" not in first:
         problem("%s no snapshot (%s)" % (label, s))
         return
-    full = first["entries"]
-    snap, off = first["snapshot"], 0
+    full, snap = list(first["entries"]), first["snapshot"]
+    while len(full) < 2000:                                  # the whole frozen window, 200 at a time
+        s, more = call("GET", "/statement?snapshot=%s&limit=200&offset=%d" % (snap, len(full)), tok=tok)
+        if s != 200 or not more["entries"]:
+            break
+        full += more["entries"]
+    off = max(0, len(full) - 12)                             # check the tail pages (limit 3), incl. the final partial page
     while True:
         s, page = call("GET", "/statement?snapshot=%s&limit=3&offset=%d" % (snap, off), tok=tok)
         if s != 200:

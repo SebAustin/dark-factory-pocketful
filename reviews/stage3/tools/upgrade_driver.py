@@ -172,6 +172,7 @@ def check_stage(s3, stage, out, chk):
     reuse = [f["key"] for f in meta["failed"] if call(s3, "POST", f["path"], dict(f["body"], amount=1), f["token"], f["key"])[0] == 409]
     chk("[%s] failed keys reusable" % stage, not reuse, str(reuse))
     seeded_total = sum(bal.values())
+    current = {h: call(s3, "GET", "/me", tok=t)[1]["total"] for h, t in tok.items()}   # after the failed-key reuse above
     instants = set()
     for h, t in tok.items():
         first, entries = statement_all(s3, t)
@@ -186,8 +187,8 @@ def check_stage(s3, stage, out, chk):
             instants.add(e.get("effective_at") or e["payment"]["created_at"])
         order = [(e.get("effective_at") or e["payment"]["created_at"], e["payment"]["payment_id"]) for e in entries]
         chk("[%s] statement %s: opening+deltas=closing=current, chained, oldest first" % (stage, h),
-            chain_ok and running == b["closing_balance"] == bal[h] and order == sorted(order),
-            "opening %s closing %s current %s n=%d" % (b["opening_balance"], b["closing_balance"], bal[h], len(entries)))
+            chain_ok and running == b["closing_balance"] == current[h] and order == sorted(order),
+            "opening %s closing %s current %s n=%d" % (b["opening_balance"], b["closing_balance"], current[h], len(entries)))
     views = []
     for t_ in sorted(instants):
         q = urllib.parse.quote(t_, safe="")
@@ -196,10 +197,17 @@ def check_stage(s3, stage, out, chk):
         views and all(v == seeded_total for _, v in views), str([v for v in views if v[1] != seeded_total][:3]))
     corr = lambda pid, t, k, amt=1: call(s3, "POST", "/payments/%s/corrections" % pid,
                                          {"expected_revision": 1, "amount": amt, "effective_at": iso(-1), "reason": "verifier"}, t, k)
+    sender_tok = {}
+    for w in meta["writes"]:
+        r = w["response"] or {}
+        for p in (r.get("payments") or []) + ([r] if "payment_id" in r else []):
+            if "from_handle" in p:
+                sender_tok[p["payment_id"]] = tok[p["from_handle"]]
     linked = meta.get("settlement_members", []) + meta.get("captures", [])
-    chk("[%s] settlement members and captures -> 422 linked_payment_immutable" % stage,
-        all((r := corr(pid, tok["op"] if pid in meta["settlement_members"] else tok["bob"], "lk-" + pid))[0] == 422
-            and (r[1] or {}).get("error", {}).get("code") == "linked_payment_immutable" for pid in linked))
+    res = {pid: corr(pid, sender_tok.get(pid, tok["ada"]), "lk-" + pid) for pid in linked}
+    chk("[%s] settlement members and captures, corrected by their sender -> 422 linked_payment_immutable" % stage,
+        all(r[0] == 422 and (r[1] or {}).get("error", {}).get("code") == "linked_payment_immutable" for r in res.values()),
+        str({k: (v[0], (v[1] or {}).get("error", {}).get("code")) for k, v in res.items()}))
     plain = next(w["response"] for w in meta["writes"] if w["path"] == "/payments" and "burst" in w["key"])
     first = corr(plain["payment_id"], tok["ada"], "fix-1", amt=plain["amount"] - 1)
     again = corr(plain["payment_id"], tok["ada"], "fix-1", amt=plain["amount"] - 1)
