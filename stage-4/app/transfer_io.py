@@ -20,7 +20,7 @@ MINOR_UNITS = (0, 2, 3)
 COUNTER_KINDS = ("p", "rq", "sp", "st", "u")
 # Stage 2 keys a stage-1 export does not have: filled with these defaults on import (D10).
 STAGE2_DEFAULTS = {"authorizations": {}, "settings": {"authorization_ttl_seconds": DEFAULT_TTL}}
-DERIVED_KEYS = ("user_payments",)  # rebuilt on import, never trusted
+DERIVED_KEYS = ("user_payments", "refunds_of")  # rebuilt on import, never trusted
 STATE_KEYS = tuple(k for k in empty_state()
                    if k not in STAGE2_DEFAULTS and k not in DERIVED_KEYS)
 EVENT_KINDS = ("created", "capture", "release")
@@ -349,6 +349,9 @@ def validated_state(submitted) -> dict:
     for p in state["payments"].values():
         p.setdefault("authorization_id", None)
         _opt_str(p["authorization_id"], "payment authorization_id")
+        p.setdefault("refund_of", None)  # stage 4; older exports have no refunds
+        if p["refund_of"] is not None and p["refund_of"] not in state["payments"]:
+            _bad("payment refund_of must name a payment")
     _check_revisions(state)
     _check_events(state)
     store.recompute_held(state, store.now_key())  # held is derived, never trusted (plan §5)

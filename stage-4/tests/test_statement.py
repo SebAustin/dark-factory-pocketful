@@ -8,7 +8,8 @@ from urllib.parse import quote
 from harness import FIXTURE, call, reset
 from test_payments import token
 
-ENTRY_KEYS = ["payment", "delta", "revision", "effective_at", "recorded_at", "balance_after"]
+ENTRY_KEYS = ["payment", "delta", "revision", "effective_at", "recorded_at",
+              "correction_batch_id", "balance_after"]
 
 
 def iso(dt):
@@ -61,7 +62,7 @@ class StatementTest(Base):
         self.assertEqual(list(e), ENTRY_KEYS)
         self.assertEqual((e["revision"], e["effective_at"], e["recorded_at"]),
                          (1, self.t[0], self.t[0]))
-        self.assertEqual(len(e["payment"]), 13)
+        self.assertEqual(len(e["payment"]), 14)
         self.assertFalse(s["has_more"])
         self.assertTrue(isinstance(s["snapshot"], str) and s["snapshot"])
 

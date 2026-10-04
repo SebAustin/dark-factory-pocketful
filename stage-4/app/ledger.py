@@ -29,9 +29,19 @@ def index_payment(state: dict, p: dict) -> None:
 
 
 def rebuild_user_payments(state: dict) -> None:
+    """Derived indexes: each user's payments, and each payment's refunds (stage 4)."""
     state["user_payments"] = {uid: [] for uid in state["users"]}
+    state["refunds_of"] = {}
     for pid in state["payment_order"]:
-        index_payment(state, state["payments"][pid])
+        p = state["payments"][pid]
+        index_payment(state, p)
+        if p.get("refund_of"):
+            state["refunds_of"].setdefault(p["refund_of"], []).append(pid)
+
+
+def refunded(state: dict, pid: str) -> int:
+    """Total already refunded from a payment (refund payments are immutable)."""
+    return sum(state["payments"][r]["amount"] for r in state["refunds_of"].get(pid, ()))
 
 
 def compute_openings(state: dict) -> None:

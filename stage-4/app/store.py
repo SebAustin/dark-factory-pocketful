@@ -36,7 +36,7 @@ def empty_state(currency: str = "EUR", minor_units: int = 2) -> dict:
         "settlements": {}, "idem": {}, "seq": 0,
         "counters": {k: 0 for k in ID_PREFIX},
         "authorizations": {}, "settings": {"authorization_ttl_seconds": DEFAULT_TTL},
-        "user_payments": {},
+        "user_payments": {}, "refunds_of": {},
     }
 
 
@@ -167,12 +167,12 @@ def user_by_handle(state: dict, handle: str):
 # ---------------------------------------------------------------- money movement
 
 def _make_payment(state, from_id, to_id, amount, note, visibility, ts, request_id, settlement_id,
-                  authorization_id=None):
+                  authorization_id=None, refund_of=None):
     payment = {
         "id": new_id(state, "p"), "from": from_id, "to": to_id, "amount": amount,
         "note": note, "visibility": visibility, "request_id": request_id,
         "settlement_id": settlement_id, "authorization_id": authorization_id,
-        "created_at": ts, "seq": next_seq(state),
+        "refund_of": refund_of, "created_at": ts, "seq": next_seq(state),
     }
     payment["revisions"] = [ledger.revision_one(payment)]
     state["payments"][payment["id"]] = payment
@@ -247,6 +247,20 @@ def _expiry(created: datetime, ttl: int) -> datetime:
         return min(created + timedelta(seconds=ttl), LAST_INSTANT)
     except OverflowError:  # the ttl was valid when stored; time has moved on since
         return LAST_INSTANT
+
+
+def apply_refund(state, target: dict, amount: int) -> dict:
+    """A refund: a new payment back from the target's receiver to its sender. Caller holds
+    STORE.hold() and has checked the cap; 409 if the receiver's available funds are short."""
+    payer = state["users"][target["to"]]
+    if available(payer) < amount:
+        raise errors.conflict("insufficient_funds", "available balance is below amount")
+    payer["balance"] -= amount
+    state["users"][target["from"]]["balance"] += amount
+    payment = _make_payment(state, target["to"], target["from"], amount, target["note"],
+                            target["visibility"], now_ts(), None, None, refund_of=target["id"])
+    state["refunds_of"].setdefault(target["id"], []).append(payment["id"])
+    return payment
 
 
 def place_hold(state, from_id, to_id, amount, note, visibility):
@@ -330,7 +344,7 @@ def payment_view(state: dict, p: dict) -> dict:
         "amount": p["amount"], "currency": state["currency"], "note": p["note"],
         "visibility": p["visibility"], "request_id": p["request_id"],
         "settlement_id": p["settlement_id"], "authorization_id": p.get("authorization_id"),
-        "created_at": p["created_at"],
+        "refund_of": p.get("refund_of"), "created_at": p["created_at"],
     }
 
 
@@ -438,7 +452,7 @@ def _load_payments(state, payments, ts):
             "amount": _need_int(p, "amount", pid, 1, BALANCE_LIMIT),
             "note": _opt_str(p, "note", "", pid), "visibility": vis,
             "request_id": p.get("request_id") if isinstance(p.get("request_id"), str) else None,
-            "settlement_id": None, "authorization_id": None,
+            "settlement_id": None, "authorization_id": None, "refund_of": None,
             "created_at": _opt_ts(p, ts, pid), "seq": next_seq(state),
         }
         state["payments"][pid]["revisions"] = [ledger.revision_one(state["payments"][pid])]

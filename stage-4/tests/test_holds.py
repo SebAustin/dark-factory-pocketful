@@ -194,7 +194,7 @@ class AvailableRefusalTest(unittest.TestCase):
 
     def test_payment_view_has_authorization_id(self):
         r = self.pay(1)
-        self.assertEqual(len(r.body), 13)
+        self.assertEqual(len(r.body), 14)
         feed = call("GET", "/activity", token=self.ada).body["payments"]
         self.assertTrue(all("authorization_id" in p for p in feed))
 

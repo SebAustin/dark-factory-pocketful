@@ -15,7 +15,8 @@ MAX_REASON = 200
 def revision_view(p: dict, rev: dict) -> dict:
     return {"payment_id": p["id"], "revision": rev["revision"], "amount": rev["amount"],
             "effective_at": rev["effective_at"], "recorded_at": rev["recorded_at"],
-            "reason": rev["reason"]}
+            "reason": rev["reason"],
+            "correction_batch_id": rev.get("correction_batch_id")}  # D-69: null unless a batch
 
 
 def _fields(body: dict, now):
@@ -76,13 +77,16 @@ def correct(ctx, state, user):
         raise errors.not_found("no such payment")
     if user["id"] != p["from"]:
         raise errors.forbidden("only the original sender may correct a payment")
-    if p.get("settlement_id") or p.get("authorization_id"):
+    if p.get("settlement_id") or p.get("authorization_id") or p.get("refund_of"):
         raise errors.unprocessable("linked_payment_immutable",
-                                   "settlement members and captures cannot be corrected")
+                                   "settlement members, captures and refunds cannot be corrected")
     current = ledger.latest(p)
     if expected != current["revision"]:
         raise errors.conflict("stale_revision", "the payment is at revision {}".format(
             current["revision"]))
+    if amount < ledger.refunded(state, p["id"]):
+        raise errors.unprocessable("refund_exceeds_payment",
+                                   "the payment has already been refunded beyond that amount")
     diff = amount - current["amount"]
     payer, payee = state["users"][p["from"]], state["users"][p["to"]]
     debited = payer if diff > 0 else payee

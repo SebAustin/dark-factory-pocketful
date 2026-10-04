@@ -193,7 +193,7 @@ class CaptureTest(Base):
         r = self.capture(aid)
         self.assertEqual(r.status, 201, r.raw)
         p = r.body
-        self.assertEqual(len(p), 13)
+        self.assertEqual(len(p), 14)
         self.assertEqual((p["from_user_id"], p["to_user_id"], p["amount"], p["note"],
                           p["visibility"], p["authorization_id"], p["request_id"]),
                          ("u_ada", "u_bob", 2000, "deposit", "private", aid, None))

@@ -38,8 +38,11 @@ The service listens on `0.0.0.0:$PORT` (default `8080`) and answers `GET /health
     `GET /statement?snapshot=<token>&limit=&offset=` pages that frozen result until the next reset;
   - `POST /payments/{id}/corrections` (idempotent; original sender) and
     `GET /payments/{id}/revisions`;
-  - `POST /payments/{id}/refunds` (idempotent; original receiver) — a new payment in the
-    opposite direction with `refund_of` naming the target;
+  - `POST /payments/{id}/refunds` (idempotent; original receiver; body `{"amount": n}`) — a
+    new payment in the opposite direction with `refund_of` naming the target and the target's
+    note and visibility. Refunds of one payment never exceed its current corrected amount, are
+    paid from the receiver's available funds, and cannot themselves be refunded or corrected;
+    a correction cannot go below what was already refunded;
   - `POST /correction-batches` (idempotent; settlement operator) — several corrections in one
     atomic step, including every member of a settlement.
 - Server-assigned instants have microsecond precision and strictly increase.

@@ -52,6 +52,7 @@ def _render(state: dict, snap: dict, token: str, limit: int, offset: int) -> dic
         view["amount"] = rev["amount"]  # the selected amount for this statement (D-47)
         entries.append({"payment": view, "delta": delta, "revision": revision,
                         "effective_at": rev["effective_at"], "recorded_at": rev["recorded_at"],
+                        "correction_batch_id": rev.get("correction_batch_id"),
                         "balance_after": balance_after})
     body = {"opening_balance": snap["opening_balance"], "entries": entries,
             "closing_balance": snap["closing_balance"],

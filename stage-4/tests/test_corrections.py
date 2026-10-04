@@ -9,7 +9,8 @@ from harness import FIXTURE, call, reset
 from test_payments import token
 from test_statement import statement
 
-REV_KEYS = ["payment_id", "revision", "amount", "effective_at", "recorded_at", "reason"]
+REV_KEYS = ["payment_id", "revision", "amount", "effective_at", "recorded_at", "reason",
+            "correction_batch_id"]
 
 
 def iso(dt):
@@ -211,7 +212,8 @@ class RevisionsEndpointTest(Base):
         r = self.revisions("p_1")
         self.assertEqual(r.body, {"revisions": [{"payment_id": "p_1", "revision": 1,
                                                  "amount": 500, "effective_at": self.t1,
-                                                 "recorded_at": self.t1, "reason": ""}]})
+                                                 "recorded_at": self.t1, "reason": "",
+                                                 "correction_batch_id": None}]})
         self.assertEqual(self.revisions("p_1", tok=self.bob).status, 200)
         self.assertEqual(self.revisions("p_1", tok=self.cy).code, "not_found")  # public too
         self.assertEqual(self.revisions("p_nope").code, "not_found")
