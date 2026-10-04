@@ -66,13 +66,16 @@ def test_R3_SNAP_5_SNAP_6_unknown_other_user_reset_import(world, api):
     snap = api.statement(tk["ada"]).json()["snapshot"]
     assert_error(api.statement(tk["ada"], snapshot="nope-" + new_key()), 404, "not_found")
     assert_error(api.statement(tk["bob"], snapshot=snap), 404, "not_found")
-    # an import does not end a token (D-50) ...
+    # an import of the exported state keeps the token (D-50, L8) ...
     exported = api.export()
     assert api.import_(exported).status_code == 204
     assert api.statement(tk["ada"], snapshot=snap).status_code == 200
-    # ... a reset does
+    # ... a reset ends it ...
     api.reset(base_fixture())
     ada = api.login("ada@example.com")
+    assert_error(api.statement(ada, snapshot=snap), 404, "not_found")
+    # ... and importing a state that does not contain it keeps it gone
+    assert api.import_(api.export()).status_code == 204
     assert_error(api.statement(ada, snapshot=snap), 404, "not_found")
 
 

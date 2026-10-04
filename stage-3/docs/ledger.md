@@ -188,7 +188,7 @@ effective / recorded instant of payment *p*, *now* = the read instant (D-43).
 | R3-UPG.2 **H** | Settlement | "The ledger must import and account for authorizations and captures." | behaviour | test_R3_UPG_2_imported_holds_and_captures_accounted (/me current and as_of; statements include captures; held matches) |
 | R3-UPG.3 **H** | derived, D-52 | every imported payment has revision 1 with effective = recorded = created_at (members: committed_at); opening balances derived as current − net of all imported payments | behaviour | test_R3_UPG_3_imported_revision1_and_opening |
 | R3-UPG.4 **H** | derived, D-52 | imported receipts (all seven older paths) replay 200; tokens survive; imported pending requests payable; imported payments correctable unless linked | behaviour | test_R3_UPG_4_receipts_tokens_requests_corrections_after_import |
-| R3-UPG.5 **H** | derived, D-52 | a stage-3 export round-trips into stage 3 with revisions, recorded times and closed_at preserved; snapshot tokens survive an import (only reset ends them, D-50) | behaviour | test_R3_UPG_5_stage3_round_trip |
+| R3-UPG.5 **H** | derived, D-52 | a stage-3 export round-trips into stage 3 with revisions, recorded times and closed_at preserved; snapshot tokens travel in the export and are restored by importing it (D-50, L8) | behaviour | test_R3_UPG_5_stage3_round_trip |
 | R3-UPG.6 **H** | derived, D-52 + L5 | importing a stage-1 or stage-2 export keeps destination sessions whose user id, email and handle match; a stage-3 export is pure replacement | behaviour | test_R3_UPG_6_session_rule_by_source_stage |
 
 ### Historical holds (HH)

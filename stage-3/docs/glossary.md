@@ -91,5 +91,5 @@ rendering (D-42). Server-assigned instants have microsecond precision and strict
 | historical view | The balances (and holds) computed for one pair (as_of, known_at). | the current wallet |
 | historical_overdraft | Rejection of a correction that would make total or available negative at any past boundary under the latest known revisions. | insufficient_funds (current available) |
 | linked payment | A settlement member or a capture; immutable to single-payment corrections (422 `linked_payment_immutable`). | request-pay payment (correctable) |
-| snapshot | Opaque token minted by every first `GET /statement`; pages exactly that read's frozen result (window, resolved `to` and `known_at`, selected revisions, entries, balances). Valid until reset (an import does not end it; D-50). | idempotency key |
+| snapshot | Opaque token minted by every first `GET /statement`; pages exactly that read's frozen result (window, resolved `to` and `known_at`, selected revisions, entries, balances). Valid until reset; exported with the state and restored by importing that export (D-50, L8). | idempotency key |
 | read instant | The single instant at which a read is evaluated (taken from the service's monotonic clock while the state is consistent); defines "now" for default `to`, default `known_at` and default `as_of`. | client clock |
