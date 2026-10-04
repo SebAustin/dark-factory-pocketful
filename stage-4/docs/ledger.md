@@ -133,7 +133,7 @@ L10 (snapshots in stage-4 exports).
 | id | section | requirement (verbatim quote) | kind | proof |
 |---|---|---|---|---|
 | R4-UPG.1 **H** | Batch | "A stage-4 service must accept exports produced by the same team's stages 1–3, retaining settlement membership, corrections and snapshots." | behaviour | test_R4_UPG_1_populated_stage1_2_3_exports (memberships, revisions, recorded times, receipts, tokens) |
-| R4-UPG.2 **H** | L10 | stage-4 exports carry snapshot tokens with their frozen results; importing restores them | behaviour | test_R4_UPG_2_stage4_snapshots_round_trip (token pages identically after export → reset → import) (D-74) |
+| R4-UPG.2 **H** | L10, L12 | stage-4 exports carry snapshot tokens with their frozen results; importing merges them into the store (destination tokens keep paging) | behaviour | test_R4_UPG_2_stage4_snapshots_round_trip (token pages identically after export → reset → import) (D-74) |
 | R4-UPG.3 **H** | L10 | frozen stage-3 exports contain no snapshots; stage-3 tokens cannot survive the upgrade (known limitation) | operational | untestable: limitation recorded (D-74); the suite asserts only that importing a stage-3 export succeeds |
 | R4-UPG.4 **H** | derived, D-72 | imported payments get `refund_of: null`; stored receipts replay verbatim | behaviour | test_R4_UPG_4_old_receipts_replay_verbatim |
 | R4-UPG.5 **H** | derived, D-74 | imported settlements can be batch-corrected (membership kept), imported captures stay immutable | behaviour | test_R4_UPG_5_imported_settlement_batch_correctable |

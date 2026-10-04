@@ -25,6 +25,8 @@ PAYMENT_KEYS = {
     "payment_id", "from_user_id", "from_handle", "to_user_id", "to_handle", "amount",
     "currency", "note", "visibility", "request_id", "created_at", "settlement_id",
     "authorization_id",
+    # stage 4 (R4-RSH.5, decision D-75): every payment carries refund_of
+    "refund_of",
 }
 AUTH_KEYS = {  # D-32
     "authorization_id", "from_user_id", "from_handle", "to_user_id", "to_handle", "amount",

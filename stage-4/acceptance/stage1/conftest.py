@@ -26,6 +26,8 @@ PAYMENT_KEYS = {
     "currency", "note", "visibility", "request_id", "created_at", "settlement_id",
     # stage 2 (R2-CAP.6, decision D-39): every payment object carries authorization_id
     "authorization_id",
+    # stage 4 (R4-RSH.5, decision D-75): every payment carries refund_of
+    "refund_of",
 }
 REQUEST_KEYS = {
     "request_id", "requester_id", "requester_handle", "payer_id", "payer_handle", "amount",

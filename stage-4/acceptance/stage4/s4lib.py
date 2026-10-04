@@ -379,3 +379,39 @@ def model_correction_verdict(model, pid, new_amount, eff, now):
     finally:
         p["revs"].pop()
     return None
+
+
+# ---------------------------------------------------------------- stage 4 helpers
+
+STAGE3_URL = os.environ.get("STAGE3_URL", "http://127.0.0.1:18103").rstrip("/")
+BATCH_REVISION_KEYS = REVISION_KEYS  # already includes correction_batch_id (D-69)
+
+
+def refund(api, token, pid, amount, key=None):
+    return api.call("POST", f"/payments/{pid}/refunds", token, key or new_key(),
+                    {"amount": amount})
+
+
+def item(pid, expected, amount, eff, reason="batch fix"):
+    return {"payment_id": pid, "expected_revision": expected, "amount": amount,
+            "effective_at": eff, "reason": reason}
+
+
+def batch(api, token, items, key=None):
+    return api.call("POST", "/correction-batches", token, key or new_key(),
+                    {"corrections": items})
+
+
+def fingerprint(api, world, pids=(), snaps=()):
+    """Everything a rejected write must leave untouched."""
+    fp = {"me": {h: api.me(t) for h, t in world.tok.items()},
+          "statements": {}, "revisions": {}, "snapshots": {}}
+    for h, t in world.tok.items():
+        r = api.statement(t, limit=200)
+        fp["statements"][h] = (r.json()["entries"], r.json()["opening_balance"],
+                               r.json()["closing_balance"])
+    for pid, h in pids:
+        fp["revisions"][pid] = api.revisions(world.tok[h], pid).json()
+    for tok, snap in snaps:
+        fp["snapshots"][snap] = api.statement(tok, snapshot=snap, limit=200).json()
+    return fp

@@ -201,5 +201,5 @@ def test_R3_UPG_5_stage3_round_trip(world, api):
         assert api.me(t, as_of=iso_ns(ns(p["created_at"])), known_at=iso_ns(
             ns(r.json()["recorded_at"]) - US)) == hist
     assert api.revisions(world.tok["ada"], p["payment_id"]).json() == revs
-    # the reset in between ended the snapshot; the import does not bring it back (D-50, L8(1))
-    assert_error(api.statement(world.tok["ada"], snapshot=snap), 404, "not_found")
+    # stage 4 (L10, decision D-75): the export carries the snapshot and the import restores it
+    assert api.statement(world.tok["ada"], snapshot=snap).status_code == 200
