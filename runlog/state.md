@@ -18,7 +18,8 @@ Last accepted revision: 36547b6451dab2843338683d4226b7fbc1349250 (stage 3). Stag
 
 | Id | Title | Owner | Paths | State | Last rev | Rejections |
 |---|---|---|---|---|---|---|
-| S4.0 | Carry forward + RUN.md | builder | stage-4/ | in review | 2cdac7b+bb32d6a | 0 |
+| S4.0 | Carry forward + RUN.md | builder | stage-4/ | accepted | 2cdac7b+bb32d6a | 0 |
+| S4.V | Upgrade driver 4 + batch atomicity probe | verifier | reviews/stage4/tools | done | ac306cd | 0 |
 | S4.L | Ledger (64 R4 rows, D-62..D-75) | analyst | stage-4/docs/ledger.md | done | 200efad | 0 |
 | S4.A | Acceptance (s1 422, s2 272, s3 134, s4 90) | analyst | stage-4/acceptance/ | built; only red = snapshot restore (S4.3) | 34e8a53 | 0 |
 | S4.PG | Plan gate | analyst | - | PLAN PASS (note: prepare-then-apply -> builder) | - | 0 |
