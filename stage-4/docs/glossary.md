@@ -93,3 +93,17 @@ rendering (D-42). Server-assigned instants have microsecond precision and strict
 | linked payment | A settlement member or a capture; immutable to single-payment corrections (422 `linked_payment_immutable`). | request-pay payment (correctable) |
 | snapshot | Opaque token minted by every first `GET /statement`; pages exactly that read's frozen result (window, resolved `to` and `known_at`, selected revisions, entries, balances). Valid until reset; kept in the process, not exported, untouched by import (D-50, L8(1)). | idempotency key |
 | read instant | The single instant at which a read is evaluated (taken from the service's monotonic clock while the state is consistent); defines "now" for default `to`, default `known_at` and default `as_of`. | client clock |
+
+## Stage 4 additions
+
+| term | meaning | not to be confused with |
+|---|---|---|
+| refund | A new payment from a payment's receiver back to its sender, `refund_of` = the target; copies note and visibility; immutable; never refundable. | correction (changes the original's amount) |
+| refund_of | Payment field naming the refunded target; null on every other payment. | request_id, authorization_id, settlement_id |
+| current corrected amount | The target payment's latest revision amount at the read instant; the cap for cumulative refunds. | the original (revision 1) amount |
+| refunded total | Σ amounts of a payment's refunds; a correction (single or batch) may not set the payment below it. | refund amount |
+| correction batch | An operator's all-or-none set of 1..32 corrections on distinct payments, sharing one recorded_at and correction_batch_id. | settlement (moves new money) |
+| correction_batch_id | Id of the batch that created a revision; null for revision 1 and single corrections. | settlement_id |
+| settlement completeness | A batch touching any member of a settlement must include every member, with identical effective instants. | settlement affordability |
+| combined effect | The net per-wallet result of all items of a batch, judged together for current available and history. | per-item affordability |
+| linked payment (stage 4) | Captures and refunds (immutable everywhere); settlement members (immutable on the single path, correctable by batch). | ordinary payment |
