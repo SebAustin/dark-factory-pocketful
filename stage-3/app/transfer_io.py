@@ -308,8 +308,13 @@ def _check_events(state: dict) -> None:
 
 
 def is_stage1_state(submitted) -> bool:
-    """A stage-1 export's state has none of the keys stage 2 added (the upgrade path)."""
+    """A stage-1 export's state has none of the keys stage 2 added."""
     return isinstance(submitted, dict) and not any(k in submitted for k in STAGE2_DEFAULTS)
+
+
+def is_upgrade_state(submitted) -> bool:
+    """A stage-1 or stage-2 export (no stage 3 ledger): the upgrade path (L5, D-52, L8)."""
+    return isinstance(submitted, dict) and "user_payments" not in submitted
 
 
 def carry_sessions(old: dict, new: dict) -> None:
@@ -353,8 +358,7 @@ def validated_state(submitted) -> dict:
     store.recompute_held(state, store.now_key())  # held is derived, never trusted (plan §5)
     ledger.rebuild_user_payments(state)
     ledger.compute_openings(state)
-    if any(not ledger.history_is_nonnegative(state, uid) for uid in state["users"]):
-        _bad("the payment history makes a balance negative")
+    # D-52: no history validation on import; the source service enforced its own rules.
     if any(u["held"] > u["balance"] for u in state["users"].values()):
         _bad("open holds exceed a balance (available would be negative)")
     return state
@@ -373,6 +377,6 @@ def import_state(ctx, state, user):
     fresh = validated_state(body["state"])
     # One lock hold: all of the old state goes, all of the new arrives. A stage-1 state is the
     # upgrade path, where signed-in browsers keep their destination sessions (L5).
-    carry = carry_sessions if is_stage1_state(body["state"]) else None
+    carry = carry_sessions if is_upgrade_state(body["state"]) else None
     STORE.replace_state(fresh, carry=carry)
     return 204, None

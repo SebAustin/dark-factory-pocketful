@@ -65,6 +65,13 @@ class StageTwoExportTest(unittest.TestCase):
 
     def test_populated_stage2_export(self):
         export, ada, holds = self.drive()
+        from harness import reset
+        reset()  # destination sessions: one for a user the export has, one it does not
+        self.dest_ada = call("POST", "/auth/login", {"email": "ada@example.com",
+                                                     "password": PW}).body["token"]
+        self.dest_zed = call("POST", "/auth/signup", {"email": "zed@example.com",
+                                                      "password": PW,
+                                                      "display_name": "Zed"}).body["token"]
         self.assertEqual(call("POST", "/_test/import", export).status, 204)
         with STORE.lock:
             state = STORE.state
@@ -86,6 +93,8 @@ class StageTwoExportTest(unittest.TestCase):
             ada_user = state["users"]["u_ada"]
             self.assertEqual(ada_user["held"], 25)
             self.assertEqual(ada_user["opening"], 10500)  # seeded 10000 after paying 500
+        self.assertEqual(call("GET", "/me", token=self.dest_ada).status, 200)  # L8 (3)
+        self.assertEqual(call("GET", "/me", token=self.dest_zed).status, 401)
         me = call("GET", "/me", token=ada).body
         self.assertEqual((me["held"], me["available"]), (25, me["total"] - 25))
         r = call("POST", "/payments", {"to_handle": "bob", "amount": 7}, token=ada, key="pay-1")

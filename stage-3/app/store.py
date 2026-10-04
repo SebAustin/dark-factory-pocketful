@@ -370,23 +370,17 @@ def _opt_str(obj: dict, name: str, default: str, where: str) -> str:
     return obj[name]
 
 
-def _canonical_ts(value: str) -> str:
-    """isoformat() of an instant when that is exact (e.g. Z -> +00:00); the input otherwise."""
-    rendered = parse_rfc3339(value).isoformat()
-    return rendered if instants.key(rendered) == instants.key(value) else value
-
-
-def _opt_ts(obj: dict, default: str, where: str, no_future: bool = False) -> str:
-    """Fixture created_at: absent/null -> reset time; else RFC 3339 with an offset or 422.
-    no_future: a seeded created_at later than now is a reset error (stage 3)."""
-    value = obj.get("created_at")
+def _opt_ts(obj: dict, default: str, where: str, name: str = "created_at") -> str:
+    """Fixture instant: absent/null -> the reset instant R (default); else RFC 3339 with an
+    offset, not later than R (D-44), kept as its original string (D-41)."""
+    value = obj.get(name)
     if value is None:
         return default
     if parse_rfc3339(value) is None:
-        _fail(where + " has a created_at that is not RFC 3339 with an offset")
-    if no_future and instants.key(value) > now_key():
-        _fail(where + " has a created_at in the future")
-    return _canonical_ts(value)
+        _fail("{} has a {} that is not RFC 3339 with an offset".format(where, name))
+    if instants.key(value) > instants.key(default):
+        _fail("{} has a {} in the future".format(where, name))
+    return value
 
 
 def _load_users(state, users, ts):
@@ -435,7 +429,7 @@ def _load_payments(state, payments, ts):
             "note": _opt_str(p, "note", "", pid), "visibility": vis,
             "request_id": p.get("request_id") if isinstance(p.get("request_id"), str) else None,
             "settlement_id": None, "authorization_id": None,
-            "created_at": _opt_ts(p, ts, pid, no_future=True), "seq": next_seq(state),
+            "created_at": _opt_ts(p, ts, pid), "seq": next_seq(state),
         }
         state["payments"][pid]["revisions"] = [ledger.revision_one(state["payments"][pid])]
         state["payment_order"].append(pid)
@@ -465,7 +459,7 @@ def _need_ts(obj: dict, name: str, where: str) -> str:
     parsed = parse_rfc3339(obj.get(name)) if isinstance(obj, dict) else None
     if parsed is None:
         _fail("{} needs {} as RFC 3339 with an offset".format(where, name))
-    return _canonical_ts(obj.get(name))
+    return obj.get(name)  # kept as received (D-41)
 
 
 def _load_ttl(state, fixture):
@@ -503,14 +497,19 @@ def _load_authorizations(state, authorizations, ts):
             "id": aid, "from": src, "to": dst, "amount": amount, "captured": captured,
             "note": note, "visibility": vis, "status": status,
             "expires_at": _need_ts(a, "expires_at", aid),
-            "created_at": _opt_ts(a, ts, aid, no_future=True),
+            "created_at": _opt_ts(a, ts, aid),
             "seq": next_seq(state), "payment_ids": list(ids), "events": [], "closed_at": None,
         }
         seeded = state["authorizations"][aid]
         if status == "open":  # a seeded open hold starts at its created_at (default: reset)
             _event(seeded, "created", seeded["created_at"], amount - captured)
-        else:  # closed seeds have no lifecycle to reconstruct; they never hold anything
-            seeded["closed_at"] = seeded["expires_at"] if status == "expired" else ts
+        else:  # closed seeds have no lifecycle to reconstruct; they never hold anything (D-51)
+            supplied = a.get("closed_at")
+            if supplied is not None and parse_rfc3339(supplied) is None:
+                _fail("authorization {} has an invalid closed_at".format(aid))
+            seeded["closed_at"] = supplied or (
+                seeded["expires_at"] if status == "expired"
+                else a.get("created_at") or ts)
     recompute_held(state, now_key())
     for u in state["users"].values():
         if u["held"] > u["balance"]:

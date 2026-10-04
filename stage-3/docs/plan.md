@@ -173,14 +173,14 @@ same `expected_revision` serialise on the lock; the second sees `stale_revision`
 
 ## 4. Snapshots
 
-- In memory on the `Store` object (not in the exported state): `token → {user_id, generation,
-  result}`; token = `secrets.token_urlsafe(24)`. `generation` increments on every reset **and
-  import** (decision S3-D5: an import also starts a new world; old tokens → 404).
+- In the state (`state["snapshots"]`, exported; D-50, L8): `token → {user_id, result}`;
+  token = `secrets.token_urlsafe(24)`. Reset starts with none; an import restores exactly the
+  snapshots its state contains (stage 1/2 exports: none).
 - Frozen result = list of rendered entries + balances + echoes; paging slices it; `has_more =
   offset + limit < len(entries)`; offsets past the end → empty page, `has_more: false`.
-- Memory: entries share rendered dicts; a cap of 10 000 snapshots per user evicts the oldest
-  (decision S3-D6, risk noted — spec says tokens last until reset; the cap is far above any
-  realistic test volume).
+- Memory: stored compactly (per entry: payment id, selected revision number, delta,
+  balance_after; payment views rendered at page time from the immutable payment record with the
+  frozen amount). No cap: tokens last until reset (L8).
 
 ## 5. Upgrade and import
 
@@ -229,19 +229,30 @@ holds stress still pass.
 Order: S3.1 → S3.2 → S3.3 → S3.4 → S3.5 → S3.6. The designer's reference model can start from
 the spec and this plan; the API contract is §2–§3.
 
-## 8. Decisions recorded here (align with the analyst's records)
+## 8. Decisions (binding: analyst D-41..D-60 at 754b18f; lead L7, L8)
 
-- S3-D1 instants: exact Decimal epoch keys; server instants µs precision, service-wide strictly
-  increasing; supplied instants echoed verbatim.
-- S3-D2 inconsistent or negative seeded history → reset 422.
-- S3-D3 statement `from > to` → 422.
-- S3-D4 correction field errors, wrong JSON types included, → 422.
-- S3-D5 snapshots invalid after reset and after import (404).
-- S3-D6 snapshot cap 10 000 per user, oldest evicted.
-- S3-D7 voided holds imported from stage 2 release at their latest known event.
-- S3-D8 L5 session carry-over for stage-1 and stage-2 format imports.
-- S3-D9 correction error order: 400 → 422 fields → 404 → 403 → 422 linked → 409 stale →
-  409 insufficient_funds → 409 historical_overdraft.
+Where this plan's first draft differed, the analyst's records and lead rulings win:
+- Instants: D-41 (one service-wide monotonic µs clock under the lock, server instants rendered
+  with 6 decimals and +00:00, unique and strictly increasing), D-42 (1–9 fractional digits,
+  Z/z/T/t, exact comparison; a `+` decoded to a space in a query is repaired; the echo keeps the
+  received string), D-43 (one read instant N per read; T = as_of or N, K = known_at or N).
+  Seeded, imported and supplied instants are kept as their original strings.
+- D-44 seeded created_at: future iff later than the reset instant R (payments, requests, holds).
+- D-45 openings; reset rejects inconsistent or negative seeded history (my S3-D2).
+- D-46 / D-57 / D-59 corrections: every field defect 422; order 401 → 400 body → 400/422 key →
+  replay → 422 fields → 404 → 403 → 422 linked_payment_immutable → 409 stale_revision →
+  409 insufficient_funds → 409 historical_overdraft (my S3-D4, S3-D9).
+- D-47 revision shape `{payment_id, revision, amount, effective_at, recorded_at, reason}`.
+- D-48 selection algorithm; D-49 statement shape; D-54 `from > to` → 422 (my S3-D3).
+- D-50 + L8: snapshots are part of the exported state; only reset invalidates them; an import
+  restores the snapshots it contains (none for stage 1/2); no cap (S3-D5/S3-D6 withdrawn).
+- D-51 holds; seeded closed holds: closed_at = supplied, else expires_at (expired), else
+  supplied created_at, else R.
+- D-52 + L8: imports are not history-validated; voided stage-2 holds close at their last capture
+  or created_at (S3-D7); L5 session carry-over for stage-1 **and** stage-2 imports (S3-D8);
+  a stage-3 export is a pure round trip.
+- D-53 historical_overdraft: both parties, boundaries ≤ N incl. hold events, total and available.
+- D-58 effective_at ≤ N strictly. D-60 concurrency through the single lock.
 
 ## 9. Risks
 

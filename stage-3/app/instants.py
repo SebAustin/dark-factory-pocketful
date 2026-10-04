@@ -15,7 +15,7 @@ RFC3339_RE = re.compile(r"\A(\d{4})-(\d\d)-(\d\d)[Tt](\d\d):(\d\d):(\d\d)(?:\.(\
                         r"([Zz]|[+-]\d\d:\d\d)\Z")
 EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 NEG_INF = Decimal("-Infinity")
-MAX_FRACTION_DIGITS = 40
+MAX_FRACTION_DIGITS = 9  # D-42: 1..9 fractional digits
 ONE_SECOND = timedelta(seconds=1)
 
 
@@ -46,6 +46,15 @@ def key(value):
     with localcontext() as ctx:
         ctx.prec = 80
         return Decimal(whole) + (Decimal("0." + fraction) if fraction else Decimal(0))
+
+
+def repair_query_instant(value):
+    """D-42: in a query string an unencoded '+' decodes to a space; a value whose only defect is
+    one space right before a trailing HH:MM offset is read as +HH:MM. The echo keeps `value`."""
+    if isinstance(value, str) and len(value) > 6 and value[-6] == " " \
+            and key(value) is None and key(value[:-6] + "+" + value[-5:]) is not None:
+        return value[:-6] + "+" + value[-5:]
+    return value
 
 
 def key_or_min(value) -> Decimal:

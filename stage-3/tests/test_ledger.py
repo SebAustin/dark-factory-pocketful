@@ -197,6 +197,28 @@ class HoldEventsTest(ClockCase):
         self.assertEqual(a["a_3"]["closed_at"], a["a_3"]["expires_at"])
 
 
+class SeededClosedAtTest(unittest.TestCase):
+    def test_closed_at_fallbacks(self):  # D-51
+        made, closed = ago(7200), ago(3600)
+        reset(fixture(hold("a_1", status="captured", closed_at=closed),
+                      hold("a_2", status="expired", expires=-60),
+                      hold("a_3", status="voided", created_at=made),
+                      hold("a_4", status="voided")))
+        a = auths()
+        self.assertEqual(a["a_1"]["closed_at"], closed)
+        self.assertEqual(a["a_2"]["closed_at"], a["a_2"]["expires_at"])
+        self.assertEqual(a["a_3"]["closed_at"], made)
+        self.assertIsNotNone(instants.key(a["a_4"]["closed_at"]))
+
+    def test_future_created_at_on_requests_and_holds_is_422(self):
+        future = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+        f = copy.deepcopy(FIXTURE)
+        f["requests"][0]["created_at"] = future
+        self.assertEqual(call("POST", "/_test/reset", f).status, 422)
+        self.assertEqual(call("POST", "/_test/reset", fixture(hold(created_at=future))).status,
+                         422)
+
+
 class ExportRoundTripTest(unittest.TestCase):
     def test_stage3_round_trip_is_stable(self):
         reset()

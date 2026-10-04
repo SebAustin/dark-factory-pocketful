@@ -18,16 +18,22 @@ class KeyTest(unittest.TestCase):
     def test_fractions_are_exact(self):
         k = instants.key
         self.assertEqual(k("2026-09-24T17:00:00.5Z"), k("2026-09-24T17:00:00.500000000Z"))
-        self.assertLess(k("2026-09-24T17:00:00.1234567891Z"), k("2026-09-24T17:00:00.1234567892Z"))
+        self.assertLess(k("2026-09-24T17:00:00.123456781Z"), k("2026-09-24T17:00:00.123456782Z"))
         self.assertEqual(k("1970-01-01T00:00:01.25Z"), Decimal("1.25"))
         self.assertEqual(k("1969-12-31T23:59:59Z"), Decimal(-1))
 
     def test_invalid_is_none(self):
         for bad in ("2026-09-24T17:00:00", "2026-09-24", "", None, 5, "2026-02-30T00:00:00Z",
                     "2026-09-24T24:00:00Z", "2026-09-24T23:59:60Z", "2026-09-24 17:00:00Z",
-                    "2026-09-24T17:00:00+24:00", "2026-09-24T17:00:00." + "1" * 41 + "Z",
+                    "2026-09-24T17:00:00+24:00", "2026-09-24T17:00:00." + "1" * 10 + "Z",
                     "2026-09-24T17:00:00Z\n", "0000-01-01T00:00:00Z"):
             self.assertIsNone(instants.key(bad), bad)
+
+    def test_query_plus_repair(self):
+        fix = instants.repair_query_instant
+        self.assertEqual(fix("2026-09-24T13:20:00 02:00"), "2026-09-24T13:20:00+02:00")
+        self.assertEqual(fix("2026-09-24T13:20:00Z"), "2026-09-24T13:20:00Z")
+        self.assertEqual(fix("2026-09-24 13:20:00 02:00"), "2026-09-24 13:20:00 02:00")
 
     def test_extremes(self):
         self.assertIsNotNone(instants.key("9999-12-31T23:59:59-23:59"))

@@ -335,11 +335,11 @@ class InstantOrderTest(unittest.TestCase):
         f["payments"][1]["created_at"] = "2026-09-24t18:30:00z"
         reset(f)
         feed = call("GET", "/activity", token=token("cy@example.com")).body["payments"]
-        self.assertEqual(feed[1]["created_at"], "2026-09-24T18:30:00+00:00")
+        self.assertEqual(feed[1]["created_at"], "2026-09-24t18:30:00z")  # verbatim (D-41)
 
-    def test_z_suffix_accepted_and_rendered_with_offset(self):
+    def test_z_suffix_accepted_and_kept_as_received(self):
         f = self.fixture()
         f["payments"][1]["created_at"] = "2026-09-24T18:30:00Z"
         reset(f)
         feed = call("GET", "/activity", token=token("cy@example.com")).body["payments"]
-        self.assertEqual(feed[1]["created_at"], "2026-09-24T18:30:00+00:00")
+        self.assertEqual(feed[1]["created_at"], "2026-09-24T18:30:00Z")  # D-41
