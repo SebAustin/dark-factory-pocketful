@@ -26,7 +26,7 @@ Last accepted revision: 6a3fd334b9a64588b9d821ba654ae47538cba7bc (stage 2). Stag
 | S3.1 | Bitemporal foundation | builder | app/store etc. | accepted | aa3922c | 0 |
 | S3.2-S3.6 | /me history, statement+snapshots, corrections, upgrade, load | builder | app/** | assigned | - | 0 |
 | S3.PG | Plan gate | analyst | - | done: 1 finding (snapshots across import -> L8 revised) + 2 notes; gate closed (L9) | 341f1a2 | 0 |
-| S3.A | Acceptance (stage1+stage2 carried, stage3 new) | analyst | stage-3/acceptance/ | assigned | - | 0 |
+| S3.A | Acceptance (stage1 422, stage2 272, stage3 134) | analyst | stage-3/acceptance/ | built; stage3 34/134 on e02f93d (rest awaits S3.3-S3.5) | 6ff899f | 0 |
 | S3.O | Independent reference model + differential/stress tool | designer | stage-3/tools/oracle/ | assigned | - | 0 |
 
 ## Stage 3 decisions
