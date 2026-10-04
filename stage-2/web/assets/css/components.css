@@ -147,6 +147,7 @@
 .notice--unsure { background: var(--unsure-bg); color: var(--unsure); border-color: var(--unsure); border-style: dashed; }
 .notice--info { background: var(--pending-bg); color: var(--pending); border-color: var(--pending); }
 .notice:focus-visible { outline-offset: 2px; }
+.notice { scroll-margin-top: calc(var(--header-h) + var(--s3)); scroll-margin-bottom: calc(var(--tabbar-h) + var(--s4) + env(safe-area-inset-bottom)); }
 
 .skeleton { background: linear-gradient(90deg, #ECE8DD 25%, #F5F2EB 50%, #ECE8DD 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; border-radius: var(--r-sm); }
 @keyframes shimmer { to { background-position: -200% 0; } }

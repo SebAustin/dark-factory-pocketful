@@ -828,7 +828,31 @@ def check_header(browser):
         pg.done(f"header @{width}")
 
 
-CHECKS = {"header": check_header, "auth": check_auth, "units": check_units, "wallet": check_wallet, "requests": check_requests, "split": check_split, "holds": check_holds, "chaos": check_chaos}
+def check_cover(browser):
+    """No feedback element may end under the fixed tab bar (<= 999 px), including a form at the very bottom of the page."""
+    for width, height in ((375, 667), (390, 844), (768, 1024)):
+        reset(base_users())
+        ctx = browser.new_context(viewport={"width": width, "height": height})
+        page = ctx.new_page()
+        pg = Page.__new__(Page)
+        pg.page, pg.width, pg.problems, pg.ctx = page, width, [], ctx
+        login(pg)
+        pg.t("wallet-balance").wait_for()
+        for form, error in (("pay", "pay-error"), ("request", "request-error"), ("authorize", "authorize-error")):
+            for handle, amount in (("bob", "abc"), ("nobody", "1.00")):    # a local refusal and a server refusal
+                pg.t(f"{form}-handle").fill(handle)
+                pg.t(f"{form}-amount").fill(amount)
+                pg.t(f"{form}-submit").click()
+                pg.t(error).wait_for()
+                page.wait_for_timeout(150)
+                box = pg.t(error).bounding_box()
+                bar = page.locator(".tabbar").bounding_box()
+                check(box["y"] >= 0 and box["y"] + box["height"] <= bar["y"] + 0.5,
+                      f"cover @{width}x{height} {error} ({handle}/{amount}): bottom {box['y'] + box['height']:.0f} vs tab bar {bar['y']:.0f}")
+        ctx.close()
+
+
+CHECKS = {"cover": check_cover, "header": check_header, "auth": check_auth, "units": check_units, "wallet": check_wallet, "requests": check_requests, "split": check_split, "holds": check_holds, "chaos": check_chaos}
 
 
 def main():

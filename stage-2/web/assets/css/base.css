@@ -1,5 +1,10 @@
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html {
+  -webkit-text-size-adjust: 100%;
+  /* scrollIntoView must clear the sticky header and the fixed bottom tab bar */
+  scroll-padding-top: calc(var(--header-h) + var(--s3));
+  scroll-padding-bottom: calc(var(--tabbar-h) + var(--s4) + env(safe-area-inset-bottom));
+}
 body {
   margin: 0;
   background: var(--paper);

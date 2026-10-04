@@ -42,18 +42,17 @@ export function writeForm(config) {
   let busy = false;
 
   const clearFeedback = () => slot.replaceChildren();
+  // Every feedback element is brought fully into view; scroll-padding/margin in the CSS keep it clear of the tab bar.
+  const put = (node) => { slot.replaceChildren(node); node.scrollIntoView({ block: "nearest" }); };
   const setLabel = (text) => { button.replaceChildren(document.createTextNode(text)); };
-  const showError = (text) => {
-    slot.replaceChildren(notice("refused", "cross", ids.error, "alert", text));
-    slot.firstChild.scrollIntoView({ block: "nearest" });  // a shared page-level slot may be off-screen
-  };
+  const showError = (text) => put(notice("refused", "cross", ids.error, "alert", text));
   const showUncertain = () => {
-    slot.replaceChildren(notice("unsure", "question", ids.uncertain, "status",
+    put(notice("unsure", "question", ids.uncertain, "status",
       config.uncertainText || "We didn't get an answer. This may or may not have gone through. Retrying is safe: it can't happen twice."));
     setLabel(config.retryLabel || "Retry safely");
   };
   const showStaleNote = () => {
-    slot.replaceChildren(notice("info", "info", `${ids.uncertain}-note`, "status",
+    put(notice("info", "info", `${ids.uncertain}-note`, "status",
       "A previous attempt wasn't confirmed. Check your activity before sending again."));
     setLabel(label);
   };
@@ -77,7 +76,7 @@ export function writeForm(config) {
     if (built.error) { showError(built.error); slot.firstChild.focus(); return; }
     const plan = attempt.prepare(built.body);
     if (plan.skip) {
-      slot.replaceChildren(notice("info", "check", ids.already, "status", config.alreadyText || "Already done. Change a field to do it again."));
+      put(notice("info", "check", ids.already, "status", config.alreadyText || "Already done. Change a field to do it again."));
       return;
     }
     clearFeedback();
@@ -98,7 +97,7 @@ export function writeForm(config) {
     }
     attempt.succeeded();
     if (config.onSuccess) await config.onSuccess(result);  // refresh first, then say it worked
-    slot.replaceChildren(notice("ok", "check", ids.success, "status", config.successText(result)));
+    put(notice("ok", "check", ids.success, "status", config.successText(result)));
   });
 
   return { attempt, slot };

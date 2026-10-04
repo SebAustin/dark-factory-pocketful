@@ -48,6 +48,7 @@ function authForm({ kind, fields, submitLabel, testid, path, build, after, intro
     if (!result.ok) {
       showError(authError(errorCode(result), errorMessage(result), result.status));
       errorSlot.firstChild.focus();
+      errorSlot.firstChild.scrollIntoView({ block: "nearest" });
       return;
     }
     setToken(result.body.token);
