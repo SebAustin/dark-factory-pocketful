@@ -1,269 +1,182 @@
-# Stage 3 implementation plan — statements and payment corrections
+# Stage 4 implementation plan — refunds and batch corrections
 
-Packet: S3.P. Sources: `runlog/stage3-spec.md` on top of `runlog/stage2-spec.md` and
-`runlog/stage1-spec.md` (§n = stage 1). Author: Builder. Base: `stage-3/` = stage 2 accepted at
-`6a3fd33` (copied unchanged at `1a674f4`). Everything in the stage 1 and stage 2 plans still holds:
-one process, Python 3.12 stdlib, `python:3.12-alpine`, JSON-native in-memory state behind **one**
-lock entered through `STORE.hold()` (which sweeps clock expiry first), parse outside the lock,
-pipeline auth → operator → body → key → replay → effect → record in one hold, D1–D14, L5.
-
-Lanes: **builder** = API and model (`stage-3/app/**` except `web/` and `passwords.py`);
-**designer** = an independent reference model plus differential and stress tooling, and any user-
-visible history in existing screens; **analyst** = ledger and acceptance.
+Packet: S4.P. Sources: `runlog/stage4-spec.md` on top of the stage 1–3 specs. Author: Builder.
+Base: `stage-4/` = stage 3 accepted at `36547b6` (copied unchanged at `2cdac7b`; RUN.md
+rewritten at `bb32d6a`). Everything in the stage 1–3 plans and decisions still holds: one
+process, Python 3.12 stdlib, `python:3.12-alpine`, JSON-native state behind **one** lock entered
+through `STORE.hold()` (expiry sweep first), parse outside the lock, the pipeline auth → operator →
+body → key → replay → effect → record in one hold, D-41..D-61, L5–L9. Lead L10 (stage 4) and L11
+apply.
 
 ## 0. Shape in one paragraph
 
-The ledger becomes **bitemporal**. A payment keeps its stage 1 record (receipts, activity and
-idempotent responses never change) and gains an append-only list of **revisions**, each with
-`amount`, `effective_at` (when the money counts) and `recorded_at` (when the service learned it).
-Every user has an **opening balance**. Any historical view `(T = as_of, K = known_at)` is computed,
-never stored: for each of the user's payments take the latest revision recorded at or before K;
-apply those whose `effective_at` ≤ T (or inside a half-open window for statements) on top of the
-opening balance. Holds get an **event log** (created, capture, release) with event times, and
-`closed_at`, so `held` can be computed for the same view. Current balances stay materialised (as
-today) and every write keeps them equal to the view `(now, now)`. A statement result is frozen in
-memory under an opaque **snapshot** token.
+A **refund** is an ordinary new payment in the opposite direction with `refund_of` set; it moves
+existing money out of the receiver's available funds, and the refunded total of a payment is the
+sum of its refunds' (immutable) amounts. A **correction batch** is many stage 3 corrections
+validated together and applied in one lock hold: every proposed revision is built first, the
+combined effect is checked against current available funds and against every historical boundary
+of every affected wallet, and only then are all revisions appended with one shared `recorded_at`
+and balances moved — so a rejection leaves nothing behind and concurrent writers serialise on the
+lock. Statement snapshots become part of the export again (L10), stored as recipes when they read
+the current state and as frozen rows otherwise.
 
-## 1. Data model
+## 1. Refunds
 
-### 1.1 Instants (decision S3-D1 — precision and representation)
+`POST /payments/{payment_id}/refunds` — idempotent (ninth path), body `{"amount": n}`.
 
-- **Parsing**: an input instant must be RFC 3339 *with an offset* (`Z`/`z` or `±HH:MM`, `T`/`t`,
-  any number of fractional digits). Anything else (naive time, bare date, empty, leap second
-  `:60`, out of range) → 422 `validation_failed`.
-- **Comparison key**: `ikey(s) -> Decimal` = exact seconds since the Unix epoch (integer part from
-  the calendar date/time minus the offset, plus the fractional digits **exactly**, computed in a
-  local `decimal` context with 60 digits of precision). No rounding anywhere; `19:00+02:00`
-  equals `17:00Z`; `.5` equals `.500`.
-- **Echo**: every *supplied* instant (`as_of`, `known_at`, a correction's `effective_at`) is
-  echoed exactly as given (string kept).
-- **Server-assigned instants** (new payments' `created_at`, `recorded_at`, hold events,
-  `committed_at`, `closed_at`): **microsecond precision**, UTC, rendered
-  `YYYY-MM-DDTHH:MM:SS.ffffff+00:00`, from one **service-wide monotonic clock**
-  `STORE.tick()` = `max(wall-clock µs, previous + 1 µs)` taken inside the lock. Every
-  server-assigned instant is therefore unique and strictly increasing, so "Recorded times for one
-  payment strictly increase" holds by construction and same-second ties among API-created
-  payments disappear (stage 1/2 used whole seconds; still valid RFC 3339).
-- **Seeded / imported** instants keep their string; the key is computed from it.
+Order (first failure answers; extends D-01/D-46):
+401 → 400 body → 400/422 key → replay (200 original / 409 reuse) → 422 `validation_failed`
+(`amount` integer 1..1 000 000 000, every defect incl. wrong type; D4-1) → 404 unknown payment →
+403 caller is not the original receiver (sender and third parties alike) → 422
+`invalid_refund_target` (the target is itself a refund) → 422 `refund_exceeds_payment`
+(`refunded(target) + amount > current corrected amount`, i.e. the latest revision's amount) →
+409 `insufficient_funds` (receiver's **available** < amount) → effect.
 
-### 1.2 Payments and revisions
+Effect (one hold): new payment `{from: target.to, to: target.from, amount, note and visibility
+copied, request_id null, authorization_id null, settlement_id null, refund_of: target id,
+created_at: tick}` with revision 1 (stage 3 rule), moving `amount` between the two wallets.
+201 with the payment view; replay 200 with the stored body. Refunds never touch requests,
+authorizations or holds, and never change settlement membership.
 
-```
-payments[pid] += {
-  "revisions": [ {"revision": 1, "amount": int, "effective_at": str, "recorded_at": str,
-                  "reason": str}, ... ]         # append-only, revision = index + 1
-}
-```
-- Revision 1: `amount` = original amount, `effective_at = recorded_at = created_at`,
-  `reason ""`. Created with the payment in the same hold (payments, request pay, settlements —
-  members use the shared `committed_at`, which is their `created_at` — and captures).
-- The stage 1 fields (`amount`, `created_at`, …) never change: `GET /activity`, receipts and
-  stored idempotent responses keep showing the original payment (spec: "The original payment and
-  every original idempotent response remain unchanged").
-- `payment["latest"]` index and per-user index `state["user_payments"][uid]` (payment ids where
-  the user is a party, append order) are derived caches rebuilt on reset/import (not trusted from
-  input).
+Model additions: `payments[pid]["refund_of"]` (null for every other payment; imports default it
+to null); derived index `state["refunds_of"][target] = [refund ids]` rebuilt on reset/import;
+`refunded(target) = Σ amounts of its refunds` (refund payments are immutable, so revision 1).
+Payment views gain `refund_of` everywhere new payments are rendered (14 keys). Stored receipts of
+earlier responses are replayed unchanged (as D11/D-47).
 
-### 1.3 Opening balances
+Allowed targets: direct payments, request payments, captures, settlement members (spec:
+"A settlement payment may be refunded under the existing refund rules"). Seeded and imported
+payments too.
 
-`users[uid]["opening"]`: the balance before anything moved.
-- Reset: `opening = seeded balance − Σ signed seeded payment amounts` for that user. A negative
-  opening, or a seeded history whose running balance goes negative at any boundary, contradicts
-  "Seeded history is consistent and nonnegative" → 422 (decision S3-D2).
-- Signup: 0. Import: recomputed as `balance − Σ signed latest amounts` (balances in an export are
-  already net of everything), never trusted from input.
-- Corrections never change openings.
+## 2. Corrections in stage 4 (single, stage 3 path)
 
-### 1.4 Holds — event log
+Unchanged stage 3 rules plus: captures **and refund payments** → 422 `linked_payment_immutable`;
+settlement members stay 422 `linked_payment_immutable` on the single path ("Ordinary
+single-payment corrections remain available for nonmembers"); a new amount below the payment's
+refunded total → 422 `refund_exceeds_payment`. Order: … → 404 → 403 → 422 linked → 409
+`stale_revision` → 422 `refund_exceeds_payment` → 409 `insufficient_funds` (available) → 409
+`historical_overdraft` (D4-2). Refund payments enter every historical computation as ordinary
+payments.
 
-```
-authorizations[aid] += {
-  "events": [ {"kind": "created"|"capture"|"release", "at": str, "held_delta": int,
-               "payment_id": str|null}, ... ],
-  "closed_at": str | null
-}
-```
-- created: `+amount` at `created_at`. Non-final capture: `−captured` at capture time (the capture
-  payment's `created_at`). Final capture: `−captured` then `−remainder` (release) at the same
-  instant. Void: release at void time. Expiry: release at `expires_at` (recorded when the sweep or
-  an import sees it; its **effective** time is `expires_at`).
-- `closed_at`: null while open; the closing event's time (expiry → `expires_at`). Exposed on every
-  authorization response (new field, additive).
-- Seeded **open** holds: created at their `created_at` if supplied, else reset time. Seeded
-  **closed** holds have no lifecycle: they contribute no held at any instant ("need not
-  reconstruct a prior lifecycle"). `closed_at` (D-51): expired → `expires_at`; captured or
-  voided → supplied `closed_at`, else supplied `created_at`, else the reset instant.
+### Linked-rules matrix
 
-## 2. Read algorithm — `GET /me` and `GET /statement`
+| Target | Single correction (sender) | Correction batch (operator) | Refund (receiver) |
+|---|---|---|---|
+| Direct / request payment | allowed | allowed | allowed |
+| Settlement member | 422 linked_payment_immutable | allowed — every member of that settlement, identical effective instants | allowed |
+| Capture | 422 linked_payment_immutable | 422 linked_payment_immutable | allowed |
+| Refund payment | 422 linked_payment_immutable | 422 linked_payment_immutable | 422 invalid_refund_target |
+| Any, new amount < refunded total | 422 refund_exceeds_payment | 422 refund_exceeds_payment | — |
 
-Inputs: `T` (as_of; default = request start, `STORE.tick()` at the hold), `K` (known_at; default
-= the same request start). Both may be in the future.
+## 3. Correction batches
 
-**Selection** `sel(p, K)`: the last revision with `ikey(recorded_at) ≤ ikey(K)` (revisions are in
-recorded order, so a reverse scan stops at the first hit; usually 1–3 revisions). None → the
-payment contributes nothing.
+`POST /correction-batches` — idempotent (tenth path); settlement operator only: 401 without a
+token, 403 `forbidden` for an authenticated non-operator (as settlements). Body
+`{"corrections": [...]}`; unknown fields ignored.
 
-**Total at T** for user u:
-`opening(u) + Σ_{p ∈ user_payments(u), r = sel(p,K), r ≠ None, ikey(r.effective_at) ≤ ikey(T)}
- sign(u,p) · r.amount` — inclusive `≤` for `as_of` (spec: "A payment made at exactly as_of counts").
+**Validation pipeline** (all inside the one lock hold, before any write; first failure answers):
+1. Shape: `corrections` an array of 1..32 objects; every `payment_id` a string, all distinct →
+   else 422 `validation_failed`.
+2. Item errors in input order. For each item, in this order: fields (as a single correction:
+   `expected_revision`, `amount` 0..1e9, `effective_at` ≤ N, `reason` 1..200 → 422
+   `validation_failed`) → 404 unknown payment → 422 `linked_payment_immutable` (capture or refund)
+   → 409 `stale_revision` → 422 `refund_exceeds_payment`. The first item with any error decides.
+3. Settlement completeness: for every settlement with a member in the batch, every member must be
+   in the batch → else 422 `incomplete_settlement`; then all of that settlement's items must share
+   one effective instant (compared by key, offsets may differ) → else 422 `validation_failed`
+   (D4-3).
+4. Current available funds: net change per wallet over **all** items (Σ of `new − current` with the
+   sender/receiver signs); every wallet whose net is negative needs `available + net ≥ 0` → else
+   409 `insufficient_funds`.
+5. Historical: for every affected wallet, with **all** proposed revisions selected (K = +∞), walk
+   every distinct boundary ≤ N of selected effective times and hold events (same-instant changes
+   combined), require total ≥ 0 and total − held ≥ 0 → else 409 `historical_overdraft`.
+6. Commit: one `recorded_at` = one monotonic tick (strictly later than every previous recorded_at,
+   including every member's), one `correction_batch_id`, append one revision per item (each
+   carrying `correction_batch_id`), move each item's difference between its payment's two wallets,
+   store the batch record, record the idempotent response. 201
+   `{correction_batch_id, recorded_at, revisions: [...]}` in input order.
 
-**Held at T** for user u (payer side of holds): for each hold of u whose creation is known and has
-happened (`created ≤ K` and `created ≤ T`): start at `amount`; apply each event with
-`at ≤ T` **and** (`at ≤ K` or kind is expiry); if `T ≥ expires_at` and still holding, release
-(the deadline is known once creation is known; "For queries beyond now, an open hold expires at
-its deadline"). Result ≥ 0. `available = total − held`.
+Steps 1–5 only read; step 6 cannot fail. That is the all-or-none guarantee, and the single lock
+makes "Concurrent corrections sharing any expected payment revision cannot both succeed" hold for
+any mix of single corrections and batches (the second sees `stale_revision`). No failure-injection
+hook is needed; a test-only hook is not planned (D4-4).
 
-**/me response**: same shape as stage 2 plus, when supplied, `as_of` and `known_at` echoed
-exactly; `balance = total`. Without either parameter the existing fast path (materialised
-values) is used — equal to the view at (now, now) by invariant.
+Revision view (single corrections, batches, `/revisions`, statements' selection) gains
+`correction_batch_id` (null for revision 1 and single corrections) (D4-5). Original payments,
+receipts and settlement receipts never change; settlement retries return their original bodies;
+earlier snapshot tokens keep paging their frozen entries (recipes select at K' ≤ their N, and the
+batch's recorded_at is later).
 
-**Statement** (`from` default −∞, `to` default request start; half-open `[from, to)`):
-1. For each of u's payments: `r = sel(p, K)`; skip None. Key `e = ikey(r.effective_at)`.
-2. `opening_balance = opening(u) + Σ delta for e < from`; window entries: `from ≤ e < to`,
-   sorted by `(e, payment id)` ascending (string order of ids); `balance_after` = running sum from
-   `opening_balance` over **all** window entries; `closing_balance = opening_balance + Σ window
-   deltas` (= balance immediately before `to`).
-3. Entry = `{"payment": payment_view with amount = r.amount, "delta", "balance_after",
-   "revision", "effective_at", "recorded_at"}`. Zero amounts give zero-delta entries.
-4. The full result (window, `known_at`, resolved default `to`, balances, entries) is stored as a
-   snapshot; the response is a page of it plus `snapshot`, `opening_balance`,
-   `closing_balance`, `has_more`, and `known_at` echoed when supplied.
+State: `correction_batches[id] = {id, operator, recorded_at, payment_ids}`; counter `cb`.
 
-**Complexity**: O(P_u · R) per read for P_u = the user's payments and R revisions per payment,
-plus O(P_u log P_u) to sort a statement. A user with 20 000 payments costs ~tens of ms. Paging a
-snapshot is O(limit). All reads happen inside one lock hold (consistent view; the sweep runs
-first).
+## 4. Snapshots under L10
 
-**Validation**: `as_of`, `known_at`, `from`, `to` must parse (§1.1) else 422; empty → 422;
-`from > to` → 422 (decision S3-D3); `limit`/`offset` as stage 1. With `snapshot`, any of `from`,
-`to`, `known_at` present → 422; then unknown token / other user's token / pre-reset token → 404.
+L10: "A stage-4 service must accept exports produced by the same team's stages 1–3, retaining
+settlement membership, corrections and snapshots" → stage-4 exports carry snapshot tokens and
+import restores them (overrides stage 3's L8 for stage 4).
+- Live snapshots stay O(1) recipes. **Export** writes, per token: if the recipe reads the current
+  state, the recipe itself `{user, start, end, known, known_echo}` (exact decimal strings,
+  `-Infinity` for an open start) — the exported state reproduces it exactly; if it reads an older
+  state object (taken before an import), its frozen rows `[pid, revision, delta, balance_after]`
+  plus opening/closing, materialised at export time. Identical frozen results are written once and
+  shared by reference (D4-6).
+- **Import** restores every exported token: recipes bind to the imported state, frozen rows are
+  rendered from it. Destination tokens not in the export remain until reset ("Tokens last until
+  reset"); an imported token wins on a clash (D4-7).
+- Tokens are opaque random strings and are carried verbatim (deterministic across export/import).
+- **Stage-3-format imports** carry no snapshots (stage 3 L8 never exported them): nothing to
+  restore; stage-3 tokens cannot survive that upgrade. Known limitation, recorded, not worked
+  around (L10).
+- Reset ends all snapshots.
 
-## 3. Correction write — `POST /payments/{id}/corrections`
+## 5. Upgrade from stage 1–3 exports
 
-Idempotent path (seventh+first: eight idempotent paths; same replay rules). Order, first failure
-answers (extends D-01):
+Detection by structure: stage 1 (no `authorizations`), stage 2 (no `user_payments`/revisions),
+stage 3 (revisions but no `refunds_of`/`correction_batches`), stage 4 (everything).
+- Stage 1/2: as in stage 3 (revision 1 synthesis, openings, hold events with D-52 voids, L5
+  sessions) plus `refund_of: null`, `correction_batch_id: null` on revisions, no batches, no
+  snapshots.
+- Stage 3: revisions, events and closed_at kept; `refund_of: null`; revisions' `correction_batch_id`
+  null; settlement membership from `settlement_id`; no snapshots (limitation above); L5 session
+  carry-over extended to stage-3-format imports (they are upgrades; D4-8, lead to confirm).
+- Stage 4: pure round trip including snapshots, batches, refund index (rebuilt, not trusted).
 
-1. 401 → body 400 (unparseable / not an object) → key 400/422 → **replay** (stored 201 body →
-   200, "even after newer revisions"; different body → 409 `idempotency_key_reuse`).
-2. Fields (decision S3-D4: every invalid field, wrong type included, is 422, per "Invalid input is
-   422 validation_failed"): `expected_revision` integer ≥ 1; `amount` integer 0..1 000 000 000;
-   `effective_at` RFC 3339 with offset and `≤ now` (request start); `reason` string of 1..200
-   characters (code points, D-05). All required.
-3. 404 unknown payment. 403 caller is not the original sender (receiver and third parties).
-4. 422 `linked_payment_immutable`: settlement member (`settlement_id` set) or capture
-   (`authorization_id` set).
-5. 409 `stale_revision`: `expected_revision ≠` latest revision number.
-6. `diff = amount − latest.amount`. `diff > 0` debits the sender, `diff < 0` debits the receiver;
-   409 `insufficient_funds` if the debited user's **current available** < |diff|.
-7. 409 `historical_overdraft`: for the sender and the receiver (the only users whose history
-   changes), with the new revision appended and `K = now`, build the boundary series of every
-   distinct instant ≤ now among their selected effective times and hold events; group all
-   movements at one instant; walk from `opening`; fail if `total < 0` or `total − held < 0` after
-   any group. O(P_u log P_u).
-8. Effect (same hold): append revision `{revision n+1, amount, effective_at as given,
-   recorded_at = STORE.tick(), reason}`; move |diff| between the same two wallets' current
-   balances; record the idempotent response; 201
-   `{payment_id, revision, amount, effective_at, recorded_at, reason}`.
+## 6. Work items (builder)
 
-A failure at 4–7 leaves balances, revisions, statements, snapshots and idempotency state
-untouched (checks happen before any write; one lock hold). Two concurrent corrections with the
-same `expected_revision` serialise on the lock; the second sees `stale_revision`.
-
-`GET /payments/{id}/revisions` → `{"revisions": [...]}` in revision order, revision 1 with
-`reason: ""`. Parties only; third party → 404 (even public); no token → 401.
-
-## 4. Snapshots (D-50, final L8; verifier S3.3 F1/F2)
-
-- Process-wide store on the `Store` object, **not exported**: `token → recipe` with
-  `{user, start, end (resolved to or N), known = min(known_at, N), known_echo, state}` where
-  `state` is the ledger object the first read used. Token = `secrets.token_urlsafe(24)`.
-- A snapshot page recomputes from the recipe. This reproduces the first result exactly because
-  payments and revisions are append-only and never edited in place (unit-tested), and every later
-  write is recorded after N, so selection at `known <= N` sees the same revisions; statements
-  contain no hold events. O(1) memory per token; the export never grows with reads.
-- Only reset ends snapshots. An import swaps in a new state object and leaves the store alone, so
-  a token minted before an import keeps paging the state it read; that old state object stays
-  reachable only through such recipes until the next reset. No cap, no eviction.
-
-## 5. Upgrade and import
-
-`format_version` stays 1 (D10). Import detects the source by keys:
-- **stage-1 state** (no `authorizations`, no `revisions`): stage 2 defaults (as today) + revision 1
-  for every payment from `created_at` (settlement members: their `committed_at` = `created_at`);
-  openings recomputed; per-user indexes rebuilt; L5 session carry-over.
-- **stage-2 state** (`authorizations`, no `revisions`): as above, plus hold events reconstructed:
-  created at `created_at`; one capture event per `payment_ids` entry at that payment's
-  `created_at`; closing: `captured` → last capture time; `expired` → `expires_at`; `voided` →
-  **time unknown in a stage 2 export** → the latest of `created_at` and its last capture (the
-  earliest consistent release; never creates a false `historical_overdraft`; decision S3-D7).
-  L5 session carry-over also applies to a stage-2-format import (decision S3-D8, lead to
-  confirm).
-- **stage-3 state**: revisions, events, `closed_at` validated (revision numbers contiguous,
-  recorded keys strictly increasing, amounts 0..1e9 except revision 1 which keeps the original,
-  instants parse); openings recomputed and checked against the history; replacement as before.
-- Snapshots are not exported (§4); the monotonic clock continues from `max(now, latest instant in
-  the imported state + 1 µs)`.
-
-## 6. Changes to existing endpoints
-
-- `GET /activity`, payment receipts, replays: unchanged (original payment, original amount).
-- New payments' `created_at`: microsecond precision (S3-D1); still RFC 3339 with offset.
-- `GET /me`: unchanged without temporal parameters; with them, §2.
-- Authorization views gain `closed_at`. Payment views unchanged (statement entries carry the
-  selected amount inside `payment` and add `revision`, `effective_at`, `recorded_at`).
-- Reset: seeded payment `created_at` in the future → 422; seeded holds may carry `created_at`
-  (must not be in the future).
-
-## 7. Work items (builder)
-
-Common DONE WHEN: unit tests green; image from a clean worktree healthy on 18200–18299 with
-`--cpus 2 --memory 2g`; carried acceptance suites (stage 1 and stage 2) green; stage 2 stress and
-holds stress still pass.
+Common DONE WHEN: unit tests green; image from a clean worktree healthy within 60 s on 18200–18299
+with `--cpus 2 --memory 2g`; carried acceptance suites (stage 1–3) green; designer's oracle
+`diff_run.py` no divergence; **RUN.md current for every item** (both commands run).
 
 | Item | Scope | Item DONE WHEN |
 |---|---|---|
-| **S3.1 Foundation** (may start before the gate) | `instants.py` (parse, ikey, monotonic tick), revisions on every payment path, openings, user indexes, hold events + `closed_at`, seeded `created_at` future → 422, seeded history consistency, export/import of the new keys, stage-1/2 synthesis (S3-D7) | unit tests: ikey exactness across offsets/fractions; every payment path writes revision 1; openings from seeded and imported states; hold events for create/capture/void/expiry; stage-1 and stage-2 exports import with revisions/events; stage-3 round trip equal |
-| S3.2 `/me` as_of/known_at | §2 views incl. holds | tests for inclusive as_of, before-first = opening, after-last = current, known_at selection, future instants, hold lifecycle at T/K, echoes, 422s |
-| S3.3 `/statement` + snapshots | §2, §4 | ordering (effective, id), half-open window, opening/closing identity, pagination invariance, snapshot freeze under writes/corrections, 404/422 rules, zero entries |
-| S3.4 Corrections + revisions | §3 | every error with order, debit side, insufficient vs historical_overdraft (incl. available via holds and same-instant grouping), replay after newer revisions, concurrent same expected revision → one 201, linked immutability, revisions endpoint privacy |
-| S3.5 Upgrade over populated state | §5 | real frozen stage-1 and stage-2 images, populated with every write kind incl. holds/captures/voids/expiries, export → stage-3 import → history views, statements, corrections, replays, tokens; stage-3 round trip |
-| S3.6 Concurrency and load | concurrent corrections, statements and snapshots under writes; sum of totals in historical views | stress tool: no 5xx, < 5 s, Σ total(T,K) = seeded total for sampled views, snapshots unchanged under load |
+| **S4.1 Refunds** (may start after this plan, L11) | §1, §2 refund rules for corrections, payment `refund_of` | tests: every error in order; partial refunds up to the corrected amount; refund after a correction; correction below refunded total 422; capture/settlement-member/request targets; refund of refund 422; available check incl. holds; replay; history/statements include refunds; Σ totals constant |
+| S4.2 Correction batches | §3 | tests: shape, item-error precedence by position, completeness, identical effective instants across offsets, combined current and historical affordability (a batch that is affordable only together; one that fails only together), shared recorded_at, correction_batch_id on revisions, original receipts/settlement replays unchanged, old snapshots unchanged, 403/401, replay; concurrent batch vs single on a shared revision → one wins |
+| S4.3 L10 snapshots in export | §4 | tests: token survives export → reset → import (pages identically), recipe vs frozen rows after an earlier import, shared rows, stage-3-format import has none, export size bounded by distinct results |
+| S4.4 Upgrade over populated state | §5 | real frozen stage-1, -2 and -3 images, populated with every write kind incl. corrections; import; history, statements, refunds and batches on imported data; stage-4 round trip incl. snapshots |
+| S4.5 Concurrency and load | all | stress: refund races on one payment (never over the corrected amount), batch races on shared revisions, batches vs refunds vs payments under 50 in flight, Σ totals in historical views, snapshots stable, no 5xx, < 5 s, flat memory |
 
-Order: S3.1 → S3.2 → S3.3 → S3.4 → S3.5 → S3.6. The designer's reference model can start from
-the spec and this plan; the API contract is §2–§3.
+Order: S4.1 → S4.2 → S4.3 → S4.4 → S4.5.
 
-## 8. Decisions (binding: analyst D-41..D-60 at 754b18f; lead L7, L8)
+## 7. Decisions recorded (align with the analyst's records when they land)
 
-Where this plan's first draft differed, the analyst's records and lead rulings win:
-- Instants: D-41 (one service-wide monotonic µs clock under the lock, server instants rendered
-  with 6 decimals and +00:00, unique and strictly increasing), D-42 (1–9 fractional digits,
-  Z/z/T/t, exact comparison; a `+` decoded to a space in a query is repaired; the echo keeps the
-  received string), D-43 (one read instant N per read; T = as_of or N, K = known_at or N).
-  Seeded, imported and supplied instants are kept as their original strings.
-- D-44 seeded created_at: future iff later than the reset instant R (payments, requests, holds).
-- D-45 openings; reset rejects inconsistent or negative seeded history (my S3-D2).
-- D-46 / D-57 / D-59 corrections: every field defect 422; order 401 → 400 body → 400/422 key →
-  replay → 422 fields → 404 → 403 → 422 linked_payment_immutable → 409 stale_revision →
-  409 insufficient_funds → 409 historical_overdraft (my S3-D4, S3-D9).
-- D-47 revision shape `{payment_id, revision, amount, effective_at, recorded_at, reason}`.
-- D-48 selection algorithm; D-49 statement shape; D-54 `from > to` → 422 (my S3-D3).
-- D-50 + final L8: snapshots are process-wide recipes, not exported; only reset ends them; an
-  import neither clears nor restores them; no cap (S3-D5/S3-D6 withdrawn).
-- D-51 holds; seeded closed holds: closed_at = supplied, else expires_at (expired), else
-  supplied created_at, else R.
-- D-52 + L8: imports are not history-validated; voided stage-2 holds close at their last capture
-  or created_at (S3-D7); L5 session carry-over for stage-1 **and** stage-2 imports (S3-D8);
-  a stage-3 export is a pure round trip.
-- D-53 historical_overdraft: both parties, boundaries ≤ N incl. hold events, total and available.
-- D-58 effective_at ≤ N strictly. D-60 concurrency through the single lock.
+- D4-1 refund `amount` defects incl. wrong JSON type → 422 `validation_failed`.
+- D4-2 single-correction order adds `refund_exceeds_payment` after `stale_revision`.
+- D4-3 batch: completeness before the identical-effective-instant check.
+- D4-4 no failure-injection hook: validation is read-only and the commit cannot fail.
+- D4-5 every revision view includes `correction_batch_id` (null unless set by a batch).
+- D4-6 exported snapshots: recipe when bound to the current state, frozen rows otherwise; identical
+  rows shared.
+- D4-7 import merges: imported tokens restored, destination tokens kept until reset.
+- D4-8 L5 session carry-over for stage-3-format imports too.
 
-## 9. Risks
+## 8. Risks
 
 | Risk | Mitigation |
 |---|---|
-| Time semantics off by an edge (inclusive/exclusive, same-instant grouping, offsets) | one `ikey`; tests at exact boundaries; designer's independent reference model diffed against the service |
-| Imported stage-2 voids lack a void time | S3-D7 (earliest consistent release); recorded |
-| Snapshot memory growth | shared entry dicts; S3-D6 cap |
-| Overdraft check cost on long histories | only two users per correction; O(P log P) |
-| Stage 1/2 regressions (precision change of created_at) | carried suites must stay green; activity order unchanged (instant, seq) |
-| Current vs historical drift | invariant test: view(now, now) == materialised values after every write kind |
+| Combined affordability subtly differs from per-item checks | one function computes per-wallet nets and boundaries for any set of proposed revisions; tests with batches affordable only together and failing only together; oracle diff |
+| Revision view shape change (correction_batch_id) breaks carried stage 3 assertions | D4-5 recorded; the analyst updates stage-3 copies if needed |
+| Export size growth from snapshots (stage 3 F1 again) | recipes for current-state snapshots; frozen rows only for older generations, deduplicated |
+| Stage-3 tokens lost on upgrade | L10 known limitation, recorded |
+| Settlement completeness with members already refunded | refunds are separate payments; membership unchanged; floor check per member |
+| RUN.md drift | part of every item's DONE WHEN |
