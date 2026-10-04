@@ -3,7 +3,7 @@
 Track: pocketful. CURRENT STAGE: 2. Stage 2 dispatch: 2026-10-03T22:54:33Z.
 Room: af150286-bfd0-4fd8-8ae1-c57d84bf2e91. Seats: henry.sebastien1982/{analyst,builder,designer,verifier}.
 Spec copies: runlog/stage1-spec.md, runlog/stage2-spec.md.
-Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stage-1/ is FROZEN.
+Last accepted revision: 6a3fd334b9a64588b9d821ba654ae47538cba7bc (stage 2, re-gate ACCEPT). Stage 1: 9d7ab5e. stage-1/ and stage-2/ are FROZEN.
 
 ## Stage 2 phase
 
@@ -13,8 +13,8 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 - [x] Plan gate: closed L6 after one round
 - [x] Work items split
 - [x] Item reviews (all accepted)
-- [ ] Stage gate: FAIL 1/3 on 6c295d6 (F6 stale RUN.md; all behavioural/visual gates green) -> S2.9, then re-gate
-- [ ] Run log recorded
+- [x] Stage gate: FAIL 1/3 on 6c295d6 (RUN.md), ACCEPT on 6a3fd33
+- [x] Run log recorded
 
 ## Stage 2 work items
 
@@ -23,7 +23,7 @@ Last accepted revision: 9d7ab5e76ada506165f010ef4e751b746ffef108 (stage 1). stag
 | S2.0 | Carry forward copy | builder | stage-2/ (whole copy) | accepted | 10e5b5e | 0 |
 | S2.V | Screen walker tooling | verifier | reviews/stage2/tools/ | done (375/390/1280) | 1275ada | 0 |
 | S2.L | Ledger + glossary (182 new rows, D-21..D-38) | analyst | stage-2/docs/ledger.md, glossary.md | done | f146c3b | 0 |
-| S2.9 | Stage 2 RUN.md (gate F6) | builder | stage-2/RUN.md | built (reviewed in re-gate) | 9fd9c2e | 0 |
+| S2.9 | Stage 2 RUN.md (gate F6) | builder | stage-2/RUN.md | accepted in re-gate | 9fd9c2e | 0 |
 | S2.8 | Upgrade keeps destination sessions (D-22 / L5) + ttl + pay replay | builder | transfer_io.py, store | accepted | bf2e57d | 0 |
 | S2.P | API/model plan | builder | stage-2/docs/plan.md | built (to critique) | 0cfc980 | 0 |
 | S2.U | UI plan | designer | stage-2/docs/ui-plan.md | built (to critique) | 624aa75 | 0 |

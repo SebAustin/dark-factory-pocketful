@@ -44,6 +44,7 @@ Round 1 (analyst): 1 blocking (D-22 browser session across stage-1 import -> lea
 | S2.8 | Upgrade sessions (L5), ttl, pay replay | builder | 23:5x | yes | ACCEPT bf2e57d |
 | S2.U10 | Plan-gate UI fixes | designer | 23:5x | yes | REJECT 74d83a5, closed by S2.U11 8fda234 |
 | S2.U11 | Lost click / feedback under tab bar | designer | 00:0x | yes | REJECT c6a8996, ACCEPT 8fda234 |
+| S2.9 | Stage 2 RUN.md (gate F6) | builder | 00:5x | yes (in re-gate) | ACCEPT 9fd9c2e via GATE-6a3fd33 |
 | S2.5A | Import hold check | builder | 23:2x | yes | ACCEPT eab708e |
 
 ## Rejections and what they caught
@@ -66,7 +67,37 @@ Round 1 (analyst): 1 blocking (D-22 browser session across stage-1 import -> lea
 
 ## Gate table at acceptance
 
+Stage 2 ACCEPTED at 6a3fd334b9a64588b9d821ba654ae47538cba7bc (re-gate; verdict reviews/stage2/GATE-6a3fd33.md, commit 7c208ba). First gate attempt 6c295d6 rejected on F6 (stale RUN.md) only.
+
 | Gate | Result | Evidence |
 |---|---|---|
+| G1 Ledger | green | 182 R2 rows + 21 changed stage-1 rows, 0 blank cells |
+| G2 Plan | green | plan.md + ui-plan.md, analyst round 1, lead decision L6 |
+| G3 Acceptance (stage 2) | green | acceptance/stage2: 272 passed |
+| G4 Chain (stage 1) | green | acceptance/stage1 vs stage-2 container: 422 passed, 3 skipped; ACCEPTANCE_DOCKER 4 passed |
+| G5 Supplied checker | green | checks/s2-gate2-verifier-200816: stage 1 pass, stage 2 pass, "claimed stage: 2 on the shipped checks" (stage 3 fail expected) |
+| G6 Invariants | green | stress 60 s 8/8, 27746 reqs, 0 5xx; holds_stress 60 s 193592 ops max 0.125 s; soak max 1.93 s, nr_throttled 0; 2000-user reset 1.51 s; burst max 1.06 s |
+| G7 Review | green | standards + spec; no CDN/runtime network, CSP self, Vary: Accept, upgrade path; RUN.md both commands run and start stage 2 |
+| G8 User facing | green | walker 46 states x 5 widths (375/390/768/1024/1280) = 230/230 clean; 265/265 browser scenarios; 90/90 feedback visible; screenshots reviews/stage2/shots/GATE-6c295d6/ judged against product direction |
 
 ## Wall time
+
+Dispatch 22:54:33Z -> re-gate ACCEPT ~01:09Z: about 2 h 15 min. Item rejections: 4 (S2.U1 b776a89, S2.U2+U3 0fa1361, S2.U10 74d83a5, S2.U11 c6a8996), all designer, all caught from real-browser screenshots or measurement. Stage gate failures: 1 of 3 (6c295d6, stale RUN.md).
+
+## Findings caught beyond item reviews
+
+- Event checker run 1 (builder): /signup and /login redirected signed-in users -> S2.U9.
+- Analyst plan gate: browser session lost across a stage-1 import (D-22 -> L5, S2.8); edit-then-revert not a new key; split parsing; ttl cap.
+- Analyst acceptance: wallet-refresh disabled during refresh broke latest-refresh-wins; edit during in-flight submit lost the next click (S2.U11).
+- Verifier stage gate: stage-2/RUN.md still the stage-1 copy.
+
+## Decisions
+
+- L4 build before plan gate; L5 stage-1 upgrade keeps matching destination sessions (stage 2 overrides stage 1 §10 for the upgrade path only); L6 plan gate closed after one round. Details in runlog/state.md.
+
+## Open risks
+
+- L5 widens session survival on a stage-1-format import to destination tokens whose user matches id, email and handle; a stage-2 import stays pure replacement.
+- Pre-upgrade replays return stored stage-1 bodies without authorization_id (D11/D-34), per stage 1 §7 'body identical to the original response'.
+- Fonts are system stacks (no font files shipped); look varies slightly per OS.
+- scrypt costs from stage 1 (N=2^13 signup, 2^9 seeded) carried unchanged.
