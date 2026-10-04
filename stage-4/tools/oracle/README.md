@@ -1,4 +1,4 @@
-# stage-3/tools/oracle — independent reference model and differential tool
+# stage-4/tools/oracle — independent reference model and differential tool
 
 Written from the stage 3 specification and the analyst's decisions D-41..D-60, **not** from the builder's code.
 
@@ -68,3 +68,32 @@ they hold nothing at any instant.
 - The upgrade run uses the frozen sources started from their source trees (same code as the images, not the containers).
 - The self-test stand-in answers from the same model, so it proves the tool catches divergences and that the tool and model agree with themselves; the model's
   own correctness rests on `selftest_model.py` (hand-computed) and on review against the spec.
+
+
+## Stage 4 additions (refunds, correction batches, atomicity) — D-62..D-75
+`model.py` now also encodes (analyst decisions cited):
+- **Refunds** (D-62/D-63/D-71/D-72/D-73): a refund is an ordinary payment from the target's receiver to its sender with `refund_of`, null `request_id`/`authorization_id`/`settlement_id`
+  and the target's note/visibility; verdict order 404 -> 403 (not the receiver, operators included) -> `invalid_refund_target` -> `refund_exceeds_payment` (cumulative refunds + amount
+  > the target's CURRENT corrected amount) -> `insufficient_funds` (receiver's current AVAILABLE). Refunds are immutable and never touch requests, holds or settlements.
+- **Single corrections** (D-65): 404 -> 403 -> `linked_payment_immutable` (settlement members, captures, refund payments) -> `stale_revision` -> `refund_exceeds_payment` (new amount below
+  what was refunded) -> `insufficient_funds` -> `historical_overdraft`.
+- **Correction batches** (D-66/D-67/D-68/D-69): shape (1..32 distinct ids) -> first erroneous item (404, linked, stale, refund_exceeds) -> per settlement in order of first appearance
+  (`incomplete_settlement`, then `validation_failed` for differing instants) -> combined current available (`insufficient_funds`) -> combined historical check (`historical_overdraft`);
+  all revisions share one `recorded_at` strictly later than every member's previous one; `correction_batch_id` on every revision object (null otherwise).
+- `Model.from_import` also reads stage-3 exports (revisions kept verbatim, D-74).
+
+`diff_run.py` adds refund and batch operations (verdicts predicted by the model, receipts and replays checked), refund/batch protocol checks, the 14-key payment object,
+`correction_batch_id` key sets, and the L10 snapshot round trip (export -> reset -> import: tokens page identically).
+
+`atomicity.py` is the gate tool for "atomicity under concurrent writes with failure injected mid-batch":
+- **Phase A** sends batches whose first items are valid and whose LAST item breaks one rule (stale, unknown, capture, refund payment, refund_exceeds_payment, incomplete settlement,
+  mismatched member instants, first-item-wins orderings, current unaffordable, historical overdraft, duplicate ids, future effective_at, 33 items, empty, non-operator, no token, no key);
+  each must answer the exact code and change nothing (revisions of every payment, wallets, statements, a pre-taken snapshot); a rejected batch's key is free. It also checks that a
+  refund comes from AVAILABLE funds.
+- **Phase R** bursts batches and single corrections sharing one `(payment, expected_revision)`: at most one winner.
+- **Phase B** 50 in flight over overlapping payments and settlements (batches, singles, refunds, payments, duplicate-key replays); afterwards no rejected batch left a revision (unique reason
+  tags), every committed batch left all revisions with one recorded_at/batch id, chains are consecutive and strictly increasing, and the whole committed history replays through the model in
+  server-time order with every operation valid at its position (serialisable), no wallet negative at any boundary, every view equals the model.
+
+`selftest_atomicity.py` and `selftest_diff.py` prove both tools catch planted bugs (partial batch, key claimed on failure, lost update under a dropped lock, per-item affordability,
+refund from total, unchecked refund cap, shared recorded_at, ...) against `fake_service.py`.

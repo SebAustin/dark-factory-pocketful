@@ -132,7 +132,7 @@ def test_combined_instant_boundary():
     m.add_payment("x1", "a", "b", 100, T("10:00:00"))
     m.add_payment("x2", "b", "a", 100, T("10:00:00"))
     # seeded history must be consistent; the combined-instant rule is what the correction check relies on
-    eq(m._would_overdraw(m.payments["x1"], 100, T("10:00:00"), NOW), False, "combined movements at one instant")
+    eq(m._would_overdraw([(m.payments["x1"], 100, T("10:00:00"))], NOW), False, "combined movements at one instant")
 
 
 def test_instant_grammar():
@@ -184,6 +184,99 @@ def test_import_d52():
     eq(m.me("b", T("10:10:00"), None, NOW)["held"], 0, "h2 closed at its creation holds nothing")
     eq(m.correction_result("c1", "a", 1, 10, T("10:22:00"), NOW), "linked_payment_immutable", "imported capture is immutable")
     eq(m.correction_result("s1", "a", 1, 10, T("10:30:00"), NOW), "linked_payment_immutable", "imported settlement member is immutable")
+
+
+def test_refunds_stage4():
+    m = base()      # b's total now: +300 -100 +50 = 250; p1 a->b 300
+    eq(m.refund_outcomes("p1", "b", 100, NOW), {"ok"}, "the receiver refunds part of the payment")
+    eq(m.refund_outcomes("p1", "b", 400, NOW), {"refund_exceeds_payment"}, "400 > 300 cap (D-62: the cap is checked before funds)")
+    eq(m.refund_outcomes("p1", "b", 260, NOW), {"insufficient_funds"}, "b has 250 available, 260 <= 300 but unaffordable")
+    eq(m.refund_outcomes("p1", "a", 10, NOW), {"403"}, "only the original receiver")
+    eq(m.refund_outcomes("zz", "b", 10, NOW), {"404"}, "unknown payment")
+    m.add_refund("r1", "p1", 100, T("10:30:00"))
+    eq((m.payments["r1"].frm, m.payments["r1"].to, m.payments["r1"].refund_of, m.refunded("p1")), ("b", "a", "p1", 100), "a refund runs the other way")
+    eq(m.refund_outcomes("p1", "b", 201, NOW), {"refund_exceeds_payment"}, "200 left to refund")
+    eq(m.refund_outcomes("p1", "b", 200, NOW), {"insufficient_funds"} if m.me("b", None, None, NOW)["available"] < 200 else {"ok"}, "second refund up to the cap")
+    eq(m.refund_outcomes("r1", "a", 5, NOW), {"invalid_refund_target"}, "never a refund target")
+    eq(m.refund_outcomes("r1", "b", 5, NOW), {"403"}, "D-62: 403 before invalid_refund_target")
+    eq(m.me("a", None, None, NOW)["balance"], 750 + 100, "the refund moved 100 back to a")
+    eq(m.correction_outcomes("p1", "a", 1, 50, T("10:00:00"), NOW), {"refund_exceeds_payment"}, "cannot correct below the refunded amount")
+    eq(m.correction_outcomes("p1", "a", 2, 50, T("10:00:00"), NOW), {"stale_revision"}, "D-65: stale beats refund_exceeds")
+    eq(m.correction_outcomes("p1", "a", 1, 100, T("10:00:00"), NOW), {"insufficient_funds"}, "exactly the refunded amount passes the refund rule, but b (150 available) cannot fund the -200")
+    eq(m.correction_outcomes("p1", "a", 1, 200, T("10:00:00"), NOW), {"ok"}, "a reduction b can fund")
+    eq(m.correction_outcomes("r1", "b", 1, 5, T("10:30:00"), NOW), {"linked_payment_immutable"}, "refund payments cannot be corrected")
+
+
+def test_refund_cap_alone():
+    m = Model({"a": 100, "b": 5000})
+    m.add_payment("p1", "a", "b", 300, T("10:00:00"))
+    eq(m.refund_outcomes("p1", "b", 301, NOW), {"refund_exceeds_payment"}, "rich receiver: only the cap applies")
+    eq(m.refund_outcomes("p1", "b", 300, NOW), {"ok"}, "refund the whole payment")
+    m.add_revision("p1", 2, 120, T("09:00:00"), T("10:30:00"), "fix")
+    eq(m.refund_outcomes("p1", "b", 121, NOW), {"refund_exceeds_payment"}, "the cap is the CURRENT corrected amount")
+    eq(m.refund_outcomes("p1", "b", 120, NOW), {"ok"}, "refund up to the corrected amount")
+
+
+def settled():
+    m = Model({"a": 1000, "b": 100, "c": 0})
+    m.add_payment("m1", "a", "b", 10, T("11:00:00"), kind="settlement", settlement="s1")
+    m.add_payment("m2", "b", "c", 5, T("11:00:00"), kind="settlement", settlement="s1")
+    m.add_payment("p1", "a", "b", 30, T("10:00:00"))
+    m.add_payment("c1", "a", "b", 7, T("10:10:00"), kind="capture")
+    return m
+
+
+def item(pid, amount, eff="09:00:00", rev=1):
+    return {"payment_id": pid, "expected_revision": rev, "amount": amount, "effective_at": T(eff)}
+
+
+def test_batches_stage4():
+    m = settled()
+    eq(m.batch_outcomes([item("p1", 0)], NOW), {"ok"}, "a one-item batch")
+    eq(m.batch_outcomes([], NOW), {"validation_failed"}, "0 items")
+    eq(m.batch_outcomes([item("p1", 0)] * 2, NOW), {"validation_failed"}, "duplicate ids")
+    eq(m.batch_outcomes([item("p1", 0), item("zz", 0)], NOW), {"404"}, "unknown payment")
+    eq(m.batch_outcomes([item("p1", 0), item("c1", 0)], NOW), {"linked_payment_immutable"}, "captures stay immutable")
+    eq(m.batch_outcomes([item("p1", 0, rev=2)], NOW), {"stale_revision"}, "stale expected revision")
+    eq(m.batch_outcomes([item("m1", 0)], NOW), {"incomplete_settlement"}, "a lone settlement member")
+    eq(m.batch_outcomes([item("m1", 0, "09:00:00"), item("m2", 0, "09:30:00")], NOW), {"validation_failed"}, "members need one effective instant")
+    eq(m.batch_outcomes([item("m1", 0), item("m2", 0)], NOW), {"ok"}, "the whole settlement, one instant")
+    # item errors beat settlement completeness: the stale item is reported although m1 is also incomplete
+    eq(m.batch_outcomes([item("m1", 0), item("p1", 0, rev=3)], NOW), {"stale_revision"}, "item errors come first")
+    m.add_refund("r1", "p1", 10, T("10:20:00"))
+    eq(m.batch_outcomes([item("p1", 5)], NOW), {"refund_exceeds_payment"}, "a batch cannot go below the refunded amount")
+    eq(m.batch_outcomes([item("r1", 0)], NOW), {"linked_payment_immutable"}, "refund payments stay immutable")
+    m2 = settled()
+    m2.apply_batch([item("m1", 20), item("m2", 8)], T("12:00:00"), "cb1", ["r1", "r2"])
+    eq([(r.n, r.amount, r.batch) for r in m2.payments["m1"].revs], [(1, 10, None), (2, 20, "cb1")], "revisions carry the batch id")
+    eq(m2.payments["m2"].current().recorded_at, m2.payments["m1"].current().recorded_at, "one shared recorded_at")
+
+
+def test_batch_settlement_order_d66():
+    m = settled()
+    m.add_payment("n1", "a", "c", 3, T("11:30:00"), kind="settlement", settlement="s2")
+    m.add_payment("n2", "c", "a", 1, T("11:30:00"), kind="settlement", settlement="s2")
+    # s1 appears first with a mismatched instant, s2 later with a missing member: s1's defect is reported (order of first appearance)
+    items = [item("m1", 0, "09:00:00"), item("m2", 0, "09:30:00"), item("n1", 0, "09:00:00")]
+    eq(m.batch_outcomes(items, NOW), {"validation_failed"}, "first settlement in order of appearance decides")
+    items = [item("n1", 0, "09:00:00"), item("m1", 0, "09:00:00"), item("m2", 0, "09:30:00")]
+    eq(m.batch_outcomes(items, NOW), {"incomplete_settlement"}, "s2 (n1 only) comes first and is incomplete")
+    both = [item("m1", 0), item("m2", 0), item("n1", 0), item("n2", 0)]
+    eq(m.batch_outcomes(both, NOW), {"ok"}, "two whole settlements, one instant each")
+
+
+def test_combined_affordability():
+    # x opens at 100: pB z->x 10 at 09:00 (x: 110), pA x->y 80 at 09:30 (x: 30). A alone to 280 (+200 debit) is unaffordable;
+    # together with B to 180 (+170 credit, effective earlier) x ends at exactly 0 and is never negative.
+    m = Model({"x": 100, "y": 0, "z": 500})
+    m.add_payment("pB", "z", "x", 10, T("09:00:00"))
+    m.add_payment("pA", "x", "y", 80, T("09:30:00"))
+    alone = [{"payment_id": "pA", "expected_revision": 1, "amount": 280, "effective_at": T("09:30:00")}]
+    eq(m.batch_outcomes(alone, NOW), {"insufficient_funds"}, "alone: x has 30 available, needs 200")
+    both = alone + [{"payment_id": "pB", "expected_revision": 1, "amount": 180, "effective_at": T("09:00:00")}]
+    eq(m.batch_outcomes(both, NOW), {"ok"}, "combined effect is affordable")
+    worse = alone + [{"payment_id": "pB", "expected_revision": 1, "amount": 180, "effective_at": T("09:45:00")}]
+    eq(m.batch_outcomes(worse, NOW), {"historical_overdraft"}, "affordable now but x is negative at 09:30 when B's credit comes later")
 
 
 def test_sum_of_totals_is_conserved():

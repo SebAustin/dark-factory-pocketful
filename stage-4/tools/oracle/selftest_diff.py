@@ -11,15 +11,18 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 PY = sys.executable
 BUGS = ["asof_exclusive", "ignore_known_at", "stmt_closed_to", "order_created", "page_balance", "snapshot_live", "avail_ignores",
-        "hold_boundary", "no_stale", "no_overdraft", "replay_latest", "zero_hidden", "no_echo", "opening_moves"]
+        "hold_boundary", "no_stale", "no_overdraft", "replay_latest", "zero_hidden", "no_echo", "opening_moves",
+        # stage 4
+        "no_completeness", "batch_precedence", "refund_cap_off", "batch_recorded", "refund_member"]
+# partial_batch, key_on_failure, batch_wrong_net, batch_race and refund_from_total are caught by atomicity.py (selftest_atomicity.py)
 
 
-def run(bug, port, ops=70, conc=3):
+def run(bug, port, ops=130, conc=3):
     env = dict(os.environ, PORT=str(port), BUG=bug)
     srv = subprocess.Popen([PY, os.path.join(HERE, "fake_service.py")], env=env, cwd=HERE)
     time.sleep(0.8)
     try:
-        out = subprocess.run([PY, os.path.join(HERE, "diff_run.py"), "--ops", str(ops), "--seed", "7", "--concurrent", str(conc), "--skip", "settlement,request", "--no-protocol"],
+        out = subprocess.run([PY, os.path.join(HERE, "diff_run.py"), "--ops", str(ops), "--seed", "7", "--concurrent", str(conc), "--skip", "request", "--no-protocol"],
                              env=dict(os.environ, TARGET_URL=f"http://127.0.0.1:{port}"), capture_output=True, text=True, timeout=600)
     finally:
         srv.terminate()

@@ -18,10 +18,23 @@ agrees with itself; BUG=<name> plants one divergence so the tool can be shown to
   zero_hidden       zero-amount revisions are left out of statements
   no_echo           known_at is not echoed
   opening_moves     corrections change the opening balance
+Stage 4 (refunds and correction batches):
+  partial_batch     a batch whose last item fails keeps the earlier items' revisions
+  no_completeness   incomplete settlements are accepted in a batch
+  batch_precedence  insufficient_funds is reported before incomplete_settlement
+  refund_cap_off    the cumulative refund cap is not enforced
+  refund_from_total refunds check total instead of available
+  batch_recorded    each batch item gets its own recorded_at
+  batch_race        the lock is dropped between a batch's check and its commit (lost updates)
+  key_on_failure    a failed batch/refund claims its idempotency key
+  refund_member     a refund of a settlement member copies settlement_id
+  batch_wrong_net   batch affordability judged per item instead of the combined net
 Run: PORT=18390 BUG= python3 fake_service.py
 """
 import itertools
 import json
+import re
+import time
 import os
 import threading
 import uuid
@@ -71,6 +84,8 @@ def reset(fx):
     for p in fx.get("payments", []):
         seeded.append((p["id"], p["from_user_id"], p["to_user_id"], p["amount"], parse(p["created_at"]) if p.get("created_at") else t0, p.get("visibility", "public")))
     S["model"] = Model.from_seed(ending, seeded)
+    for p_ in S["model"].payments.values():
+        p_.note = "seed"
     for a in fx.get("authorizations", []):
         created = parse(a["created_at"]) if a.get("created_at") else t0
         S["model"].add_auth(a["id"], a["from_user_id"], a["to_user_id"], a["amount"], created, parse(a["expires_at"]))
@@ -78,8 +93,13 @@ def reset(fx):
 
 def pay_view(pay, rev=None):
     rev = rev or pay.revs[0]
-    return {"payment_id": pay.id, "from_user_id": pay.frm, "to_user_id": pay.to, "amount": rev.amount, "currency": "EUR", "note": "",
-            "visibility": pay.visibility, "request_id": None, "settlement_id": None, "created_at": iso(pay.created_at)}
+    sid = pay.settlement
+    if BUG == "refund_member" and pay.kind == "refund":
+        sid = S["model"].payments[pay.refund_of].settlement
+    return {"payment_id": pay.id, "from_user_id": pay.frm, "from_handle": S["users"][pay.frm]["handle"], "to_user_id": pay.to,
+            "to_handle": S["users"][pay.to]["handle"], "amount": rev.amount, "currency": "EUR", "note": pay.note,
+            "visibility": pay.visibility, "request_id": None, "settlement_id": sid, "authorization_id": None, "refund_of": pay.refund_of,
+            "created_at": iso(pay.created_at)}
 
 
 def auth_view(a):
@@ -109,7 +129,7 @@ def check_correction(pid, user, body):
     eff = parse(body["effective_at"])
     if eff > now():
         raise Err(422, "validation_failed")
-    result = model.correction_result(pid, user, body["expected_revision"], body["amount"], eff, now())
+    result = sorted(model.correction_outcomes(pid, user, body["expected_revision"], body["amount"], eff, now()))[0]
     if BUG == "no_stale" and result == "stale_revision":
         result = "ok"
     if BUG == "no_overdraft" and result == "historical_overdraft":
@@ -118,7 +138,7 @@ def check_correction(pid, user, body):
         raise Err(404, "not_found")
     if result == "403":
         raise Err(403, "forbidden")
-    if result == "linked_payment_immutable":
+    if result in ("linked_payment_immutable", "refund_exceeds_payment"):
         raise Err(422, result)
     if result != "ok":
         raise Err(409, result)
@@ -170,7 +190,7 @@ def entry_json(model, e):
     view = pay_view(pay)
     view["amount"] = e["amount"]
     return {"payment": view, "delta": e["delta"], "balance_after": e["balance_after"], "revision": e["revision"],
-            "effective_at": iso(e["effective_at"]), "recorded_at": iso(e["recorded_at"])}
+            "effective_at": iso(e["effective_at"]), "recorded_at": iso(e["recorded_at"]), "correction_batch_id": e["batch"]}
 
 
 def page_of(user, full, limit, offset):
@@ -218,6 +238,68 @@ def statement(user, q):
     return out
 
 
+def batch(user, body, hdr):
+    model = S["model"]
+    path = "/correction-batches"
+    if user not in S["ops"]:
+        raise Err(403, "forbidden")
+    key = hdr.get("Idempotency-Key")
+    if not key:
+        raise Err(400, "missing_idempotency_key")
+    rec = S["keys"].get((user, path, key))
+    if rec:
+        if rec[0] != body:
+            raise Err(409, "idempotency_key_reuse")
+        return 200, rec[1]
+    items_raw = (body or {}).get("corrections")
+    if not isinstance(items_raw, list) or not 1 <= len(items_raw) <= 32 or len({i.get("payment_id") for i in items_raw}) != len(items_raw):
+        raise Err(422, "validation_failed")
+    items = []
+    for i in items_raw:
+        if not all(k in i for k in ("payment_id", "expected_revision", "amount", "effective_at", "reason")):
+            raise Err(422, "validation_failed")
+        eff = parse(i["effective_at"])
+        if eff > now():
+            raise Err(422, "validation_failed")
+        items.append({"payment_id": i["payment_id"], "expected_revision": i["expected_revision"], "amount": i["amount"], "effective_at": eff, "reason": i["reason"]})
+    verdict = sorted(model.batch_outcomes(items, now()))[0]
+    if BUG == "no_completeness" and verdict == "incomplete_settlement":
+        verdict = "ok"
+    if BUG == "batch_precedence" and verdict == "incomplete_settlement":
+        verdict = "insufficient_funds"
+    if BUG == "batch_wrong_net" and verdict == "insufficient_funds":
+        verdict = "ok"
+    if BUG == "batch_race":
+        LOCK.release()
+        time.sleep(0.01)
+        LOCK.acquire()
+    if verdict != "ok":
+        if BUG == "partial_batch" and len(items) > 1:
+            first = items[0]
+            pay = model.payments[first["payment_id"]]
+            if first["expected_revision"] == len(pay.revs) and pay.kind != "settlement":
+                model.add_revision(pay.id, len(pay.revs) + 1, first["amount"], first["effective_at"], max(now(), pay.revs[-1].recorded_at + timedelta(microseconds=1)), first["reason"], "partial")
+        if BUG == "key_on_failure":
+            S["keys"][(user, path, key)] = (body, {})
+        status = {"404": 404}.get(verdict, 409 if verdict in ("stale_revision", "insufficient_funds", "historical_overdraft") else 422)
+        raise Err(status, "not_found" if verdict == "404" else verdict)
+    bid = f"cb_{next(S['ids'])}"
+    at = now()
+    for it in items:
+        at = max(at, model.payments[it["payment_id"]].revs[-1].recorded_at + timedelta(microseconds=1))
+    revs = []
+    for idx, (it, raw) in enumerate(zip(items, items_raw)):
+        pay = model.payments[it["payment_id"]]
+        rec_at = at if BUG != "batch_recorded" else at + timedelta(microseconds=idx)
+        model.add_revision(pay.id, len(pay.revs) + 1, it["amount"], it["effective_at"], rec_at, it["reason"], bid)
+        S.setdefault("raw", {})[(pay.id, len(pay.revs))] = raw["effective_at"]
+        revs.append({"payment_id": pay.id, "revision": len(pay.revs), "amount": it["amount"], "effective_at": raw["effective_at"], "recorded_at": iso(rec_at),
+                     "reason": it["reason"], "correction_batch_id": bid})
+    out = {"correction_batch_id": bid, "recorded_at": iso(at), "revisions": revs}
+    S["keys"][(user, path, key)] = (body, out)
+    return 201, out
+
+
 def handle(method, path, q, body, hdr):
     model = S.get("model")
     if path == "/_test/reset":
@@ -253,7 +335,7 @@ def handle(method, path, q, body, hdr):
         if model.me(user, None, None, now())["available"] < amount:
             raise Err(409, "insufficient_funds")
         pid = f"p_{next(S['ids'])}"
-        model.add_payment(pid, user, to, amount, now(), visibility=body.get("visibility", "public"))
+        model.add_payment(pid, user, to, amount, now(), visibility=body.get("visibility", "public"), note=body.get("note", ""))
         out = pay_view(model.payments[pid])
         S["keys"][(user, path, key)] = (body, out)
         return 201, out
@@ -269,26 +351,82 @@ def handle(method, path, q, body, hdr):
             if BUG == "replay_latest":
                 pay = model.payments[m[1]]
                 r = pay.revs[-1]
-                return 200, {"payment_id": pay.id, "revision": r.n, "amount": r.amount, "effective_at": S.get("raw", {}).get((pay.id, r.n), iso(r.effective_at)), "recorded_at": iso(r.recorded_at), "reason": r.reason}
+                return 200, {"payment_id": pay.id, "revision": r.n, "amount": r.amount, "effective_at": S.get("raw", {}).get((pay.id, r.n), iso(r.effective_at)), "recorded_at": iso(r.recorded_at), "reason": r.reason, "correction_batch_id": None}
             return 200, rec[1]
         pay, eff = check_correction(m[1], user, body)
         rec_at = max(now(), pay.revs[-1].recorded_at + timedelta(microseconds=1))
         n = len(pay.revs) + 1
         model.add_revision(pay.id, n, body["amount"], eff, rec_at, body["reason"])
         S.setdefault("raw", {})[(pay.id, n)] = body["effective_at"]
-        out = {"payment_id": pay.id, "revision": n, "amount": body["amount"], "effective_at": body["effective_at"], "recorded_at": iso(rec_at), "reason": body["reason"]}
+        out = {"payment_id": pay.id, "revision": n, "amount": body["amount"], "effective_at": body["effective_at"], "recorded_at": iso(rec_at), "reason": body["reason"],
+               "correction_batch_id": None}
         if BUG == "opening_moves":
             shift = pay.revs[-2].amount - body["amount"]
             model.opening[pay.frm] = model.opening.get(pay.frm, 0) + shift
             model.opening[pay.to] = model.opening.get(pay.to, 0) - shift
         S["keys"][(user, path, key)] = (body, out)
         return 201, out
+    if path == "/settlements" and method == "POST":
+        key = hdr.get("Idempotency-Key")
+        if user not in S["ops"]:
+            raise Err(403, "forbidden")
+        rec = S["keys"].get((user, path, key))
+        if rec:
+            return 200, rec[1]
+        transfers = body["transfers"]
+        net = {}
+        for t in transfers:
+            f, to = S["handles"][t["from_handle"]], S["handles"][t["to_handle"]]
+            net[f] = net.get(f, 0) - t["amount"]
+            net[to] = net.get(to, 0) + t["amount"]
+        for u, d in net.items():
+            if model.me(u, None, None, now())["available"] + d < 0:
+                raise Err(409, "insufficient_funds")
+        sid, at = f"st_{next(S['ids'])}", now()
+        members = []
+        for t in transfers:
+            pid = f"p_{next(S['ids'])}"
+            model.add_payment(pid, S["handles"][t["from_handle"]], S["handles"][t["to_handle"]], t["amount"], at, kind="settlement", settlement=sid)
+            members.append(pay_view(model.payments[pid]))
+        out = {"settlement_id": sid, "committed_at": iso(at), "payments": members}
+        S["keys"][(user, path, key)] = (body, out)
+        return 201, out
+    m = re.fullmatch(r"/payments/([^/]+)/refunds", path)
+    if m and method == "POST":
+        key = hdr.get("Idempotency-Key")
+        rec = S["keys"].get((user, path, key))
+        if rec:
+            if rec[0] != body:
+                raise Err(409, "idempotency_key_reuse")
+            return 200, rec[1]
+        amount = body.get("amount")
+        if isinstance(amount, bool) or not isinstance(amount, int) or not 1 <= amount <= 10 ** 9:
+            raise Err(422, "validation_failed")
+        outcomes = model.refund_outcomes(m[1], user, amount, now())
+        code = sorted(outcomes)[0]
+        pay = model.payments.get(m[1])
+        if BUG == "refund_cap_off" and code == "refund_exceeds_payment":
+            code = "ok"
+        if BUG == "refund_from_total" and code == "insufficient_funds" and pay and model.me(user, None, None, now())["total"] >= amount:
+            code = "ok"
+        if code != "ok":
+            if BUG == "key_on_failure":
+                S["keys"][(user, path, key)] = (body, {})
+            status = {"404": 404, "403": 403}.get(code, 422 if code in ("invalid_refund_target", "refund_exceeds_payment") else 409)
+            raise Err(status, "not_found" if code == "404" else "forbidden" if code == "403" else code)
+        pid = f"p_{next(S['ids'])}"
+        model.add_refund(pid, m[1], amount, now())
+        out = pay_view(model.payments[pid])
+        S["keys"][(user, path, key)] = (body, out)
+        return 201, out
+    if path == "/correction-batches" and method == "POST":
+        return batch(user, body, hdr)
     m = re.fullmatch(r"/payments/([^/]+)/revisions", path)
     if m:
         pay = model.payments.get(m[1])
         if pay is None or user not in (pay.frm, pay.to):
             raise Err(404, "not_found")
-        return 200, {"revisions": [{"revision": r.n, "amount": r.amount, "effective_at": S.get("raw", {}).get((pay.id, r.n), iso(r.effective_at)), "recorded_at": iso(r.recorded_at), "reason": r.reason} for r in pay.revs]}
+        return 200, {"revisions": [{"revision": r.n, "amount": r.amount, "effective_at": S.get("raw", {}).get((pay.id, r.n), iso(r.effective_at)), "recorded_at": iso(r.recorded_at), "reason": r.reason, "correction_batch_id": r.batch} for r in pay.revs]}
     if path == "/authorizations" and method == "POST":
         to = S["handles"].get(body.get("to_handle"))
         if not to:

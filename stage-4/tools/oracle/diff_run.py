@@ -37,7 +37,7 @@ FAR_PAST = "1970-01-01T00:00:00+00:00"
 FAR_FUTURE = "2100-01-01T00:00:00+00:00"
 MICRO = timedelta(microseconds=1)
 PAYMENT_KEYS = {"payment_id", "from_user_id", "from_handle", "to_user_id", "to_handle", "amount", "currency", "note", "visibility",
-                "request_id", "settlement_id", "authorization_id", "created_at"}
+                "request_id", "settlement_id", "authorization_id", "refund_of", "created_at"}   # stage 4 adds refund_of (null on other payments)
 ME_KEYS = {"user_id", "display_name", "handle", "balance", "total", "available", "held", "currency", "minor_units"}
 
 
@@ -197,6 +197,8 @@ class Run:
         self.reset_instant = min(omitted) if omitted else None
         self.expect(len(set(omitted)) <= 1, "every omitted seeded created_at is the one reset instant (D-44)", str(omitted))
         self.model = Model.from_seed({u["id"]: u["balance"] for u in fixture["users"]}, rows)
+        for pay in self.model.payments.values():
+            pay.note = "seed"
         self.model.add_auth(auth["id"], auth["from_user_id"], auth["to_user_id"], auth["amount"], parse(auth["created_at"]), parse(auth["expires_at"]))
         self.auths = [auth["id"]]
         self.snapshots = []
@@ -218,7 +220,7 @@ class Run:
                 if self.protocol:
                     self.expect(self.payment_keys == PAYMENT_KEYS, "payment object key set (stage 2: 13 keys, original receipt unchanged)", f"{sorted(self.payment_keys ^ PAYMENT_KEYS)}")
             created = self.see(resp["created_at"], "payment created_at")
-            self.model.add_payment(resp["payment_id"], frm, to, amount, created, visibility=body["visibility"])
+            self.model.add_payment(resp["payment_id"], frm, to, amount, created, visibility=body["visibility"], note=resp["note"])
         else:
             self.expect(status == 409 and resp["error"]["code"] == "insufficient_funds", "payment refused unexpectedly", f"{status} {resp}")
 
@@ -234,7 +236,8 @@ class Run:
                 frm = next(u for u, h in self.handles.items() if h == t["from_handle"])
                 to = next(u for u, h in self.handles.items() if h == t["to_handle"])
                 self.expect(parse(member["created_at"]) == committed, "settlement member created_at != committed_at", json.dumps(member))
-                self.model.add_payment(member["payment_id"], frm, to, t["amount"], committed, kind="settlement", visibility=member["visibility"])
+                self.model.add_payment(member["payment_id"], frm, to, t["amount"], committed, kind="settlement", visibility=member["visibility"],
+                                       note=member["note"], settlement=member["settlement_id"])
 
     def op_request_pay(self):
         payer, requester = self.rng.sample(self.users, 2)
@@ -244,7 +247,7 @@ class Run:
         status, resp = self.call("POST", f"/requests/{rq['request_id']}/pay", self.tokens[payer], {"visibility": "public"}, self.key())
         self.note(f"request+pay {payer}->{requester} 25 => {status}")
         if status == 201:
-            self.model.add_payment(resp["payment_id"], payer, requester, 25, self.see(resp["created_at"], "request payment created_at"))
+            self.model.add_payment(resp["payment_id"], payer, requester, 25, self.see(resp["created_at"], "request payment created_at"), note=resp["note"], visibility=resp["visibility"])
 
     def op_authorize(self):
         frm, to = self.rng.sample(self.users, 2)
@@ -304,7 +307,8 @@ class Run:
         status, resp = self.call("POST", f"/authorizations/{aid}/capture", self.tokens[auth.to], body, self.key())
         self.note(f"POST capture {aid} {body} => {status}")
         if status == 201:
-            self.model.add_payment(resp["payment_id"], auth.frm, auth.to, amount, self.see(resp["created_at"], "capture created_at"), kind="capture")
+            self.model.add_payment(resp["payment_id"], auth.frm, auth.to, amount, self.see(resp["created_at"], "capture created_at"), kind="capture",
+                                   note=resp["note"], visibility=resp["visibility"])
             self.model.add_capture(aid, resp["payment_id"])
         else:
             code = (resp or {}).get("error", {}).get("code")
@@ -336,6 +340,213 @@ class Run:
             effective = floor + timedelta(seconds=self.rng.randrange(span), microseconds=self.rng.choice([0, 0, 500000, 123456]))
         return min(effective, now - timedelta(seconds=2))
 
+    # ------------------------------------------------------------------ stage 4: refunds and correction batches
+    def op_refund(self):
+        pays = list(self.model.payments.values())
+        members = [p for p in pays if p.kind == "settlement"]
+        pay = self.rng.choice(members) if members and self.rng.random() < 0.3 else self.rng.choice(pays)
+        actor = pay.to if self.rng.random() < 0.85 else self.rng.choice([u for u in self.users if u != pay.to])
+        cur = pay.current().amount
+        left = max(cur - self.model.refunded(pay.id), 1)
+        amount = max(1, self.rng.choice([1, 5, left // 2, left, left + 1, 3 * cur + 7]))
+        self.do_refund(pay, actor, amount)
+
+    def do_refund(self, pay, actor, amount):
+        now = self.now()
+        want = self.model.refund_outcomes(pay.id, actor, amount, now)
+        key = self.key()
+        body = {"amount": amount}
+        status, resp = self.call("POST", f"/payments/{pay.id}/refunds", self.tokens[actor], body, key)
+        code = "ok" if status == 201 else (str(status) if status in (403, 404) else ((resp or {}).get("error") or {}).get("code") if isinstance(resp, dict) else None)
+        self.note(f"POST refund {pay.id} by {actor} {amount} => {status} {code} (model allows {sorted(want)})")
+        self.outcomes["refund:" + str(code)] = self.outcomes.get("refund:" + str(code), 0) + 1
+        if code not in want:
+            self.diverge("refund outcome", f"payment {pay.id} (kind {pay.kind}, amount {pay.current().amount}, refunded {self.model.refunded(pay.id)}) actor {actor} amount {amount}\n"
+                         f"model allows {sorted(want)}, service answered {status} {resp}")
+            return
+        if status != 201:
+            return
+        self.expect(set(resp) == PAYMENT_KEYS and resp["refund_of"] == pay.id and resp["from_user_id"] == pay.to and resp["to_user_id"] == pay.frm
+                    and resp["amount"] == amount and resp["request_id"] is None and resp["authorization_id"] is None and resp["settlement_id"] is None
+                    and resp["note"] == pay.note and resp["visibility"] == pay.visibility,
+                    "a refund is a payment in the opposite direction with refund_of, null request_id/authorization_id and the original note/visibility",
+                    f"target {pay.id} ({pay.frm}->{pay.to}, note {pay.note!r}, {pay.visibility}); refund {json.dumps(resp)}")
+        created = self.see(resp["created_at"], "refund created_at")
+        self.model.add_refund(resp["payment_id"], pay.id, amount, created)
+        status2, again = self.call("POST", f"/payments/{pay.id}/refunds", self.tokens[actor], body, key)
+        self.expect(status2 == 200 and again == resp, "a refund replay returns 200 and the original body", f"{status2} {again} vs {resp}")
+        status3, other = self.call("POST", f"/payments/{pay.id}/refunds", self.tokens[actor], {"amount": amount + 1}, key)
+        self.expect(status3 == 409 and other["error"]["code"] == "idempotency_key_reuse", "same key, different refund body: 409 idempotency_key_reuse", f"{status3} {other}")
+        status4, mine = self.call("GET", "/me", self.tokens[actor])
+        self.expect(status4 == 200, "refund author /me", str(status4))
+
+    def check_refund_protocol(self):
+        """D-62/D-73: validation, key, token and body rules of POST /payments/{id}/refunds."""
+        pay = next((p for p in self.model.payments.values() if p.kind == "plain" and p.current().amount > 0), None)
+        if pay is None:
+            return
+        tok = self.tokens[pay.to]
+        for name, body in {"amount 0": {"amount": 0}, "negative": {"amount": -1}, "fraction": {"amount": 1.5}, "string": {"amount": "5"}, "bool": {"amount": True},
+                           "null": {"amount": None}, "missing": {}, "over 1e9": {"amount": 1000000001}}.items():
+            status, resp = self.call("POST", f"/payments/{pay.id}/refunds", tok, body, self.key())
+            self.expect(status == 422 and resp["error"]["code"] == "validation_failed", f"refund amount defect '{name}' must be 422 validation_failed (D-73)", f"{status} {resp}")
+            status, resp = self.call("POST", "/payments/p_does_not_exist/refunds", tok, body, self.key())
+            self.expect(status == 422, f"refund amount defect '{name}' on an unknown payment: validation precedes 404 (D-62)", f"{status} {resp}")
+        status, resp = self.call("POST", f"/payments/{pay.id}/refunds", tok, {"amount": 1})
+        self.expect(status == 400 and resp["error"]["code"] == "missing_idempotency_key", "a refund needs an Idempotency-Key", f"{status} {resp}")
+        status, resp = self.call("POST", f"/payments/{pay.id}/refunds", None, {"amount": 1}, self.key())
+        self.expect(status == 401, "a refund without a token is 401", str(status))
+        status, resp = self.call("POST", f"/payments/{pay.id}/refunds", tok, None, self.key())
+        self.expect(status == 400, "a refund with no JSON object is 400 malformed_request", f"{status} {resp}")
+
+    def check_snapshot_roundtrip(self):
+        """L10/D-74: a stage-4 export carries snapshot tokens and their frozen results; export -> reset -> import restores them."""
+        if not self.snapshots:
+            return
+        status, export = self.call("GET", "/_test/export", timeout=60)
+        if not self.expect(status == 200, "export", str(status)):
+            return
+        fixture, _, _ = self.fixture()
+        self.call("POST", "/_test/reset", body=fixture, timeout=20)
+        status, resp = self.call("POST", "/_test/import", body=export, timeout=60)
+        self.expect(status == 204, "re-import of the same export", f"{status} {resp}")
+        bad = 0
+        for user, token, frozen, params in self.snapshots[:8]:
+            st, page = self.call("GET", "/statement", self.tokens[user], params={"snapshot": token, "limit": 200})
+            if st != 200 or self.shape(page) != self.want_page(frozen, 200, 0):
+                bad += 1
+                self.diverge("a snapshot token must page identically after export -> reset -> import (L10, D-74)", f"user {user} token {token} first params {params}: status {st}")
+        self.note(f"snapshot round trip: {len(self.snapshots[:8])} tokens, {bad} bad")
+
+    def settlement_groups(self):
+        groups = {}
+        for p in self.model.payments.values():
+            if p.kind == "settlement":
+                groups.setdefault(p.settlement, []).append(p)
+        return groups
+
+    def build_batch_items(self, mode=None):
+        """A random batch: ordinary/request payments and whole or partial settlements; deliberate defects now and then."""
+        now = self.now()
+        pays = [p for p in self.model.payments.values()]
+        groups = self.settlement_groups()
+        chosen, used = [], set()
+        for _ in range(self.rng.choice([1, 1, 2, 3, 4])):
+            if groups and self.rng.random() < 0.35:
+                sid = self.rng.choice(sorted(groups))
+                members = list(groups[sid])
+                if self.rng.random() < 0.15 and len(members) > 1:
+                    members = members[:-1]                          # an incomplete settlement
+                eff = parse(fmtus(self.pick_instant(now, pays)))
+                for m in members:
+                    if m.id not in used:
+                        used.add(m.id)
+                        chosen.append((m, eff if self.rng.random() > 0.1 else eff + timedelta(seconds=1)))   # a mismatched instant now and then
+            else:
+                pay = self.rng.choice(pays)
+                if pay.id not in used:
+                    used.add(pay.id)
+                    chosen.append((pay, parse(fmtus(self.pick_instant(now, pays)))))
+        if self.rng.random() < 0.04 and chosen:
+            chosen.append(chosen[0])                                # duplicate id
+        items = []
+        for pay, eff in chosen:
+            cur = pay.current().amount
+            items.append({"payment_id": pay.id, "expected_revision": len(pay.revs) if self.rng.random() < 0.85 else len(pay.revs) + 1,
+                          "amount": self.rng.choice([0, max(cur - 1, 0), cur, cur + 1, cur + 20]), "effective_at": eff})
+        self.rng.shuffle(items)
+        return items
+
+    def batch_body(self, items, tag):
+        out = []
+        for i, it in enumerate(items):
+            out.append({"payment_id": it["payment_id"], "expected_revision": it["expected_revision"], "amount": it["amount"],
+                        "effective_at": fmtus(it["effective_at"]), "reason": f"{tag}.{i}", "ignored_field": 1})
+        return {"corrections": out, "ignored": True}
+
+    def op_batch(self):
+        items = self.build_batch_items()
+        self.do_batch(items)
+
+    def do_batch(self, items, actor="u_0", expect=None):
+        """Send a batch, compare the verdict with the model, and check there was no partial effect on failure."""
+        now = self.now()
+        want = expect or self.model.batch_outcomes(items, now)
+        self.batch_n = getattr(self, "batch_n", 0) + 1
+        tag = f"b{self.seed}-{self.batch_n}"
+        body = self.batch_body(items, tag)
+        key = self.key()
+        before = self.involved_state([it["payment_id"] for it in items])
+        status, resp = self.call("POST", "/correction-batches", self.tokens[actor], body, key)
+        code = "ok" if status == 201 else (str(status) if status in (401, 403, 404) else ((resp or {}).get("error") or {}).get("code") if isinstance(resp, dict) else None)
+        self.note(f"POST /correction-batches {[(it['payment_id'], it['expected_revision'], it['amount']) for it in items]} => {status} {code} (model allows {sorted(want)})")
+        self.outcomes["batch:" + str(code)] = self.outcomes.get("batch:" + str(code), 0) + 1
+        if code not in want:
+            self.diverge("correction batch outcome (stage 4 precedence)", f"body {json.dumps(body)}\nmodel allows {sorted(want)}, service answered {status} {resp}")
+            return None
+        if status != 201:
+            after = self.involved_state([it["payment_id"] for it in items])
+            self.expect(before == after, "a rejected batch must leave revisions, balances and statements unchanged (all-or-none)", f"{tag}: before {before}\nafter  {after}")
+            return None
+        self.check_batch_receipt(items, tag, body, key, resp)
+        return resp
+
+    def involved_state(self, pids):
+        """Revision counts and total/available of every party of the given payments, as the service reports them now."""
+        out = {}
+        for pid in sorted(set(pids)):
+            pay = self.model.payments.get(pid)
+            if pay is None:
+                continue
+            status, r = self.call("GET", f"/payments/{pid}/revisions", self.tokens[pay.frm])
+            out[pid] = [(x["revision"], x["amount"], x["recorded_at"]) for x in r["revisions"]] if status == 200 else status
+            for u in (pay.frm, pay.to):
+                st, me = self.call("GET", "/me", self.tokens[u])
+                out[u] = (me["total"], me["available"]) if st == 200 else st
+        return out
+
+    def check_batch_receipt(self, items, tag, body, key, resp):
+        self.expect(set(resp) == {"correction_batch_id", "recorded_at", "revisions"}, "batch receipt keys", f"{sorted(resp)}")
+        self.expect(isinstance(resp["correction_batch_id"], str) and resp["correction_batch_id"], "correction_batch_id", json.dumps(resp)[:200])
+        recorded = self.see(resp["recorded_at"], "batch recorded_at")
+        revs = resp["revisions"]
+        self.expect(len(revs) == len(items), "revisions in input order, one per item", f"{len(revs)} vs {len(items)}")
+        for i, (it, r) in enumerate(zip(items, revs)):
+            pay = self.model.payments[it["payment_id"]]
+            self.expect(set(r) == {"payment_id", "revision", "amount", "effective_at", "recorded_at", "reason", "correction_batch_id"}
+                        and r["payment_id"] == it["payment_id"] and r["revision"] == len(pay.revs) + 1 and r["amount"] == it["amount"]
+                        and r["effective_at"] == fmtus(it["effective_at"]) and r["recorded_at"] == resp["recorded_at"] and r["reason"] == f"{tag}.{i}"
+                        and r["correction_batch_id"] == resp["correction_batch_id"],
+                        "batch revision object (input order, shared recorded_at, correction_batch_id)", f"item {i}: {json.dumps(r)} for {it}")
+            self.expect(recorded > pay.revs[-1].recorded_at, "a batch's recorded_at must be strictly later than every member's previous recorded_at",
+                        f"{pay.id}: previous {fmtus(pay.revs[-1].recorded_at)} vs batch {resp['recorded_at']}")
+        self.model.apply_batch(items, recorded, resp["correction_batch_id"], [f"{tag}.{i}" for i in range(len(items))])
+        status, again = self.call("POST", "/correction-batches", self.tokens["u_0"], body, key)
+        self.expect(status == 200 and again == resp, "a batch replay returns 200 and the original response", f"{status} {again} vs {resp}")
+        status, other = self.call("POST", "/correction-batches", self.tokens["u_0"], dict(body, corrections=body["corrections"][:1] + [dict(body["corrections"][0], amount=body["corrections"][0]["amount"] + 1)][:0]) if False else {"corrections": [dict(body["corrections"][0], amount=body["corrections"][0]["amount"] + 1)]}, key)
+        self.expect(status == 409 and other["error"]["code"] == "idempotency_key_reuse", "same key, different batch: 409 idempotency_key_reuse", f"{status} {other}")
+        for it in items[:3]:
+            self.check_revisions(it["payment_id"])
+
+    def check_batch_protocol(self):
+        """401/403/400/422 rules of POST /correction-batches that need no model state."""
+        pay = next(p for p in self.model.payments.values() if p.kind == "plain")
+        item = {"payment_id": pay.id, "expected_revision": len(pay.revs), "amount": pay.current().amount, "effective_at": fmt(self.now() - timedelta(seconds=30)), "reason": "x"}
+        status, resp = self.call("POST", "/correction-batches", None, {"corrections": [item]}, self.key())
+        self.expect(status == 401, "a batch without a token is 401", str(status))
+        status, resp = self.call("POST", "/correction-batches", self.tokens["u_1"], {"corrections": [item]}, self.key())
+        self.expect(status == 403 and resp["error"]["code"] == "forbidden", "a non-operator gets 403 forbidden (settlement rules)", f"{status} {resp}")
+        status, resp = self.call("POST", "/correction-batches", self.tokens["u_0"], {"corrections": [item]})
+        self.expect(status == 400 and resp["error"]["code"] == "missing_idempotency_key", "a batch needs an Idempotency-Key", f"{status} {resp}")
+        for name, body in {"no corrections": {}, "empty": {"corrections": []}, "33 items": {"corrections": [dict(item, payment_id=f"p_x{i}") for i in range(33)]},
+                           "duplicates": {"corrections": [item, item]}, "not a list": {"corrections": "x"},
+                           "item defect": {"corrections": [dict(item, amount=-1)]}, "item missing reason": {"corrections": [{k: v for k, v in item.items() if k != "reason"}]},
+                           "future effective_at": {"corrections": [dict(item, effective_at=fmt(self.now() + timedelta(seconds=30)))]}}.items():
+            status, resp = self.call("POST", "/correction-batches", self.tokens["u_0"], body, self.key())
+            self.expect(status == 422 and resp["error"]["code"] == "validation_failed", f"batch '{name}' must be 422 validation_failed", f"{status} {resp}")
+        status, resp = self.call("POST", "/correction-batches", self.tokens["u_0"], None, self.key())
+        self.expect(status == 400, "a batch with no JSON object is 400 malformed_request", f"{status} {resp}")
+
     def op_correction(self):
         pays = list(self.model.payments.values())
         pay = self.rng.choice(pays)
@@ -352,19 +563,22 @@ class Run:
         now = self.now()
         effective = parse(text)
         body = {"expected_revision": expected, "amount": amount, "effective_at": text, "reason": "diff correction"}
-        want = self.model.correction_result(pay.id, actor, expected, amount, effective, now)
+        want = self.model.correction_outcomes(pay.id, actor, expected, amount, effective, now)
         key = self.key()
         status, resp = self.call("POST", f"/payments/{pay.id}/corrections", self.tokens[actor], body, key)
         code = "ok" if status == 201 else (str(status) if status in (403, 404) else ((resp or {}).get("error") or {}).get("code") if isinstance(resp, dict) else None)
         self.note(f"POST correction {pay.id} by {actor} {body} => {status} {code} (model: {want})")
         self.outcomes[code] = self.outcomes.get(code, 0) + 1
-        if code != want:
-            self.diverge("correction outcome (D-46 order)", f"payment {pay.id} actor {actor} body {json.dumps(body)}\nmodel says {want}, service answered {status} {resp}")
+        if code not in want:
+            self.diverge("correction outcome (D-46 order, stage 4 rules)", f"payment {pay.id} actor {actor} body {json.dumps(body)}\nmodel allows {sorted(want)}, service answered {status} {resp}")
+            return
+        if code == "ok" and "ok" not in want:
             return
         if status == 201:
             self.expect(resp["revision"] == len(pay.revs) + 1 and resp["amount"] == amount and resp["effective_at"] == text
-                        and resp["payment_id"] == pay.id and resp["reason"] == body["reason"] and set(resp) == {"payment_id", "revision", "amount", "effective_at", "recorded_at", "reason"},
-                        "correction receipt must be {payment_id, revision, amount, effective_at (as supplied), recorded_at, reason}", json.dumps(resp))
+                        and resp["payment_id"] == pay.id and resp["reason"] == body["reason"] and resp.get("correction_batch_id", "missing") is None
+                        and set(resp) == {"payment_id", "revision", "amount", "effective_at", "recorded_at", "reason", "correction_batch_id"},
+                        "correction receipt must be {payment_id, revision, amount, effective_at (as supplied), recorded_at, reason, correction_batch_id: null} (D-69)", json.dumps(resp))
             self.see(resp["recorded_at"], "correction recorded_at")
             self.add_rev(pay.id, resp, amount, effective, body["reason"])
             self.check_replay(pay.id, actor, key, body, resp)
@@ -372,10 +586,10 @@ class Run:
             self.old_receipts.append((pay.id, actor, key, body, resp))
         elif code == "stale_revision" and self.rng.random() < 0.5:      # D-57: a refusal claims no key
             body2 = dict(body, expected_revision=len(pay.revs))
-            want2 = self.model.correction_result(pay.id, actor, body2["expected_revision"], amount, effective, now)
+            want2 = self.model.correction_outcomes(pay.id, actor, body2["expected_revision"], amount, effective, now)
             status2, resp2 = self.call("POST", f"/payments/{pay.id}/corrections", self.tokens[actor], body2, key)
             code2 = "ok" if status2 == 201 else ((resp2 or {}).get("error") or {}).get("code")
-            self.expect(code2 == want2, "a refused correction must leave its idempotency key free (D-57)", f"same key, expected_revision {body2['expected_revision']}: model {want2}, got {status2} {resp2}")
+            self.expect(code2 in want2, "a refused correction must leave its idempotency key free (D-57)", f"same key, expected_revision {body2['expected_revision']}: model {sorted(want2)}, got {status2} {resp2}")
             if status2 == 201:
                 self.see(resp2["recorded_at"], "correction recorded_at")
                 self.add_rev(pay.id, resp2, amount, effective, body["reason"])
@@ -401,7 +615,7 @@ class Run:
             self.note(f"scenario payment {frm}->{to} {amount} => {status}")
             if status != 201:
                 return
-            self.model.add_payment(resp["payment_id"], frm, to, amount, self.see(resp["created_at"], "scenario payment"))
+            self.model.add_payment(resp["payment_id"], frm, to, amount, self.see(resp["created_at"], "scenario payment"), note=resp["note"], visibility=resp["visibility"])
             ids.append(resp["payment_id"])
         time.sleep(2.1)
         pay = self.model.payments[ids[0]]
@@ -426,8 +640,10 @@ class Run:
         pay = self.model.payments[pid]
         status, resp = self.call("GET", f"/payments/{pid}/revisions", self.tokens[pay.frm])
         self.expect(status == 200 and set(resp) == {"revisions"}, "revisions must be readable by the sender as {revisions: [...]}", f"{status} {resp}")
-        got = [(r["revision"], r["amount"], parse(r["effective_at"]), parse(r["recorded_at"]), r["reason"]) for r in resp["revisions"]]
-        want = [(r.n, r.amount, r.effective_at, r.recorded_at, r.reason) for r in pay.revs]
+        for r in resp["revisions"]:
+            self.expect("correction_batch_id" in r, "every revision object exposes correction_batch_id (null unless made by a batch, D-69)", json.dumps(r))
+        got = [(r["revision"], r["amount"], parse(r["effective_at"]), parse(r["recorded_at"]), r["reason"], r.get("correction_batch_id")) for r in resp["revisions"]]
+        want = [(r.n, r.amount, r.effective_at, r.recorded_at, r.reason, r.batch) for r in pay.revs]
         self.expect(got == want, "revision history differs", f"{pid}: got {got}\nwant {want}")
         self.expect(resp["revisions"][0]["reason"] == "" and resp["revisions"][0]["revision"] == 1, "revision 1 has reason ''", json.dumps(resp["revisions"][0]))
         status, _ = self.call("GET", f"/payments/{pid}/revisions", self.tokens[pay.to])
@@ -533,12 +749,13 @@ class Run:
         entries = []
         for e in resp["entries"]:
             p = e["payment"]
-            entries.append((p["payment_id"], e["revision"], p["amount"], e["delta"], e["balance_after"], parse(e["effective_at"]), parse(e["recorded_at"])))
+            entries.append((p["payment_id"], e["revision"], p["amount"], e["delta"], e["balance_after"], parse(e["effective_at"]), parse(e["recorded_at"]),
+                            e.get("correction_batch_id")))
         return {"opening_balance": resp["opening_balance"], "closing_balance": resp["closing_balance"], "entries": entries, "has_more": resp["has_more"]}
 
     @staticmethod
     def entry_tuple(e):
-        return (e["id"], e["revision"], e["amount"], e["delta"], e["balance_after"], e["effective_at"], e["recorded_at"])
+        return (e["id"], e["revision"], e["amount"], e["delta"], e["balance_after"], e["effective_at"], e["recorded_at"], e.get("batch"))
 
     def want_page(self, full, limit, offset):
         return {"opening_balance": full["opening_balance"], "closing_balance": full["closing_balance"],
@@ -582,7 +799,8 @@ class Run:
             want_keys = {"opening_balance", "entries", "closing_balance", "has_more", "snapshot"} | ({"known_at"} if known_t else set())
             self.expect(set(resp) == want_keys, "statement response key set (D-49)", f"{sorted(set(resp) ^ want_keys)}")
             for e in resp["entries"]:
-                self.expect(set(e) == {"payment", "delta", "revision", "effective_at", "recorded_at", "balance_after"}, "statement entry key set (D-49)", json.dumps(e))
+                self.expect(set(e) == {"payment", "delta", "revision", "effective_at", "recorded_at", "balance_after", "correction_batch_id"},
+                            "statement entry key set (D-49 + D-69 correction_batch_id)", json.dumps(e))
                 self.expect(set(e["payment"]) == PAYMENT_KEYS, "statement payment is the stage 2 payment object (13 keys) with the selected amount", f"{sorted(set(e['payment']) ^ PAYMENT_KEYS)}")
         if want_snapshot and resp.get("snapshot"):
             self.snapshots.append((user, resp["snapshot"], matched, params))
@@ -827,9 +1045,9 @@ class Run:
     # ------------------------------------------------------------------ phases
     def lockstep(self, ops):
         weights = [(self.op_payment, 5), (self.op_correction, 7), (self.op_authorize, 2), (self.op_capture, 2), (self.op_void, 1),
-                   (self.op_settlement, 1), (self.op_request_pay, 1)]
+                   (self.op_settlement, 2), (self.op_request_pay, 1), (self.op_refund, 3), (self.op_batch, 4)]
         names = {self.op_settlement: "settlement", self.op_request_pay: "request", self.op_capture: "capture", self.op_void: "void", self.op_authorize: "authorize",
-                 self.op_correction: "correction"}
+                 self.op_correction: "correction", self.op_refund: "refund", self.op_batch: "batch"}
         pool = [fn for fn, w in weights for _ in range(w) if names.get(fn) not in self.skip]
         self.check_bad_instants()
         if "correction" not in self.skip:
@@ -849,6 +1067,10 @@ class Run:
         self.sync_auths()
         self.check_snapshots()
         self.all_nonnegative()
+        if self.protocol and "refund" not in self.skip:
+            self.check_refund_protocol()
+        if self.protocol and "batch" not in self.skip:
+            self.check_batch_protocol()
         if self.protocol and "correction" not in self.skip:
             self.check_corrections_validation()
         if self.protocol:
@@ -865,7 +1087,7 @@ class Run:
         effective = parse(fmt(min(pay.created_at, self.now() - timedelta(seconds=2))))
         amounts = [max(pay.current().amount - 1 - i % 2, 0) for i in range(20)]
         now = self.now()
-        any_ok = any(self.model.correction_result(pay.id, pay.frm, n, a, effective, now) == "ok" for a in amounts)
+        any_ok = any("ok" in self.model.correction_outcomes(pay.id, pay.frm, n, a, effective, now) for a in amounts)
 
         def go(i):
             body = {"expected_revision": n, "amount": amounts[i], "effective_at": fmt(effective), "reason": f"race {i}"}
@@ -882,7 +1104,7 @@ class Run:
             self.add_rev(pay.id, resp, body["amount"], parse(body["effective_at"]), body["reason"])
         for body, (status, resp) in results:
             if status != 201:
-                self.expect(resp["error"]["code"] in ("stale_revision", "insufficient_funds", "historical_overdraft"), "race loser answered unexpectedly", f"{status} {resp}")
+                self.expect(resp["error"]["code"] in ("stale_revision", "insufficient_funds", "historical_overdraft", "refund_exceeds_payment"), "race loser answered unexpectedly", f"{status} {resp}")
 
     def concurrent(self, seconds):
         """50 in flight: writes interleaved with reads of views frozen in the past; frozen views must never move."""
@@ -958,7 +1180,7 @@ class Run:
         for message in bad[:5]:
             self.diverge("concurrent phase", message)
         for r, frm, to, amount in collected["payments"]:
-            self.model.add_payment(r["payment_id"], frm, to, amount, parse(r["created_at"]))
+            self.model.add_payment(r["payment_id"], frm, to, amount, parse(r["created_at"]), note=r["note"], visibility=r["visibility"])
         for r, frm, to in collected["auths"]:
             self.model.add_auth(r["authorization_id"], frm, to, 20, parse(r["created_at"]), parse(r["expires_at"]))
             self.auths.append(r["authorization_id"])
@@ -1016,7 +1238,8 @@ def main():
         if args.concurrent:
             run.concurrent(args.concurrent)
         run.grid(20)
-        if run.protocol:
+        if run.protocol and "statement" not in run.skip:
+            run.check_snapshot_roundtrip()
             run.check_snapshot_after_reset()
     except Divergence as d:
         print(str(d))
