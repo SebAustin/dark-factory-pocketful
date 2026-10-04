@@ -27,8 +27,8 @@ Last accepted revision: 6a3fd334b9a64588b9d821ba654ae47538cba7bc (stage 2). Stag
 | S3.2 | /me as_of/known_at | builder | app | accepted | e02f93d | 0 |
 | S3.3 | /statement + snapshots | builder | app | rejected R1 (F1 export 69 MB, F2 memory linear) -> recipe snapshots + final L8 | fe6ff39 | 1 |
 | S3.4 | Corrections + revisions | builder | app | accepted | 6757ba3 | 0 |
-| S3.5 | Populated upgrade checks | builder | tests | in review | 41cf24c | 0 |
-| S3.6 | Ledger stress | builder | tools | in review | c03a99e | 0 |
+| S3.5 | Populated upgrade checks | builder | tests | accepted | 41cf24c | 0 |
+| S3.6 | Ledger stress | builder | tools | accepted | c03a99e | 0 |
 | S3.PG | Plan gate | analyst | - | done: 1 finding (snapshots across import -> L8 revised) + 2 notes; gate closed (L9) | 341f1a2 | 0 |
 | S3.A | Acceptance (stage1 422, stage2 272, stage3 134) | analyst | stage-3/acceptance/ | test errors fixed 7773dee; stage3 133/134 on 6757ba3 (UPG_5 awaits S3.3 fix) | 7773dee | 0 |
 | S3.O | Independent reference model + differential/stress tool | designer | stage-3/tools/oracle/ | done; O2 upgrade mode 8fa2856; D-45 divergence withdrawn (tool error, fixed 00ead5a); full run 0 divergences on cd20dbf | 00ead5a | 0 |

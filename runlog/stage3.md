@@ -24,6 +24,8 @@ Round 1 (analyst): plan agrees with D-41..D-60 except snapshot invalidation on i
 | S3.1 | Bitemporal foundation | builder | 01:2x | yes | ACCEPT aa3922c |
 | S3.2 | /me as_of/known_at | builder | 01:3x | yes | ACCEPT e02f93d |
 | S3.4 | Corrections + revisions | builder | 01:3x | yes | ACCEPT 6757ba3 |
+| S3.5 | Populated upgrade checks | builder | 01:3x | yes | ACCEPT 41cf24c |
+| S3.6 | Ledger stress | builder | 01:3x | yes | ACCEPT c03a99e |
 
 ## Rejections and what they caught
 
