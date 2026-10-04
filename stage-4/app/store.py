@@ -21,9 +21,10 @@ AUTH_STATUSES = ("open", "captured", "voided", "expired")
 DEFAULT_TTL = 600
 LAST_INSTANT = datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)  # datetime's range
 MAX_AMOUNT = 1_000_000_000
-ID_PREFIX = {"p": "p_", "rq": "rq_", "sp": "sp_", "st": "st_", "u": "u_", "a": "a_"}
+ID_PREFIX = {"p": "p_", "rq": "rq_", "sp": "sp_", "st": "st_", "u": "u_", "a": "a_",
+             "cb": "cb_"}
 TABLE_FOR_KIND = {"p": "payments", "rq": "requests", "sp": "splits", "st": "settlements",
-                  "u": "users", "a": "authorizations"}
+                  "u": "users", "a": "authorizations", "cb": "correction_batches"}
 
 clock = time.time  # seconds since the epoch; tests may replace it
 
@@ -36,7 +37,7 @@ def empty_state(currency: str = "EUR", minor_units: int = 2) -> dict:
         "settlements": {}, "idem": {}, "seq": 0,
         "counters": {k: 0 for k in ID_PREFIX},
         "authorizations": {}, "settings": {"authorization_ttl_seconds": DEFAULT_TTL},
-        "user_payments": {}, "refunds_of": {},
+        "user_payments": {}, "refunds_of": {}, "correction_batches": {},
     }
 
 

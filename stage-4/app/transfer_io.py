@@ -19,7 +19,8 @@ FORMAT_VERSION = 1
 MINOR_UNITS = (0, 2, 3)
 COUNTER_KINDS = ("p", "rq", "sp", "st", "u")
 # Stage 2 keys a stage-1 export does not have: filled with these defaults on import (D10).
-STAGE2_DEFAULTS = {"authorizations": {}, "settings": {"authorization_ttl_seconds": DEFAULT_TTL}}
+STAGE2_DEFAULTS = {"authorizations": {}, "settings": {"authorization_ttl_seconds": DEFAULT_TTL},
+                   "correction_batches": {}}  # (stage 4 key; older exports have none)
 DERIVED_KEYS = ("user_payments", "refunds_of")  # rebuilt on import, never trusted
 STATE_KEYS = tuple(k for k in empty_state()
                    if k not in STAGE2_DEFAULTS and k not in DERIVED_KEYS)
@@ -206,6 +207,7 @@ def _check_counters(state: dict, top_seq: int) -> None:
     for kind in COUNTER_KINDS:
         _int(counters.get(kind), 0, BALANCE_LIMIT, "counter " + kind)
     counters["a"] = _int(counters.get("a", 0), 0, BALANCE_LIMIT, "counter a")
+    counters["cb"] = _int(counters.get("cb", 0), 0, BALANCE_LIMIT, "counter cb")
 
 
 def _check_settings(state: dict) -> None:
@@ -309,8 +311,8 @@ def _check_events(state: dict) -> None:
 
 
 def is_upgrade_state(submitted) -> bool:
-    """A stage-1 or stage-2 export (no stage 3 ledger): the upgrade path (L5, D-52, L8)."""
-    return isinstance(submitted, dict) and "user_payments" not in submitted
+    """A stage-1, -2 or -3 export (no stage 4 keys): the upgrade path (L5, D-52, D-74)."""
+    return isinstance(submitted, dict) and "correction_batches" not in submitted
 
 
 def carry_sessions(old: dict, new: dict) -> None:
@@ -354,6 +356,8 @@ def validated_state(submitted) -> dict:
             _bad("payment refund_of must name a payment")
     _check_revisions(state)
     _check_events(state)
+    for batch in _table(state, "correction_batches").values():  # stage 4
+        _str(batch.get("recorded_at"), "correction batch recorded_at", True)
     store.recompute_held(state, store.now_key())  # held is derived, never trusted (plan §5)
     ledger.rebuild_user_payments(state)
     ledger.compute_openings(state)

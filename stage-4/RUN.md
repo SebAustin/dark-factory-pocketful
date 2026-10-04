@@ -43,8 +43,13 @@ The service listens on `0.0.0.0:$PORT` (default `8080`) and answers `GET /health
     note and visibility. Refunds of one payment never exceed its current corrected amount, are
     paid from the receiver's available funds, and cannot themselves be refunded or corrected;
     a correction cannot go below what was already refunded;
-  - `POST /correction-batches` (idempotent; settlement operator) — several corrections in one
-    atomic step, including every member of a settlement.
+  - `POST /correction-batches` (idempotent; settlement operator; body
+    `{"corrections": [{payment_id, expected_revision, amount, effective_at, reason}, ...]}`, 1..32
+    distinct payments) — corrects several payments in one atomic step. Settlement members may
+    only be corrected here, all members of a settlement together with one effective instant;
+    captures and refunds stay immutable. The batch is judged on its combined effect (current
+    available funds, then every historical boundary); a refused batch changes nothing. All new
+    revisions share one `recorded_at` and carry the `correction_batch_id`.
 - Server-assigned instants have microsecond precision and strictly increase.
 - `POST /_test/import` accepts exports from this team's stage 1, 2, 3 and 4 services.
 

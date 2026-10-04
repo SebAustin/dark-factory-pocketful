@@ -19,7 +19,7 @@ def revision_view(p: dict, rev: dict) -> dict:
             "correction_batch_id": rev.get("correction_batch_id")}  # D-69: null unless a batch
 
 
-def _fields(body: dict, now):
+def fields(body: dict, now):
     """D-46: every field defect, wrong JSON type included, is 422 validation_failed."""
     expected = validation.integral(body.get("expected_revision"))
     if expected is None or expected < 1:
@@ -37,9 +37,10 @@ def _fields(body: dict, now):
     return expected, amount, effective_at, reason
 
 
-def _boundaries_ok(state: dict, uid: str, p: dict, new_rev: dict, now) -> bool:
-    """D-53: with the new revision selected, total and available stay >= 0 at every past
-    boundary (all movements at one instant combined), starting from the opening."""
+def boundaries_ok(state: dict, uid: str, proposed: dict, now) -> bool:
+    """D-53: with the proposed revisions (payment id -> revision) selected and every other
+    payment at its latest revision, total and available stay >= 0 at every boundary <= now
+    (all movements at one instant combined), starting from the opening."""
     changes: dict = {}  # instant key -> [total delta, held delta]
 
     def add(at, d_total, d_held):
@@ -51,7 +52,7 @@ def _boundaries_ok(state: dict, uid: str, p: dict, new_rev: dict, now) -> bool:
 
     for pid in state["user_payments"].get(uid, ()):
         q = state["payments"][pid]
-        rev = new_rev if pid == p["id"] else ledger.latest(q)
+        rev = proposed.get(pid) or ledger.latest(q)
         add(rev["effective_at"], ledger.signed(uid, q, rev["amount"]), 0)
     for a in state["authorizations"].values():
         if a["from"] == uid:
@@ -68,16 +69,13 @@ def _boundaries_ok(state: dict, uid: str, p: dict, new_rev: dict, now) -> bool:
     return True
 
 
-@route("POST", "/payments/{payment_id}/corrections", idempotent=True)
-def correct(ctx, state, user):
-    now = instants.key(now_ts())  # the correction's read instant N
-    expected, amount, effective_at, reason = _fields(ctx.json_object(), now)
-    p = state["payments"].get(ctx.params["payment_id"])
-    if p is None:
-        raise errors.not_found("no such payment")
-    if user["id"] != p["from"]:
-        raise errors.forbidden("only the original sender may correct a payment")
-    if p.get("settlement_id") or p.get("authorization_id") or p.get("refund_of"):
+def item_check(state: dict, p, fields, allow_members: bool):
+    """Per-payment rules shared by single corrections and batch items, after 404/403:
+    422 linked_payment_immutable -> 409 stale_revision -> 422 refund_exceeds_payment (D-65/D-66).
+    Returns the payment's current latest revision."""
+    expected, amount, _, _ = fields
+    member = p.get("settlement_id") and not allow_members
+    if member or p.get("authorization_id") or p.get("refund_of"):
         raise errors.unprocessable("linked_payment_immutable",
                                    "settlement members, captures and refunds cannot be corrected")
     current = ledger.latest(p)
@@ -87,14 +85,28 @@ def correct(ctx, state, user):
     if amount < ledger.refunded(state, p["id"]):
         raise errors.unprocessable("refund_exceeds_payment",
                                    "the payment has already been refunded beyond that amount")
+    return current
+
+
+@route("POST", "/payments/{payment_id}/corrections", idempotent=True)
+def correct(ctx, state, user):
+    now = instants.key(now_ts())  # the correction's read instant N
+    expected, amount, effective_at, reason = fields(ctx.json_object(), now)
+    p = state["payments"].get(ctx.params["payment_id"])
+    if p is None:
+        raise errors.not_found("no such payment")
+    if user["id"] != p["from"]:
+        raise errors.forbidden("only the original sender may correct a payment")
+    current = item_check(state, p, (expected, amount, effective_at, reason), False)
     diff = amount - current["amount"]
     payer, payee = state["users"][p["from"]], state["users"][p["to"]]
     debited = payer if diff > 0 else payee
     if diff and available(debited) < abs(diff):
         raise errors.conflict("insufficient_funds", "the debited wallet cannot cover the change")
     new_rev = {"revision": current["revision"] + 1, "amount": amount,
-               "effective_at": effective_at, "recorded_at": now_ts(), "reason": reason}
-    if not all(_boundaries_ok(state, uid, p, new_rev, now) for uid in (p["from"], p["to"])):
+               "effective_at": effective_at, "recorded_at": now_ts(), "reason": reason,
+               "correction_batch_id": None}
+    if not all(boundaries_ok(state, uid, {p["id"]: new_rev}, now) for uid in (p["from"], p["to"])):
         raise errors.conflict("historical_overdraft",
                               "the corrected history makes a balance negative")
     p["revisions"].append(new_rev)
