@@ -44,6 +44,7 @@ const ICONS = {
   down: "M12 5v13m0 0-5-5m5 5 5-5",
   strike: "M5 12h14M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z",
   info: "M12 11v5.5M12 7.5h.01M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z",
+  undo: "M9 7 4.5 11.5 9 16M5 11.5h9a5 5 0 0 1 5 5v1",
 };
 
 export function icon(name) {

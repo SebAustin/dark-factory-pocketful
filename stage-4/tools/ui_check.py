@@ -251,7 +251,7 @@ def check_wallet(browser):
     full = [
         {"id": "u_ada", "email": "ada@example.com", "password": PASSWORD, "display_name": "Ada", "handle": "ada", "balance": 10000},
         {"id": "u_bob", "email": "bob@example.com", "password": PASSWORD, "display_name": "Bob", "handle": "bob", "balance": 2500},
-        {"id": "u_cy", "email": "cy@example.com", "password": PASSWORD, "display_name": "Cy", "handle": "cy", "balance": 0},
+        {"id": "u_cy", "email": "cy@example.com", "password": PASSWORD, "display_name": "Cy", "handle": "cy", "balance": 10},   # 10 so the seeded payment of 7 leaves a nonnegative opening (stage 3, D-45)
     ]
     payments = [{"id": "p_1", "from_user_id": "u_ada", "to_user_id": "u_bob", "amount": 500, "note": "coffee", "visibility": "public"},
                 {"id": "p_2", "from_user_id": "u_bob", "to_user_id": "u_ada", "amount": 1, "note": "", "visibility": "private"},
@@ -828,6 +828,33 @@ def check_header(browser):
         pg.done(f"header @{width}")
 
 
+def check_refund(browser):
+    """S4.U1: a refund reads as a refund (badge outside the specified texts); ordinary rows have none; no sideways scroll."""
+    for width in (375, 390, 768, 1024, 1280):
+        reset(base_users())
+        ada, bob = token_for("ada@example.com"), token_for("bob@example.com")
+        st, pay = api_json("/payments", token=ada, method="POST", body={"to_handle": "bob", "amount": 1500, "note": "dinner \u2615", "visibility": "public"}, key="pay-1")
+        st, refund = api_json(f"/payments/{pay['payment_id']}/refunds", token=bob, method="POST", body={"amount": 500}, key="refund-1")
+        check(st == 201 and refund.get("refund_of") == pay["payment_id"], f"refund created: {st} {refund}")
+        pg = Page(browser, width)
+        login(pg)
+        rid, oid = refund["payment_id"], pay["payment_id"]
+        pg.t(f"activity-item-{rid}").wait_for()
+        refund_row, plain_row = pg.t(f"activity-item-{rid}"), pg.t(f"activity-item-{oid}")
+        check(refund_row.locator("[data-role=refund-badge]").count() == 1 and refund_row.locator("[data-role=refund-badge]").inner_text().strip() == "Refund",
+              f"refund badge on the refund row @{width}")
+        check(plain_row.locator("[data-role=refund-badge]").count() == 0, f"no badge on the ordinary payment @{width}")
+        check(refund_row.get_attribute("data-refund-of") == oid and plain_row.get_attribute("data-refund-of") is None, "data-refund-of only on the refund")
+        check(pg.t(f"activity-amount-{rid}").text_content() == "5.00 EUR", "refund amount text exact")
+        check(pg.t(f"activity-note-{rid}").text_content() == "dinner \u2615", "refund note text exact (original note)")
+        parties = pg.t(f"activity-parties-{rid}").text_content()
+        check("bob" in parties and "ada" in parties, f"refund parties contain both handles: {parties!r}")
+        check(pg.t(f"activity-amount-{oid}").text_content() == "15.00 EUR", "ordinary amount text exact")
+        pg.no_hscroll("refund feed")
+        pg.shot("refund", "feed")
+        pg.done(f"refund @{width}")
+
+
 def check_cover(browser):
     """No feedback element may end under the fixed tab bar (<= 999 px), including a form at the very bottom of the page."""
     for width, height in ((375, 667), (390, 844), (768, 1024)):
@@ -852,7 +879,7 @@ def check_cover(browser):
         ctx.close()
 
 
-CHECKS = {"cover": check_cover, "header": check_header, "auth": check_auth, "units": check_units, "wallet": check_wallet, "requests": check_requests, "split": check_split, "holds": check_holds, "chaos": check_chaos}
+CHECKS = {"refund": check_refund, "cover": check_cover, "header": check_header, "auth": check_auth, "units": check_units, "wallet": check_wallet, "requests": check_requests, "split": check_split, "holds": check_holds, "chaos": check_chaos}
 
 
 def main():

@@ -50,9 +50,11 @@ function feedItem(p, me) {
   const chip = sent ? h("span", { class: "badge badge--neutral" }, icon("up"), "Sent")
     : received ? h("span", { class: "badge badge--ok" }, icon("down"), "Received")
       : h("span", { class: "badge badge--neutral" }, icon("info"), "Public");
-  return h("li", { class: "feed-item", "data-testid": `activity-item-${p.payment_id}`, "data-visibility": p.visibility },
+  return h("li", { class: "feed-item", "data-testid": `activity-item-${p.payment_id}`, "data-visibility": p.visibility, "data-refund-of": p.refund_of || false },
     h("div", { class: "feed-item__main" },
       h("div", { class: "feed-item__top" }, chip,
+        // A refund is an ordinary payment the other way round; the badge sits outside the elements whose text the spec fixes.
+        p.refund_of ? h("span", { class: "badge badge--pending", "data-role": "refund-badge", title: `Refund of ${p.refund_of}` }, icon("undo"), "Refund") : null,
         p.visibility === "private" ? h("span", { class: "badge badge--neutral" }, icon("lock"), "Private") : null),
       h("p", { class: "feed-item__parties", "data-testid": `activity-parties-${p.payment_id}`, text: `${p.from_handle} → ${p.to_handle}` }),
       h("p", { class: "feed-item__note", "data-testid": `activity-note-${p.payment_id}`, text: p.note }),
