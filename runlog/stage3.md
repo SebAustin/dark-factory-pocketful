@@ -30,11 +30,15 @@ Round 1 (analyst): plan agrees with D-41..D-60 except snapshot invalidation on i
 
 ## Rejections and what they caught
 
+- Stage gate @aaf1ee2 REJECT: stale RUN.md (again) and dead code. Lesson: carry-forward must include a RUN.md item in every stage.
+
 - S3.3 @fe6ff39 REJECT (verifier): each statement read stored the whole window until reset — 5500 reads made a 69 MB export that import refused (>64 MiB) and memory grew ~67 KB/read toward the 2 GiB limit. Fix: O(1) snapshot recipes over append-only revisions, with generation references; snapshots not exported (final L8).
 
 ## Stage gate
 
 - Gate packet sent on aaf1ee2db56a74f01e6db9f96b51fe34536e4bf6 (stage 3 spec pasted 2 parts + packet); seats told to quiet host.
+
+- Gate 1 on aaf1ee2: REJECT (verifier) on G7 only — F7 stage-3/RUN.md was the stage-2 copy (same defect as stage 2 F6; lead process gap: RUN.md not in any item packet after carry-forward), F8 two dead functions. G1-G6, G8 green.
 
 ## Gate table at acceptance
 
