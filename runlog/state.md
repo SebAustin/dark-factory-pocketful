@@ -3,7 +3,7 @@
 Track: pocketful. CURRENT STAGE: 3. Stage 3 dispatch: 2026-10-04T01:12:36Z.
 Room: af150286-bfd0-4fd8-8ae1-c57d84bf2e91. Seats: henry.sebastien1982/{analyst,builder,designer,verifier}.
 Spec copies: runlog/stage1-spec.md, stage2-spec.md, stage3-spec.md.
-Last accepted revision: 6a3fd334b9a64588b9d821ba654ae47538cba7bc (stage 2). Stage 1: 9d7ab5e. stage-1/ and stage-2/ FROZEN.
+Last accepted revision: 36547b6451dab2843338683d4226b7fbc1349250 (stage 3, re-gate ACCEPT). Stage 2: 6a3fd33. Stage 1: 9d7ab5e. stage-1/, stage-2/, stage-3/ FROZEN.
 
 ## Stage 3 phase
 
@@ -12,8 +12,8 @@ Last accepted revision: 6a3fd334b9a64588b9d821ba654ae47538cba7bc (stage 2). Stag
 - [ ] Plan (builder) S3.P ; reference oracle (designer) S3.O
 - [x] Plan gate (L9)
 - [x] Items (all accepted)
-- [ ] Stage gate: FAIL 1/3 on aaf1ee2 (F7 stale RUN.md again, F8 dead code; behaviour all green) -> S3.7 30821c2 + ledger 36547b6; re-gate sent on 36547b6451dab2843338683d4226b7fbc1349250
-- [ ] Run log
+- [x] Stage gate: FAIL 1/3 on aaf1ee2, ACCEPT on 36547b6
+- [x] Run log
 
 ## Stage 3 work items
 
@@ -27,7 +27,7 @@ Last accepted revision: 6a3fd334b9a64588b9d821ba654ae47538cba7bc (stage 2). Stag
 | S3.2 | /me as_of/known_at | builder | app | accepted | e02f93d | 0 |
 | S3.3 | /statement + snapshots | builder | app | accepted (note: replaced states retained by live snapshots until reset — recorded risk) | c8943d4 | 1 |
 | S3.4 | Corrections + revisions | builder | app | accepted | 6757ba3 | 0 |
-| S3.7 | Gate F7 RUN.md + F8 dead code | builder | RUN.md, transfer_io, instants | built (re-gate) | 30821c2 | 0 |
+| S3.7 | Gate F7 RUN.md + F8 dead code | builder | RUN.md, transfer_io, instants | accepted in re-gate | 30821c2 | 0 |
 | S3.5 | Populated upgrade checks | builder | tests | accepted | 41cf24c | 0 |
 | S3.6 | Ledger stress | builder | tools | accepted | c03a99e | 0 |
 | S3.PG | Plan gate | analyst | - | done: 1 finding (snapshots across import -> L8 revised) + 2 notes; gate closed (L9) | 341f1a2 | 0 |
