@@ -785,22 +785,34 @@ class Run:
             self.expect(got not in (None, "missing") and parse(got) == want, "seeded closed authorization closed_at (D-51)", f"{aid}: got {got}, want {want}")
 
     def check_reset_validation(self):
-        """D-44/D-45: a future seeded created_at and a negative opening are 422 and change nothing."""
+        """D-44/D-45: a future seeded created_at and a NEGATIVE opening are 422 and change nothing; a nonnegative opening is accepted.
+
+        opening(u) = ending balance - net effect of the seeded payments on u. A receiver that ends below what it received
+        has a negative opening (x_a ends at 30 after receiving 50: -20); a sender that ends at 0 after sending 50 opens at +50."""
         before = self.call("GET", "/me", self.tokens["u_0"])[1]["balance"]
         start = self.now()
-        users = [{"id": "x_a", "email": "xa@example.com", "password": PASSWORD, "display_name": "A", "handle": "xa", "balance": 100},
-                 {"id": "x_b", "email": "xb@example.com", "password": PASSWORD, "display_name": "B", "handle": "xb", "balance": 0}]
-        cases = {"future created_at": [{"id": "p_f", "from_user_id": "x_a", "to_user_id": "x_b", "amount": 1, "created_at": fmt(start + timedelta(hours=1))}],
-                 "negative opening": [{"id": "p_n", "from_user_id": "x_b", "to_user_id": "x_a", "amount": 50, "created_at": fmt(start - timedelta(hours=1))}]}
+
+        def fx(a_balance, b_balance, payments):
+            users = [{"id": "x_a", "email": "xa@example.com", "password": PASSWORD, "display_name": "A", "handle": "xa", "balance": a_balance},
+                     {"id": "x_b", "email": "xb@example.com", "password": PASSWORD, "display_name": "B", "handle": "xb", "balance": b_balance}]
+            return {"currency": "EUR", "minor_units": 2, "users": users, "payments": payments}
+
+        old = fmt(start - timedelta(hours=1))
+        refused = {"future created_at": fx(100, 0, [{"id": "p_f", "from_user_id": "x_a", "to_user_id": "x_b", "amount": 1, "created_at": fmt(start + timedelta(hours=1))}]),
+                   "negative opening (x_a ends at 30 after receiving 50: -20)": fx(30, 70, [{"id": "p_n", "from_user_id": "x_b", "to_user_id": "x_a", "amount": 50, "created_at": old}])}
         replaced = False
-        for name, payments in cases.items():
-            status, resp = self.call("POST", "/_test/reset", body={"currency": "EUR", "minor_units": 2, "users": users, "payments": payments}, timeout=20)
+        for name, fixture in refused.items():
+            status, resp = self.call("POST", "/_test/reset", body=fixture, timeout=20)
             replaced = replaced or status == 204
             self.expect(status == 422 and resp["error"]["code"] == "validation_failed", f"reset with a {name} must be 422 validation_failed", f"{status} {resp}")
         if replaced:        # the service accepted a bad fixture and replaced the state: start over from a clean one
             self.setup()
             return
         self.expect(self.call("GET", "/me", self.tokens["u_0"])[1].get("balance") == before, "a refused reset must change nothing", "")
+        # control: x_b ends at 0 after SENDING 50 (opening +50) and x_a ends at 100 after receiving 50 (opening +50) is consistent
+        status, resp = self.call("POST", "/_test/reset", body=fx(100, 0, [{"id": "p_ok", "from_user_id": "x_b", "to_user_id": "x_a", "amount": 50, "created_at": old}]), timeout=20)
+        self.expect(status == 204, "a seeded history with nonnegative openings must be accepted (D-45)", f"{status} {resp}")
+        self.setup()
 
     def check_snapshot_after_reset(self):
         if not self.snapshots:
