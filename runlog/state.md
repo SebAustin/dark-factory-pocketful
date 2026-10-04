@@ -28,7 +28,7 @@ Last accepted revision: 36547b6451dab2843338683d4226b7fbc1349250 (stage 3). Stag
 | S4.2 | Correction batches | builder | app | accepted | 4f6e16d | 0 |
 | S4.3 | Snapshots in exports (L10/L12) | builder | app | rejected R1 (F9 export grows reads x window: 379 MB, 13 s) -> fixing | d1ffc66 | 1 |
 | S4.4 | Populated stage-1/2/3 upgrades | builder | tests | accepted | 2b8d873 | 0 |
-| S4.5 | Load | builder | tools | in review | a2e2ac4 | 0 |
+| S4.5 | Load | builder | tools | accepted | a2e2ac4 | 0 |
 | S4.O | Oracle ext + atomicity-under-failure tool | designer | stage-4/tools/oracle/ | assigned | - | 0 |
 
 ## Stage 4 decisions
