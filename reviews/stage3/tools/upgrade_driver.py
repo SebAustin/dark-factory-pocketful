@@ -195,8 +195,9 @@ def check_stage(s3, stage, out, chk):
         views.append((t_, sum(call(s3, "GET", "/me?as_of=" + q, tok=t)[1].get("balance", 0) for t in tok.values())))
     chk("[%s] sum of balances = seeded total in every as_of view (%d instants)" % (stage, len(views)),
         views and all(v == seeded_total for _, v in views), str([v for v in views if v[1] != seeded_total][:3]))
+    eff = iso(-1)                                              # one instant, so a replay sends the identical body
     corr = lambda pid, t, k, amt=1: call(s3, "POST", "/payments/%s/corrections" % pid,
-                                         {"expected_revision": 1, "amount": amt, "effective_at": iso(-1), "reason": "verifier"}, t, k)
+                                         {"expected_revision": 1, "amount": amt, "effective_at": eff, "reason": "verifier"}, t, k)
     sender_tok = {}
     for w in meta["writes"]:
         r = w["response"] or {}
