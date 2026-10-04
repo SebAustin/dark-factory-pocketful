@@ -81,6 +81,20 @@ class ExportTest(Base):
             self.assertNotIn("tokens", view)
         self.assertEqual(self.page(self.ada, tokens[0]), before)
 
+    def test_repeated_imports_share_identical_generations(self):  # F10
+        exported = call("GET", "/_test/export").body
+        sizes = []
+        for _ in range(8):
+            statement(self.ada)
+            self.assertEqual(call("POST", "/_test/import", exported).status, 204)
+            sizes.append(len(json.dumps(call("GET", "/_test/export").body["state"][
+                "snapshots"]["records"])))
+        with STORE.lock:
+            states = {id(s["state"]) for s in STORE.snapshots.values()}
+            self.assertEqual(len(STORE.views), 1)  # 8 imports, one shared generation
+        self.assertEqual(len(states), 1)
+        self.assertEqual(len(set(sizes)), 1)  # the record table does not grow per import
+
     def test_export_grows_with_retained_states_not_reads(self):  # F9 repro, scaled down
         for i in range(120):
             call("POST", "/payments", {"to_handle": "bob", "amount": 1}, token=self.ada,
@@ -110,13 +124,18 @@ class ExportTest(Base):
 
     def test_invalid_snapshots_are_422_and_change_nothing(self):
         exported = call("GET", "/_test/export").body
-        for bad in ("x", {"tokens": {"t": {"user": "u_nobody"}}, "generations": {}},
+        for bad in ("x", {"tokens": {"t": {"user": "u_nobody"}}, "generations": {}, "records": {}},
                     {"tokens": {"t": {"user": "u_ada", "start": "x", "end": "1", "known": "1"}},
-                     "generations": {}},
+                     "generations": {}, "records": {}},
                     {"tokens": {"t": {"user": "u_ada", "generation": "9", "start": "1",
-                                      "end": "1", "known": "1"}}, "generations": {}},
+                                      "end": "1", "known": "1"}}, "generations": {},
+                     "records": {}},
                     {"tokens": {}, "generations": {"0": {"currency": "EUR", "users": "x",
-                                                        "payments": {}, "user_payments": {}}}}):
+                                                        "payments": {}, "user_payments": {}}},
+                     "records": {}},
+                    {"tokens": {}, "generations": {"0": {"currency": "EUR", "users": {},
+                                                        "payments": {"p": "nope"},
+                                                        "user_payments": {}}}, "records": {}}):
             body = copy.deepcopy(exported)
             body["state"]["snapshots"] = bad
             r = call("POST", "/_test/import", body)

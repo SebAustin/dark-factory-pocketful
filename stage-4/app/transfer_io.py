@@ -392,6 +392,7 @@ def import_state(ctx, state, user):
         if upgrade:
             carry_sessions(old, new)
         statements.retain_generation(old)
+        statements.share_imported(snapshots, new)
         STORE.snapshots.update(snapshots)
     STORE.replace_state(fresh, carry=carry)
     return 204, None

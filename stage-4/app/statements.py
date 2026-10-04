@@ -119,24 +119,56 @@ def _ledger_view(state: dict, uids) -> dict:
             "payments": payments}
 
 
+def _digest(obj) -> str:
+    import hashlib
+    import json
+    return hashlib.sha256(json.dumps(obj, sort_keys=True, separators=(",", ":"))
+                          .encode()).hexdigest()
+
+
+def _shared(view: dict) -> dict:
+    """One object per distinct generation content: payment records interned by content, whole
+    views deduplicated (F10). Caller holds the lock."""
+    digests = {}
+    payments = {}
+    for pid, record in view["payments"].items():
+        d = _digest(record)
+        payments[pid] = STORE.interned.setdefault(d, record)
+        digests[pid] = d
+    key = _digest({"currency": view["currency"], "users": view["users"],
+                   "user_payments": view["user_payments"], "payments": digests})
+    return STORE.views.setdefault(key, dict(view, payments=payments))
+
+
 def retain_generation(old: dict) -> None:
     """Called in the import's swap hold: recipes that read the outgoing state now read one
     shared compact view of it (their owners' payments, openings, handles, currency), so the rest
-    of the replaced state can be freed (stage 3 note; lead's F9 direction)."""
+    of the replaced state can be freed; identical content is shared across imports (F9, F10)."""
     owners = sorted({snap["user"] for snap in STORE.snapshots.values() if snap["state"] is old})
     if not owners:
         return
-    view = _ledger_view(old, owners)
+    view = _shared(_ledger_view(old, owners))
     for snap in STORE.snapshots.values():
         if snap["state"] is old:
             snap["state"] = view
 
 
+def share_imported(snapshots: dict, new: dict) -> None:
+    """Imported generation views join the shared store too (caller holds the lock)."""
+    done = {}
+    for snap in snapshots.values():
+        if snap["state"] is not new:
+            key = id(snap["state"])
+            if key not in done:
+                done[key] = _shared(snap["state"])
+            snap["state"] = done[key]
+
+
 def export_snapshots(current: dict) -> dict:
     """Every live token as a recipe. Recipes reading the exported state need nothing more; each
-    older state that recipes still read (they survived an import, L12) is exported once as a
-    compact ledger view, so the export grows with retained states, not with reads x window."""
-    tokens, generations, owners, index = {}, {}, {}, {}
+    distinct older generation is exported once, its payments as digests into one table of
+    distinct payment records, so the export grows with distinct ledger content (F9, F10)."""
+    tokens, generations, owners, index, records = {}, {}, {}, {}, {}
     for token, snap in STORE.snapshots.items():
         rec = {"user": snap["user"], "start": str(snap["start"]), "end": str(snap["end"]),
                "known": str(snap["known"]), "known_echo": snap["known_echo"]}
@@ -146,8 +178,14 @@ def export_snapshots(current: dict) -> dict:
             rec["generation"] = g
         tokens[token] = rec
     for g, (state, uids) in owners.items():
-        generations[g] = _ledger_view(state, sorted(uids))
-    return {"tokens": tokens, "generations": generations}
+        view = _ledger_view(state, sorted(uids))
+        refs = {}
+        for pid, record in view["payments"].items():
+            d = _digest(record)
+            records.setdefault(d, record)
+            refs[pid] = d
+        generations[g] = dict(view, payments=refs)
+    return {"tokens": tokens, "generations": generations, "records": records}
 
 
 def _instant_key(text):
@@ -159,13 +197,16 @@ def _instant_key(text):
     return None if value.is_nan() else value
 
 
-def _generation(view, bad) -> dict:
+def _generation(view, records: dict, bad) -> dict:
     """A validated ledger view, usable by _compute and _render like a state."""
     if not isinstance(view, dict) or not isinstance(view.get("currency"), str):
         bad("generation needs a currency")
-    users, payments, index = view.get("users"), view.get("payments"), view.get("user_payments")
-    if not all(isinstance(x, dict) for x in (users, payments, index)):
+    users, refs, index = view.get("users"), view.get("payments"), view.get("user_payments")
+    if not all(isinstance(x, dict) for x in (users, refs, index)):
         bad("generation needs users, payments and user_payments")
+    if any(not isinstance(d, str) or d not in records for d in refs.values()):
+        bad("generation payments must name records")
+    payments = {pid: records[d] for pid, d in refs.items()}
     for u in users.values():
         if not isinstance(u, dict) or not isinstance(u.get("handle"), str) \
                 or not isinstance(u.get("opening"), int) or isinstance(u.get("opening"), bool):
@@ -189,10 +230,11 @@ def import_snapshots(data, state: dict) -> dict:
     """Validated token -> recipe for a stage-4 export's snapshots; raises 422 if malformed."""
     def bad(why):
         raise errors.validation("state: snapshots " + why)
-    if not isinstance(data, dict) or not isinstance(data.get("tokens"), dict) \
-            or not isinstance(data.get("generations"), dict):
-        bad("must hold tokens and generations")
-    generations = {g: _generation(v, bad) for g, v in data["generations"].items()}
+    if not isinstance(data, dict) or not all(isinstance(data.get(k), dict)
+                                             for k in ("tokens", "generations", "records")):
+        bad("must hold tokens, generations and records")
+    records = data["records"]
+    generations = {g: _generation(v, records, bad) for g, v in data["generations"].items()}
     out = {}
     for token, rec in data["tokens"].items():
         if not isinstance(rec, dict):
