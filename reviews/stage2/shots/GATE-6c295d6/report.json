@@ -1,0 +1,2872 @@
+[
+  {
+    "state": "login",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/01-login.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "login-error",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/02-login-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    ]
+  },
+  {
+    "state": "login-unreachable",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/03-login-unreachable.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "login-submitting",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/04-login-submitting.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/05-signup.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup-dup",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/06-signup-dup.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ]
+  },
+  {
+    "state": "signup-short",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/07-signup-short.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    ]
+  },
+  {
+    "state": "shell-wallet",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/08-shell-wallet.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "shell-requests",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/09-shell-requests.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "shell-split",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/10-shell-split.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "shell-authorizations",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/11-shell-authorizations.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/12-wallet.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-empty-jpy",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/13-wallet-empty-jpy.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-max",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/14-wallet-max.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-success",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/15-pay-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-already",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/16-pay-already.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-invalid-amount",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/17-pay-invalid-amount.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-refused-funds",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/18-pay-refused-funds.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-submitting",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/19-pay-submitting.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-uncertain",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/20-pay-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "request-error",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/21-request-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "state": "request-success",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/22-request-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "authorize-success",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/23-authorize-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "authorize-error",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/24-authorize-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/25-requests.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-pay-refused",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/26-requests-pay-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ]
+  },
+  {
+    "state": "requests-paid",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/27-requests-paid.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-uncertain",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/28-requests-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "requests-empty",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/29-requests-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-hint",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/30-split-hint.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-preview",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/31-split-preview.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-success",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/32-split-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-error",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/33-split-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "state": "login-signed-in",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/34-login-signed-in.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup-signed-in",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/35-signup-signed-in.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-held",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/36-wallet-held.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/37-holds.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-refused",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/38-hold-capture-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    ]
+  },
+  {
+    "state": "hold-captured",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/39-hold-captured.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-uncertain",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/40-hold-capture-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "authorize-refused",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/41-authorize-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds-empty",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/42-holds-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-declined",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/43-requests-declined.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-cancelled",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/44-requests-cancelled.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-voided",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/45-hold-voided.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-keep-open",
+    "viewport": 375,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/375/46-hold-keep-open.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "login",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/01-login.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "login-error",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/02-login-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    ]
+  },
+  {
+    "state": "login-unreachable",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/03-login-unreachable.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "login-submitting",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/04-login-submitting.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/05-signup.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup-dup",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/06-signup-dup.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ]
+  },
+  {
+    "state": "signup-short",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/07-signup-short.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    ]
+  },
+  {
+    "state": "shell-wallet",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/08-shell-wallet.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "shell-requests",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/09-shell-requests.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "shell-split",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/10-shell-split.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "shell-authorizations",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/11-shell-authorizations.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/12-wallet.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-empty-jpy",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/13-wallet-empty-jpy.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-max",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/14-wallet-max.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-success",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/15-pay-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-already",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/16-pay-already.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-invalid-amount",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/17-pay-invalid-amount.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-refused-funds",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/18-pay-refused-funds.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-submitting",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/19-pay-submitting.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-uncertain",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/20-pay-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "request-error",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/21-request-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "state": "request-success",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/22-request-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "authorize-success",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/23-authorize-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "authorize-error",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/24-authorize-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/25-requests.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-pay-refused",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/26-requests-pay-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ]
+  },
+  {
+    "state": "requests-paid",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/27-requests-paid.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-uncertain",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/28-requests-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "requests-empty",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/29-requests-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-hint",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/30-split-hint.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-preview",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/31-split-preview.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-success",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/32-split-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-error",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/33-split-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "state": "login-signed-in",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/34-login-signed-in.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup-signed-in",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/35-signup-signed-in.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-held",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/36-wallet-held.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/37-holds.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-refused",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/38-hold-capture-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    ]
+  },
+  {
+    "state": "hold-captured",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/39-hold-captured.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-uncertain",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/40-hold-capture-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "authorize-refused",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/41-authorize-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds-empty",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/42-holds-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-declined",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/43-requests-declined.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-cancelled",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/44-requests-cancelled.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-voided",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/45-hold-voided.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-keep-open",
+    "viewport": 390,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/390/46-hold-keep-open.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "login",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/01-login.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "login-error",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/02-login-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    ]
+  },
+  {
+    "state": "login-unreachable",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/03-login-unreachable.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "login-submitting",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/04-login-submitting.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/05-signup.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup-dup",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/06-signup-dup.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ]
+  },
+  {
+    "state": "signup-short",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/07-signup-short.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    ]
+  },
+  {
+    "state": "shell-wallet",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/08-shell-wallet.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "shell-requests",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/09-shell-requests.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "shell-split",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/10-shell-split.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "shell-authorizations",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/11-shell-authorizations.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/12-wallet.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-empty-jpy",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/13-wallet-empty-jpy.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-max",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/14-wallet-max.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-success",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/15-pay-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-already",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/16-pay-already.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-invalid-amount",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/17-pay-invalid-amount.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-refused-funds",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/18-pay-refused-funds.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-submitting",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/19-pay-submitting.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-uncertain",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/20-pay-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "request-error",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/21-request-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "state": "request-success",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/22-request-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "authorize-success",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/23-authorize-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "authorize-error",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/24-authorize-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/25-requests.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-pay-refused",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/26-requests-pay-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ]
+  },
+  {
+    "state": "requests-paid",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/27-requests-paid.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-uncertain",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/28-requests-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "requests-empty",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/29-requests-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-hint",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/30-split-hint.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-preview",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/31-split-preview.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-success",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/32-split-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-error",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/33-split-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "state": "login-signed-in",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/34-login-signed-in.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup-signed-in",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/35-signup-signed-in.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-held",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/36-wallet-held.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/37-holds.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-refused",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/38-hold-capture-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    ]
+  },
+  {
+    "state": "hold-captured",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/39-hold-captured.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-uncertain",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/40-hold-capture-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "authorize-refused",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/41-authorize-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds-empty",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/42-holds-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-declined",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/43-requests-declined.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-cancelled",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/44-requests-cancelled.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-voided",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/45-hold-voided.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-keep-open",
+    "viewport": 768,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/768/46-hold-keep-open.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "login",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/01-login.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "login-error",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/02-login-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    ]
+  },
+  {
+    "state": "login-unreachable",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/03-login-unreachable.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "login-submitting",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/04-login-submitting.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/05-signup.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup-dup",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/06-signup-dup.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ]
+  },
+  {
+    "state": "signup-short",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/07-signup-short.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    ]
+  },
+  {
+    "state": "shell-wallet",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/08-shell-wallet.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "shell-requests",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/09-shell-requests.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "shell-split",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/10-shell-split.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "shell-authorizations",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/11-shell-authorizations.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/12-wallet.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-empty-jpy",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/13-wallet-empty-jpy.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-max",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/14-wallet-max.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-success",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/15-pay-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-already",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/16-pay-already.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-invalid-amount",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/17-pay-invalid-amount.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-refused-funds",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/18-pay-refused-funds.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-submitting",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/19-pay-submitting.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-uncertain",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/20-pay-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "request-error",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/21-request-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "state": "request-success",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/22-request-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "authorize-success",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/23-authorize-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "authorize-error",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/24-authorize-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/25-requests.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-pay-refused",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/26-requests-pay-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ]
+  },
+  {
+    "state": "requests-paid",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/27-requests-paid.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-uncertain",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/28-requests-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "requests-empty",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/29-requests-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-hint",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/30-split-hint.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-preview",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/31-split-preview.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-success",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/32-split-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-error",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/33-split-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "state": "login-signed-in",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/34-login-signed-in.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup-signed-in",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/35-signup-signed-in.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-held",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/36-wallet-held.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/37-holds.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-refused",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/38-hold-capture-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    ]
+  },
+  {
+    "state": "hold-captured",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/39-hold-captured.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-uncertain",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/40-hold-capture-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "authorize-refused",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/41-authorize-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds-empty",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/42-holds-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-declined",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/43-requests-declined.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-cancelled",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/44-requests-cancelled.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-voided",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/45-hold-voided.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-keep-open",
+    "viewport": 1024,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1024/46-hold-keep-open.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "login",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/01-login.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "login-error",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/02-login-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    ]
+  },
+  {
+    "state": "login-unreachable",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/03-login-unreachable.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "login-submitting",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/04-login-submitting.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/05-signup.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup-dup",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/06-signup-dup.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ]
+  },
+  {
+    "state": "signup-short",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/07-signup-short.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    ]
+  },
+  {
+    "state": "shell-wallet",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/08-shell-wallet.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "shell-requests",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/09-shell-requests.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "shell-split",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/10-shell-split.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "shell-authorizations",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/11-shell-authorizations.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/12-wallet.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-empty-jpy",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/13-wallet-empty-jpy.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-max",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/14-wallet-max.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-success",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/15-pay-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-already",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/16-pay-already.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-invalid-amount",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/17-pay-invalid-amount.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-refused-funds",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/18-pay-refused-funds.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-submitting",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/19-pay-submitting.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "pay-uncertain",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/20-pay-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "request-error",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/21-request-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "state": "request-success",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/22-request-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "authorize-success",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/23-authorize-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "authorize-error",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/24-authorize-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/25-requests.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-pay-refused",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/26-requests-pay-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ]
+  },
+  {
+    "state": "requests-paid",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/27-requests-paid.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-uncertain",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/28-requests-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "requests-empty",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/29-requests-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-hint",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/30-split-hint.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-preview",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/31-split-preview.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-success",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/32-split-success.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "split-error",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/33-split-error.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "state": "login-signed-in",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/34-login-signed-in.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "signup-signed-in",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/35-signup-signed-in.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "wallet-held",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/36-wallet-held.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/37-holds.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-refused",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/38-hold-capture-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+    ]
+  },
+  {
+    "state": "hold-captured",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/39-hold-captured.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-capture-uncertain",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/40-hold-capture-uncertain.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": [
+      "console: Failed to load resource: net::ERR_FAILED"
+    ]
+  },
+  {
+    "state": "authorize-refused",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/41-authorize-refused.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "holds-empty",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/42-holds-empty.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-declined",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/43-requests-declined.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "requests-cancelled",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/44-requests-cancelled.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-voided",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/45-hold-voided.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  },
+  {
+    "state": "hold-keep-open",
+    "viewport": 1280,
+    "screenshot": "reviews/stage2/shots/GATE-6c295d6/1280/46-hold-keep-open.png",
+    "missing_testids": [],
+    "overflow": null,
+    "unlabelled": [],
+    "low_contrast": [],
+    "focus_not_visible": [],
+    "events": [],
+    "allowed_events": []
+  }
+]
