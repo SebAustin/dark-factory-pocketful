@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""S3.6: concurrency, snapshots and historical-view invariants under load (stdlib only).
+"""S3.6/S4.5: concurrency, snapshots, refunds, batches and historical views under load (stdlib).
 
     TARGET_URL=http://127.0.0.1:18240 LEDGER_SECONDS=30 python3 stage-3/tools/ledger_stress.py
     TARGET_URL=... python3 stage-3/tools/ledger_stress.py big     # large-state timings
@@ -11,6 +11,11 @@ load: 50 workers mix payments, corrections (bursts racing on the same expected r
       refusal); every snapshot re-pages byte-identically after later writes; at the end, for
       every boundary instant and for K in {each recorded_at, now}: Σ totals = seeded total,
       every total >= 0 under K = now, available = total - held >= 0, view(now) = stored values.
+      Stage 4 adds: settlements, refund races (several refunds of one payment at once: their
+      sum never exceeds the payment's corrected amount), correction batches racing single
+      corrections on a shared revision (at most one winner), batches over whole settlements, and
+      at the end every batch's revisions share one recorded_at and a stage-4 export -> reset ->
+      import restores a snapshot taken under load.
 big:  20 000 seeded payments: statement (limit 200), statement full paging, /me as_of and
       known_at, a correction with its overdraft check and an export, each timed (< 5 s).
 """
@@ -116,7 +121,10 @@ class Load:
         self.tok = tokens
         self.payments = []   # (payment id, sender index, receiver index)
         self.snapshots = []  # (user index, token, frozen full body)
+        self.settlements = []  # [member payment ids]
         self.races = 0
+        self.refund_races = 0
+        self.batch_races = 0
 
     def worker(self, deadline):
         rng = random.Random()
@@ -149,12 +157,86 @@ class Load:
                 if s == 200 and (me["available"] != me["total"] - me["held"]
                                  or me["available"] < 0):
                     problem("bad historical /me {}".format(me))
-            elif op < 0.90:
+            elif op < 0.84:
                 call("POST", "/authorizations", {"to_handle": "u%d" % b,
                                                  "amount": rng.randint(1, 500)},
                      self.tok[a], uuid.uuid4().hex)
+            elif op < 0.88:
+                c, d = rng.sample(range(USERS), 2)
+                s, body = call("POST", "/settlements", {"transfers": [
+                    {"from_handle": "u%d" % a, "to_handle": "u%d" % b,
+                     "amount": rng.randint(1, 300)},
+                    {"from_handle": "u%d" % c, "to_handle": "u%d" % d,
+                     "amount": rng.randint(1, 300)}]}, self.tok[0], uuid.uuid4().hex)
+                if s == 201:
+                    with guard:
+                        self.settlements.append([(p["payment_id"], int(p["from_user_id"][1:]))
+                                                 for p in body["payments"]])
+            elif op < 0.92 and self.payments:
+                self.refund_race(rng)
+            elif op < 0.96 and (self.payments or self.settlements):
+                self.batch_race(rng)
             else:
                 call("GET", "/me", token=self.tok[a])
+
+    def refund_race(self, rng):
+        pid, _, receiver = rng.choice(self.payments)
+        results = []
+
+        def one():
+            results.append(call("POST", "/payments/%s/refunds" % pid,
+                                {"amount": rng.randint(1, 1200)}, self.tok[receiver],
+                                uuid.uuid4().hex))
+        threads = [threading.Thread(target=one) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        with guard:
+            self.refund_races += 1
+
+    def batch_race(self, rng):
+        """A batch and a single correction naming the same payment revision: <= 1 winner."""
+        if self.settlements and rng.random() < 0.5:
+            pairs = list(rng.choice(self.settlements))       # (payment id, sender index)
+        else:
+            pid, sender_index, _ = rng.choice(self.payments)
+            pairs = [(pid, sender_index)]
+        ids = [pid for pid, _ in pairs]
+        revs = {}
+        for pid, who in pairs:  # only a party may read a payment's revisions
+            s, body = call("GET", "/payments/%s/revisions" % pid, token=self.tok[who])
+            if s != 200:
+                return
+            revs[pid] = body["revisions"][-1]
+        effective = iso(datetime.now(timezone.utc) - timedelta(seconds=rng.uniform(1, 5)))
+        items = [{"payment_id": pid, "expected_revision": r["revision"],
+                  "amount": rng.randint(0, 2500), "effective_at": effective, "reason": "batch race"}
+                 for pid, r in revs.items()]
+        results = []
+        single_pid = ids[0]
+        sender = pairs[0][1] if len(pairs) == 1 else None  # members: batch only (single = 422)
+
+        def batch():
+            results.append(call("POST", "/correction-batches", {"corrections": items},
+                                self.tok[0], uuid.uuid4().hex))
+
+        def single():
+            results.append(call("POST", "/payments/%s/corrections" % single_pid,
+                                {"expected_revision": revs[single_pid]["revision"],
+                                 "amount": rng.randint(0, 2500), "effective_at": effective,
+                                 "reason": "single race"}, self.tok[sender], uuid.uuid4().hex))
+        threads = [threading.Thread(target=batch), threading.Thread(target=batch)]
+        if sender is not None:
+            threads.append(threading.Thread(target=single))
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        with guard:
+            self.batch_races += 1
+        if sum(1 for st, _ in results if st == 201) > 1:
+            problem("two writers on {} at one revision succeeded".format(ids))
 
     def race(self, rng):
         pid, sender, _ = rng.choice(self.payments)
@@ -179,6 +261,35 @@ class Load:
             self.races += 1
         if sum(1 for s, _ in results if s == 201) > 1:
             problem("two corrections of {} at revision {} succeeded".format(pid, expected))
+
+
+def stage4_checks(tokens, exported):
+    """Refunds within corrected amounts; batch revisions share recorded_at; snapshot restore."""
+    payments = exported["payments"]
+    refunded = {}
+    for p in payments.values():
+        if p.get("refund_of"):
+            refunded[p["refund_of"]] = refunded.get(p["refund_of"], 0) + p["amount"]
+    for pid, total in refunded.items():
+        if total > payments[pid]["revisions"][-1]["amount"]:
+            problem("refunds of {} ({}) exceed its corrected amount".format(pid, total))
+    by_batch = {}
+    for p in payments.values():
+        for r in p["revisions"]:
+            if r.get("correction_batch_id"):
+                by_batch.setdefault(r["correction_batch_id"], set()).add(r["recorded_at"])
+    if any(len(stamps) != 1 for stamps in by_batch.values()):
+        problem("a correction batch's revisions do not share recorded_at")
+    first = call("GET", "/statement?limit=200", token=tokens[1])[1]
+    whole = call("GET", "/_test/export", timeout=60)[1]
+    call("POST", "/_test/reset", {"currency": "EUR", "minor_units": 2, "users": []}, timeout=60)
+    if call("POST", "/_test/import", whole, timeout=60)[0] != 204:
+        problem("stage-4 export did not re-import")
+    page = call("GET", "/statement?" + qs(snapshot=first["snapshot"], limit=200),
+                token=tokens[1])[1]
+    if page != first:
+        problem("snapshot not restored identically after export/reset/import")
+    return len(refunded), len(by_batch)
 
 
 def final_checks(tokens, seeded_total):
@@ -222,10 +333,13 @@ def load_mode():
     for t in threads:
         t.join()
     views = final_checks(tokens, seeded_total)
+    refunded, batches = stage4_checks(tokens, call("GET", "/_test/export", timeout=60)[1]["state"])
     ordered = sorted(latencies)
-    print("{} requests, {} correction races, {} snapshots re-paged, {} historical views checked, "
-          "p50 {:.3f}s p99 {:.3f}s max {:.3f}s, statuses {}".format(
-              len(ordered), load.races, len(load.snapshots), views, ordered[len(ordered) // 2],
+    print("{} requests, {} correction races, {} refund races ({} payments refunded), {} batch "
+          "races ({} batches committed), {} settlements, {} snapshots re-paged, {} historical "
+          "views checked, p50 {:.3f}s p99 {:.3f}s max {:.3f}s, statuses {}".format(
+              len(ordered), load.races, load.refund_races, refunded, load.batch_races, batches,
+              len(load.settlements), len(load.snapshots), views, ordered[len(ordered) // 2],
               ordered[int(len(ordered) * 0.99)], ordered[-1], dict(sorted(statuses.items()))))
 
 
