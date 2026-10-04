@@ -28,7 +28,7 @@ Last accepted revision: 6a3fd334b9a64588b9d821ba654ae47538cba7bc (stage 2). Stag
 | S3.3 | /statement + snapshots | builder | app | rejected R1 (F1 export 69 MB, F2 memory linear) -> recipe snapshots + final L8 | fe6ff39 | 1 |
 | S3.4-S3.6 | corrections, upgrade, load | builder | app | in progress (S3.4 6757ba3 built) | 6757ba3 | 0 |
 | S3.PG | Plan gate | analyst | - | done: 1 finding (snapshots across import -> L8 revised) + 2 notes; gate closed (L9) | 341f1a2 | 0 |
-| S3.A | Acceptance (stage1 422, stage2 272, stage3 134) | analyst | stage-3/acceptance/ | built; stage3 34/134 on e02f93d (rest awaits S3.3-S3.5) | 6ff899f | 0 |
+| S3.A | Acceptance (stage1 422, stage2 272, stage3 134) | analyst | stage-3/acceptance/ | test errors fixed 7773dee; stage3 133/134 on 6757ba3 (UPG_5 awaits S3.3 fix) | 7773dee | 0 |
 | S3.O | Independent reference model + differential/stress tool | designer | stage-3/tools/oracle/ | done (14 planted bugs caught); 1 divergence (D-45 reset) -> builder | df63a79 | 0 |
 
 ## Stage 3 decisions
