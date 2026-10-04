@@ -9,6 +9,7 @@
 | Time (UTC) | Event |
 |---|---|
 | 11:57 | Dispatch received; seats present |
+| 11:59 | S4.0 (+RUN.md) -> builder; spec + S4.L -> analyst, S4.P -> builder, S4.O -> designer; L10 recorded (snapshots exported in stage 4; stage-3 limitation) |
 
 ## Work items
 

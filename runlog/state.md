@@ -18,10 +18,14 @@ Last accepted revision: 36547b6451dab2843338683d4226b7fbc1349250 (stage 3). Stag
 
 | Id | Title | Owner | Paths | State | Last rev | Rejections |
 |---|---|---|---|---|---|---|
-| S4.0 | Carry forward | builder | stage-4/ | assigned | - | 0 |
+| S4.0 | Carry forward + RUN.md | builder | stage-4/ | assigned | - | 0 |
+| S4.L | Ledger + decisions | analyst | stage-4/docs/ledger.md | assigned | - | 0 |
+| S4.P | Plan | builder | stage-4/docs/plan.md | assigned | - | 0 |
+| S4.O | Oracle ext + atomicity-under-failure tool | designer | stage-4/tools/oracle/ | assigned | - | 0 |
 
 ## Stage 4 decisions
 
+- L11 (12:00): builder may start refunds right after the plan (as L1/L4/L7).
 - L10 (11:58): stage 4 text 'A stage-4 service must accept exports produced by the same team's stages 1-3, retaining settlement membership, corrections and snapshots' overrides L8 for stage 4: stage-4 exports CARRY snapshots and import restores them. KNOWN LIMITATION: frozen stage-3 exports contain no snapshots (L8) and use random tokens, so stage-3 snapshot tokens cannot survive a stage-3 -> stage-4 upgrade. Record in final report.
 
 ---
