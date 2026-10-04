@@ -46,6 +46,8 @@ Round 1 (analyst): 1 blocking (D-22 browser session across stage-1 import -> lea
 
 ## Rejections and what they caught
 
+- S2.U11 @c6a8996 REJECT (verifier, real-viewport screenshot): with feedback moved below the button, a refused payment's pay-error rendered fully under the fixed bottom tab bar at 390x844 — 'A refused payment shows pay-error'. DOM visibility checks could not see it.
+
 - S2.U10 @74d83a5 REJECT (verifier): new 'change' listener cleared the feedback slot above the submit button on blur, the button jumped and the click was lost after an edit — 'Changing a field makes the next submission a new payment request'. Analyst found the in-flight variant independently (S2.U11).
 
 - S2.U2+U3 @0fa1361 REJECT (verifier): signed-in header overflowed horizontally between 641 px and ~1030 px (Log out off-screen / over the name at 1024) — spec '375 CSS-pixel viewport and at conventional desktop widths, without horizontal page scrolling'. Verifier now walks 768 and 1024 too.
