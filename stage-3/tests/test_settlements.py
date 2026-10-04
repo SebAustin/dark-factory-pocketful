@@ -88,7 +88,7 @@ class AccessTest(SettlementBase):
         self.assertEqual((r.status, r.code), (400, "malformed_request"))
 
     def test_operator_does_not_gain_request_or_private_access(self):
-        f = fixture()
+        f = fixture(bob=1)  # stage 3: seeded history must be consistent (bob received 1)
         f["requests"] = [{"id": "rq_1", "requester_id": "u_bob", "payer_id": "u_ada",
                           "amount": 5, "note": "", "status": "pending"}]
         f["payments"] = [{"id": "p_1", "from_user_id": "u_ada", "to_user_id": "u_bob",
@@ -117,7 +117,7 @@ class SuccessTest(SettlementBase):
             self.assertIsNone(p["request_id"])
             self.assertEqual(p["created_at"], body["committed_at"])
             self.assertEqual(p["currency"], "EUR")
-        self.assertRegex(body["committed_at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[+-]\d\d:\d\d$")
+        self.assertRegex(body["committed_at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?[+-]\d\d:\d\d$")
         self.assertEqual(balances(), {"op": 0, "ada": 0, "bob": 60, "cy": 40, "dee": 0})
 
     def test_chain_through_a_zero_wallet_is_affordable(self):

@@ -47,7 +47,7 @@ class PaymentTest(unittest.TestCase):
                          (1500, "EUR", "dinner", "public"))
         self.assertIsNone(b["request_id"])
         self.assertIsNone(b["settlement_id"])
-        self.assertRegex(b["created_at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\+00:00$")
+        self.assertRegex(b["created_at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?\+00:00$")
         self.assertTrue(b["payment_id"] and len(b["payment_id"]) <= 64)
         self.assertNotEqual(b["payment_id"], "p_1")
         self.assertEqual(balances(), {"ada": 8500, "bob": 4000, "cy": 0})

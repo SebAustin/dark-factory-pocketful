@@ -24,6 +24,7 @@ def authorization_view(state: dict, a: dict) -> dict:
         "note": a["note"], "visibility": a["visibility"], "status": a["status"],
         "expires_at": a["expires_at"], "payment_id": ids[-1] if ids else None,
         "payment_ids": list(ids), "created_at": a["created_at"],
+        "closed_at": a.get("closed_at"),
     }
 
 

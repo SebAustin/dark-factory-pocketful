@@ -231,9 +231,9 @@ class InvalidImportTest(unittest.TestCase):
         self.assertEqual(dump_state(), self.before)
 
     def test_every_missing_state_key(self):
-        from app.transfer_io import STAGE2_DEFAULTS
+        from app.transfer_io import DERIVED_KEYS, STAGE2_DEFAULTS
         for key in self.snap["state"]:
-            if key in STAGE2_DEFAULTS:  # optional: a stage-1 export lacks them (plan D10)
+            if key in STAGE2_DEFAULTS or key in DERIVED_KEYS:  # optional or rebuilt (D10, S3)
                 continue
             self.rejects(lambda b, key=key: b["state"].pop(key))
 
@@ -248,7 +248,10 @@ class InvalidImportTest(unittest.TestCase):
             self.assertEqual(STORE.state["settings"], {"authorization_ttl_seconds": 600})
 
     def test_wrong_type_for_every_state_key(self):
+        from app.transfer_io import DERIVED_KEYS
         for key in self.snap["state"]:
+            if key in DERIVED_KEYS:  # rebuilt from payments on import, never read
+                continue
             for wrong in ("x", 5, None, True):
                 original = self.snap["state"][key]
                 if type(original) is type(wrong):  # a same-typed value can be legitimate

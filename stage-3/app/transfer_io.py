@@ -9,7 +9,7 @@ from decimal import Decimal
 
 from . import errors
 from .routes import route
-from . import store
+from . import instants, ledger, store
 from .store import (AUTH_STATUSES, DEFAULT_TTL, REQUEST_STATUSES, STORE, empty_state,
                     parse_rfc3339)
 from .validation import BALANCE_LIMIT, HANDLE_RE, MAX_ID, VISIBILITIES, integral
@@ -20,7 +20,9 @@ MINOR_UNITS = (0, 2, 3)
 COUNTER_KINDS = ("p", "rq", "sp", "st", "u")
 # Stage 2 keys a stage-1 export does not have: filled with these defaults on import (D10).
 STAGE2_DEFAULTS = {"authorizations": {}, "settings": {"authorization_ttl_seconds": DEFAULT_TTL}}
-STATE_KEYS = tuple(k for k in empty_state() if k not in STAGE2_DEFAULTS)
+DERIVED_KEYS = ("user_payments",)  # rebuilt on import, never trusted
+STATE_KEYS = tuple(k for k in empty_state() if k not in STAGE2_DEFAULTS and k not in DERIVED_KEYS)
+EVENT_KINDS = ("created", "capture", "release")
 MAX_EXPONENT = 18  # 2^53 has 16 digits; anything past 1e18 can never be a valid state value
 
 
@@ -236,6 +238,75 @@ def _check_authorizations(state: dict) -> int:
     return top
 
 
+def _check_revisions(state: dict) -> None:
+    """Stage 3 revisions when present (else synthesised: revision 1 = the payment as made)."""
+    for p in state["payments"].values():
+        if "revisions" not in p:
+            p["revisions"] = [ledger.revision_one(p)]
+            continue
+        revs = _list(p["revisions"], "payment revisions")
+        if not revs:
+            _bad("payment revisions must not be empty")
+        last = None
+        for i, r in enumerate(revs, start=1):
+            _dict(r, "revision")
+            if _int(r.get("revision"), 1, BALANCE_LIMIT, "revision number") != i:
+                _bad("revision numbers must be 1, 2, ...")
+            _int(r.get("amount"), 0, BALANCE_LIMIT, "revision amount")
+            _timestamp(r.get("effective_at"), "revision effective_at")
+            _timestamp(r.get("recorded_at"), "revision recorded_at")
+            _str(r.get("reason"), "revision reason")
+            k = instants.key(r["recorded_at"])
+            if last is not None and k <= last:
+                _bad("revision recorded_at must strictly increase")
+            last = k
+        if revs[0]["amount"] != p["amount"]:
+            _bad("revision 1 must be the payment as made")
+
+
+def _reconstruct_events(state: dict, a: dict) -> None:
+    """Hold lifecycle for an authorization exported before stage 3 (plan §5, S3-D7)."""
+    events, at = [], a["created_at"]
+    events.append({"kind": "created", "at": at, "held_delta": a["amount"], "payment_id": None})
+    captured = 0
+    for pid in a["payment_ids"]:
+        p = state["payments"].get(pid)
+        if p is None:
+            _bad("authorization payment_ids must name payments")
+        captured += p["amount"]
+        at = p["created_at"]
+        events.append({"kind": "capture", "at": at, "held_delta": -p["amount"],
+                       "payment_id": pid})
+    a["closed_at"] = None
+    if a["status"] != "open":
+        # expired: at its deadline; captured: at the last capture; voided: the void time was
+        # not exported by stage 2, so the earliest consistent release, its latest known event.
+        close = a["expires_at"] if a["status"] == "expired" else at
+        rest = a["amount"] - captured
+        if rest > 0:
+            events.append({"kind": "release", "at": close, "held_delta": -rest,
+                           "payment_id": None})
+        a["closed_at"] = close
+    a["events"] = events
+
+
+def _check_events(state: dict) -> None:
+    for a in state["authorizations"].values():
+        if "events" not in a:
+            _reconstruct_events(state, a)
+            continue
+        for e in _list(a["events"], "authorization events"):
+            _dict(e, "authorization event")
+            if e.get("kind") not in EVENT_KINDS:
+                _bad("authorization event kind is invalid")
+            _timestamp(e.get("at"), "authorization event at")
+            _int(e.get("held_delta"), -BALANCE_LIMIT, BALANCE_LIMIT, "event held_delta")
+            _opt_str(e.get("payment_id"), "event payment_id")
+        if a.get("closed_at") is not None:
+            _timestamp(a["closed_at"], "authorization closed_at")
+        a.setdefault("closed_at", None)
+
+
 def is_stage1_state(submitted) -> bool:
     """A stage-1 export's state has none of the keys stage 2 added (the upgrade path)."""
     return isinstance(submitted, dict) and not any(k in submitted for k in STAGE2_DEFAULTS)
@@ -277,7 +348,13 @@ def validated_state(submitted) -> dict:
     for p in state["payments"].values():
         p.setdefault("authorization_id", None)
         _opt_str(p["authorization_id"], "payment authorization_id")
-    store.recompute_held(state, store.clock())  # held is derived, never trusted (plan §5)
+    _check_revisions(state)
+    _check_events(state)
+    store.recompute_held(state, store.now_key())  # held is derived, never trusted (plan §5)
+    ledger.rebuild_user_payments(state)
+    ledger.compute_openings(state)
+    if any(not ledger.history_is_nonnegative(state, uid) for uid in state["users"]):
+        _bad("the payment history makes a balance negative")
     if any(u["held"] > u["balance"] for u in state["users"].values()):
         _bad("open holds exceed a balance (available would be negative)")
     return state

@@ -70,7 +70,7 @@ class SplitTest(unittest.TestCase):
         for q in b["requests"]:
             self.assertEqual((q["requester_id"], q["requester_handle"], q["amount"], q["note"], q["status"],
                               q["payment_id"], q["currency"]), ("u_ada", "ada", 1000, "dinner", "pending", None, "EUR"))
-        self.assertRegex(b["created_at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[+-]\d\d:\d\d$")
+        self.assertRegex(b["created_at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?[+-]\d\d:\d\d$")
 
     def test_uneven_shares_follow_handle_order(self):
         r = split("ada", 1000, ["cy", "ada", "bob"])

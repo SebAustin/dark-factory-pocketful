@@ -52,11 +52,12 @@ def signup(ctx, state, user):
         _check_free(state, email, handle)  # re-check: the state may have changed meanwhile
         uid = new_id(state, "u")
         created = {"id": uid, "email": email, "password_hash": password_hash,
-                   "display_name": display_name, "handle": handle, "balance": 0, "held": 0,
+                   "display_name": display_name, "handle": handle, "balance": 0, "held": 0, "opening": 0,
                    "created_at": now_ts()}
         state["users"][uid] = created
         state["handles"][handle] = uid
         state["emails"][email.lower()] = uid
+        state["user_payments"][uid] = []
         return 201, _session(created, new_token(state, uid))
 
 

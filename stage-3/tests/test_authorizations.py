@@ -13,7 +13,7 @@ from app.store import STORE
 
 VIEW_KEYS = {"authorization_id", "from_user_id", "from_handle", "to_user_id", "to_handle",
              "amount", "captured_amount", "remaining_amount", "currency", "note", "visibility",
-             "status", "expires_at", "payment_id", "payment_ids", "created_at"}
+             "status", "expires_at", "payment_id", "payment_ids", "created_at", "closed_at"}
 
 
 def key():
