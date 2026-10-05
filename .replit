@@ -1,0 +1,13 @@
+# Replit demo of the band's stage 4 service (deployment glue, not part of the band's output).
+# See replit/README.md. The service needs Python 3.12 and its standard library only.
+modules = ["python-3.12"]
+run = ["bash", "replit/start.sh"]
+
+[deployment]
+# Choose "Reserved VM" when publishing: the service keeps its state in memory,
+# so it must stay one always-on instance.
+run = ["bash", "replit/start.sh"]
+
+[[ports]]
+localPort = 8080
+externalPort = 80
