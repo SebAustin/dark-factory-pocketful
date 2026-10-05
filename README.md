@@ -27,7 +27,7 @@ stage on the event's shipped checks in isolated mode (147/147, 35/35, 6/6, 5/5).
 | [`dispatch/`](dispatch/) | The exact task text sent to the lead for each stage (the only human input) |
 | [`reviews/`](reviews/) | The verifier's verdicts and screenshots, per stage |
 | [`runlog/`](runlog/) | The lead's per-stage log: work items, owners, verdicts, rejections, gate tables, wall time |
-| [`room.json`](room.json) | The Band room, downloaded unchanged (full session) |
+| [`room.json`](room.json) | The Band room, downloaded unchanged (full session). Band's export holds the most recent 4,000 messages, so it starts at the stage 2 carry-forward (2026-10-03 22:55Z); stage 1 is traced by [`runlog/stage1.md`](runlog/stage1.md), [`reviews/stage1/`](reviews/stage1/) and its commits |
 | `stage-1/` … `stage-4/` | One complete service per stage; each has a `Dockerfile` and a `RUN.md` |
 
 Inside each stage folder, `docs/ledger.md` is the requirements ledger, `docs/decisions/`
