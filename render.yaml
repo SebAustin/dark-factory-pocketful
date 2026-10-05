@@ -1,0 +1,17 @@
+# Render Blueprint for a live demo of the band's stage 4 service (post-run deployment glue).
+# Same startup as replit/: the service unchanged on an internal port, demo data loaded,
+# and a public gateway on $PORT that blocks the /_test/* control endpoints.
+services:
+  - type: web
+    name: dark-factory-pocketful
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: python3 --version
+    startCommand: bash replit/start.sh
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: RESEED_HOURS
+        value: "6"

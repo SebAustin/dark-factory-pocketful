@@ -23,3 +23,10 @@ its `RUN.md` says (`python3 -m app.server`, no Docker).
 4. Copy the published URL.
 
 Run it locally the same way: `bash replit/start.sh`, then open http://localhost:8080.
+
+## Deploy on Render (free)
+
+[`../render.yaml`](../render.yaml) is a Render Blueprint for the same startup on Render's free plan.
+Open https://render.com/deploy?repo=https://github.com/SebAustin/dark-factory-pocketful, sign in,
+and choose **Deploy Blueprint**. On the free plan the service sleeps after 15 minutes without visitors;
+the next visit wakes it in about a minute, with fresh demo data.
