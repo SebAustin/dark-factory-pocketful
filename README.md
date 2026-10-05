@@ -4,8 +4,16 @@ Entry for the **WeAreDevelopers x BAND: Dark Factory** hackathon, track **pocket
 wallet and payments service). Team: Sébastien Henry.
 
 Everything under `stage-N/` was written by five coding-agent seats working in one Band
-Desktop room. The only human inputs were the four stage tasks in [`dispatch/`](dispatch/),
-each sent once.
+Desktop room. The only messages a human sent to the room were the four stage tasks in
+[`dispatch/`](dispatch/), each sent once. Outside the room the operator took three
+infrastructure actions, each listed in [`FACTORY.md`](FACTORY.md) section 8: re-attaching
+the seat workers after a Band daemon restart, restarting Docker Desktop between stages 3
+and 4, and restarting the lead's worker when stage 4 stalled.
+
+**Where the run ended.** Stages 1 to 3 were each accepted by the band's own stage gate.
+Every stage 4 item was accepted, but the stage 4 gate never ran: a verdict that never
+reached the lead stalled the band (FACTORY.md section 8). Each stage folder claims its
+stage on the event's shipped checks in isolated mode (147/147, 35/35, 6/6, 5/5).
 
 ## How to read this repository
 
@@ -15,7 +23,7 @@ each sent once.
 | [`mandates/`](mandates/) | One standing instruction per seat (generic; no track detail) |
 | [`playbook/PROTOCOL.md`](playbook/PROTOCOL.md) | Shared rules: packets, work items, gates, verdicts, repository discipline |
 | [`.claude/skills/`](.claude/skills/) | Factory skills the seats use: `spec-ledger`, `slice-tdd`, `gate-review`, `diagnose`, `screen-craft` |
-| [`seats/start-seat.sh`](seats/start-seat.sh) | Starts a seat as a Claude Code session joined to Band Desktop |
+| [`seats/`](seats/) | Seat setup: `create-seats.sh` (Band-owned headless seats), `claude-seat.sh` (isolated Claude Code config), `preflight.sh`, `watchdog.sh`, `seat-usage.py` (token and cost per seat and stage), `start-seat.sh` (interactive alternative) |
 | [`dispatch/`](dispatch/) | The exact task text sent to the lead for each stage (the only human input) |
 | [`reviews/`](reviews/) | The verifier's verdicts and screenshots, per stage |
 | [`runlog/`](runlog/) | The lead's per-stage log: work items, owners, verdicts, rejections, gate tables, wall time |

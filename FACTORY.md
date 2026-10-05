@@ -107,14 +107,26 @@ new turn, and `/jam` registers a session as a Band agent.
    `auto` (routine actions approved, risky ones refused, nothing waits on a dialog), loads
    the repository's `.claude/` settings and skills, and loads only Band's own MCP relay
    (`--claude-strict-mcp-config`), not the operator's MCP servers.
-2b. **Pre-flight, every time before a dispatch** (each item cost us a failed first turn):
-   - `claude auth status` shows `"loggedIn": true`. Owned seats use the operator's CLI
-     login; an expired session fails the first turn with an authentication error.
+2b. **Pre-flight, every time before a dispatch** (each item cost us a failed first turn
+   or a stall; `seats/preflight.sh <room>` checks most of them):
+   - `CLAUDE_CONFIG_DIR="$HOME/.claude-factory" claude auth status` shows
+     `"loggedIn": true`; an expired session fails the first turn with an authentication
+     error.
    - `claude --version` is new enough for the models in the mandates (`claude update`),
      then `band restart` any seat runtime started on the old binary.
    - Every seat is a participant of the room **and** bound to it (`band sessions --all`
      shows the room id per seat). A message in a room the seats are not in goes nowhere,
      silently.
+   - The seats are in **no other room** with unfinished work: reviving a seat revives every
+     room it is bound to (we restarted a finished rehearsal by accident).
+   - Docker is running (`docker info`). Docker Desktop stopped overnight between two of
+     our stages.
+2c. **Keep the workers alive** for the length of the run: `seats/watchdog.sh &`. A Band
+   daemon restart (Band Desktop updating its Claude Code plugin did this mid-run) stops
+   every owned worker and nothing restarts them; the watchdog re-attaches stopped workers
+   and never posts in the room. To restart one seat in one room only, use
+   `band restart --session factory-<seat> --host-session default-<room id>`, not
+   `band attach`, which revives all of that seat's rooms.
 3. **Create the room** in Band Desktop with a fresh name and add the five seats. (The lead's
    mandate also re-checks membership and adds any missing seat itself.)
 4. **Smoke test.** Ask the lead in the room to ping each seat by handle and confirm every
@@ -169,8 +181,30 @@ probe, hence strict MCP config.
   force push; at each stage gate the verifier proves the last accepted revision is an
   ancestor of the new one.
 
-**A bad result it caught:** *(filled from the submitted run: quoted from `reviews/` and
-the room log)*
+### Bad results it caught in the submitted run
+
+Every rejection below was found by a seat, with a reproducing command, and fixed by a new
+commit from the owner; the verdicts are in [`reviews/`](reviews/), the reasons in
+[`runlog/`](runlog/). Item rejections across the run: 12; stage gate failures: 2.
+
+| Stage | Verdict | What it caught |
+|---|---|---|
+| 1 | REJECT `0fa1f0b` (S1.1) | HEAD/OPTIONS returned a 501 HTML page and a malformed request line a stdlib HTML 400; the spec requires a JSON error envelope on every 4xx/5xx and no 5xx. Root cause and curl repro in the verdict. |
+| 1 | REJECT `7e7c5c1` (S1.3) | The activity feed sorted RFC 3339 timestamps as strings: `19:00+02:00` (17:00Z) ordered after `18:30+00:00`. The verifier built a two-payment mixed-offset fixture. |
+| 1 | REJECT `52bf3ed` (S1.7) | A legal zero-share split made an unchanged export fail re-import with 422, against "must accept an unchanged export produced by this service". Found by combining two features; the fix became a round trip after every kind of write. |
+| 1 | REJECT `5ff293a` (S1.13) | A concurrency fix serialised password hashing: in an A/B under the same load, calls over the 5 s limit went from 0/0/0 to 9/3/14 across three runs. A measured regression, not a test failure. |
+| 2 | REJECT `0fa1361` (S2.U2+U3) | The signed-in header overflowed between 641 and about 1030 px, with "Log out" drawn over the user name at 1024. The task only asked for 375 px and desktop; the verifier added 768 and 1024 on its own and kept them for every later review. |
+| 2 | REJECT `74d83a5` (S2.U10) | After editing a field, the click on the submit button was lost: a `change` handler cleared a notice above the button, the button moved before mouseup. Found by the analyst's acceptance test, diagnosed by the verifier with an A/B repro (1 request instead of 2). |
+| 2 | REJECT `c6a8996` (S2.U11) | A refused payment's error rendered entirely under the fixed phone tab bar (0 px visible at 390 × 844). The verifier noted that no DOM-level check could see it ("the element is visible"); it was caught only by judging the screenshot. |
+| 2 | Gate REJECT `6c295d6` | `stage-2/RUN.md` was still the stage 1 copy: its repository-root command built and started stage 1. |
+| 3 | REJECT `fe6ff39` (S3.3) | Every statement read stored its whole window until reset: 5,500 reads gave a 69.3 MB export (over the import cap, so the service refused its own export) and 382 MiB of memory. The fix stores a constant-size recipe: 0.4 MB, 20.1 MiB. |
+| 4 | REJECT `d1ffc66`, `2793971`, `1067a3f` (S4.3) | Three successive growth findings on exported snapshots: 378.9 MB in 13.2 s, then states retained per import (78 MB), then distinct states not sharing their index (26 → 76 MB). Each came with its own measuring tool; the fourth revision `81f3bbf` was accepted. |
+
+Also caught without a rejection: a cross-stage conflict (stage 1 "import removes all
+previous credentials" against stage 2 "a browser signed in before the upgrade must remain
+signed in"), settled by the analyst's decision record and a lead ruling before any code
+was written; and the designer's reference model, which proved its own checker by planting
+divergences before trusting a clean result.
 
 ## 6. Keeping the factory generic
 
@@ -182,26 +216,44 @@ these mandates to a team building something else; every sentence still applies.
 
 ## 7. Measured cost and time
 
-Measured on the submitted run. Wall time runs from the dispatch message to the lead's
-final report (room log timestamps, cross-checked with `runlog/`). Model usage comes from
-Claude Code's local session logs (`npx ccusage@latest session`): each seat is its own
-Claude Code session, so usage is attributed per seat by session; it is priced at API list
-rates although the seats ran on a Claude subscription.
+Measured on the submitted run. Wall time runs from the dispatch message to the stage
+acceptance (room log timestamps, cross-checked with `runlog/`). Model usage comes from
+each seat's own Claude Code transcripts, read by [`seats/seat-usage.py`](seats/seat-usage.py)
+(one transcript per seat, each model call counted once, split by stage window). Cost is
+the API list-price equivalent (Claude Opus 5.5: $4 input, $5 cache write, $0.20 cache
+read, $20 output per million tokens; Claude Sonnet 5.5: $2, $2.50, $0.20, $10; cache
+writes priced at the 5-minute rate). The seats actually ran on a Claude subscription.
 
-| Stage | Wall time | Work items | Rejections | Tokens (in / out) | Equivalent API cost |
+| Stage | Wall time | Work items | Item rejections | Gate failures | Model calls | Cache read / cache write / output tokens | Equivalent API cost |
+|---|---|---|---|---|---|---|---|
+| 1 | 1 h 29 min (incl. a 16 min infrastructure stall) | 17 | 4 | 0 | 614 | 117.0 M / 1.43 M / 0.64 M | $40.91 |
+| 2 | 2 h 15 min | 18 | 4 | 1 | 612 | 268.7 M / 1.19 M / 0.67 M | $71.02 |
+| 3 | 1 h 14 min | 8 | 1 | 1 | 402 | 257.5 M / 0.86 M / 0.58 M | $65.18 |
+| 4 | 1 h 25 min to the last item accept; **no gate** (section 8) | 12 | 3 | – | 308 | 207.7 M / 4.14 M / 0.41 M | $67.32 |
+| **Run** | **6 h 23 min** of band time | **55** | **12** | **2** | **1,936** | **850.9 M / 7.62 M / 2.30 M** | **$244.44** |
+
+Uncached input was under 4,000 tokens in total: almost everything a seat reads comes from
+the prompt cache, which is why cache reads dominate the volume but not the bill.
+
+| Seat | Model | Model calls | Output tokens | Equivalent API cost | Share |
 |---|---|---|---|---|---|
-| 1 | | | | | |
-| 2 | | | | | |
-| 3 | | | | | |
-| 4 | | | | | |
+| Lead | Opus 5.5 | 389 | 0.25 M | $35.12 | 14 % |
+| Analyst | Opus 5.5 | 258 | 0.46 M | $39.30 | 16 % |
+| Builder | Opus 5.5 | 405 | 0.54 M | $56.78 | 23 % |
+| Designer | Sonnet 5.5 | 370 | 0.57 M | $44.92 | 18 % |
+| Verifier | Opus 5.5 | 514 | 0.48 M | $68.31 | 28 % |
 
-| Seat | Share of tokens | Equivalent API cost |
-|---|---|---|
-| Lead | | |
-| Analyst | | |
-| Builder | | |
-| Designer | | |
-| Verifier | | |
+The verifier is the most expensive seat: it rebuilds and re-runs everything it judges, so
+it reads more than anyone (201 M cache-read tokens). That is the price of independent
+verification, and the rejections in section 5 are what it bought. Commits by seat: Lead 94,
+Verifier 51, Builder 48, Designer 32, Analyst 19.
+
+The rehearsal on the practice track cost a further $45.56 (as attributed by Band, before
+the seats were isolated).
+
+After each stage we ran the event checker ourselves, in isolated mode, outside the band.
+Every stage claimed: 147/147, 35/35, 6/6 and 5/5 shipped checks for stages 1 to 4 (stage 4
+on the shipped checks only, since its stage gate never ran).
 
 ## 8. What we tried that did not work
 
@@ -236,7 +288,43 @@ themselves, all now in the pre-flight list in section 3):
 - **Minimal PATH for daemon-started seats.** Seats could not find `docker`; the lead
   diagnosed it and broadcast a workaround. The wrapper now restores the PATH.
 
-*(submitted-run findings added here)*
+What went wrong in the submitted run, in the order it happened. Operator actions are
+listed in full: none of them was a message in the room.
+
+- **A daemon restart stopped every seat (stage 1).** Band Desktop updated its Claude Code
+  plugin mid-run; the daemon restarted, but the five owned workers stayed stopped. One seat
+  was cancelled mid-turn and every other seat believed someone else was working: 16
+  minutes with no commit or message. *Operator action:* re-attached each seat's worker
+  (no message); unsettled messages were redelivered and the run resumed. *Fix:*
+  `seats/watchdog.sh`.
+- **Reviving a seat revives every room it is in.** That re-attach also woke the rehearsal
+  room, whose band quietly finished its last two practice stages in parallel with the
+  judged run (separate repository, no cross-contamination, but double the quota and a port
+  range collision risk). *Fix:* the pre-flight item on old rooms, and single-room
+  `band restart --host-session`.
+- **Stale run instructions, twice (stages 2 and 3).** Each stage folder started as a copy,
+  and its `RUN.md` still described, and built, the previous stage. The verifier failed the
+  gate both times; the second time the lead named the cause itself ("no work item covered
+  `RUN.md` after the carry-forward copy") and, for stage 4, made `RUN.md` part of the
+  carry-forward item. The lesson lived in one seat's context; it is now in PROTOCOL
+  section 6.
+- **Docker Desktop stopped overnight** between stages 3 and 4. *Operator action:*
+  restarted it before dispatching stage 4. *Fix:* a pre-flight item.
+- **Stage 4 ended without a stage gate.** Every stage 4 item was accepted, but the
+  verifier sent its last three S4.3 verdicts to the builder only. It typed the lead's
+  handle into the text, which in Band reaches nobody; the builder chose not to reply to
+  the final ACCEPT. The lead, idle since its last message, never learned that the stage
+  was ready, and every seat waited: the run stalled with stage 4 complete and unjudged. The
+  same slip meant the item's retry budget was never enforced (four attempts instead of
+  three). *Operator action (with the team's approval):* restarted the lead's worker in that
+  one room, with no message. It resumed its session but, with nothing addressed to it,
+  took no turn; we left the run there rather than send a nudge. *Fix:* PROTOCOL sections 0
+  and 5 (real mentions; owners forward every verdict to the lead; the budget is counted
+  from the verdict files) and the `gate-review` skill.
+- **Our cost meter could not see the seats.** Band's usage report reads Claude Code's
+  default config directory; isolated seats write their transcripts elsewhere, so the judged
+  room showed no cost at all. *Fix:* `seats/seat-usage.py` reads the seats' own
+  transcripts (section 7).
 
 ## 9. Limitations
 
@@ -245,6 +333,25 @@ themselves, all now in the pre-flight list in section 3):
 - Opus-heavy seats are the main cost; a cheaper configuration (Sonnet builder) is untested.
 - Permission mode `auto` refuses actions it judges risky; a refused action is reported, not
   retried with broader rights.
+- Liveness depends on messages. A seat that is not addressed never wakes, so one missing
+  mention can idle the whole band; nothing inside the room notices an idle band.
+
+## 10. Changes made after the run
+
+These were written after the submitted run ended and were **not** in effect during it.
+They are in a separate commit so the factory that ran is still in the history.
+
+- PROTOCOL section 0: a message reaches only the seats in the mention list.
+- PROTOCOL section 5: every verdict reaches the lead (owners forward any that does not);
+  the item budget is counted from the verdict files.
+- PROTOCOL section 6: the carry-forward item rewrites the run instructions.
+- `gate-review` skill: send the verdict with both owner and lead in the mention list.
+- `seats/seat-usage.py` and the new pre-flight steps in section 3.
+- `seats/watchdog.sh`: written during stage 1 after the daemon restart and run by the
+  operator, outside the room, for stages 2 to 4; added to the repository now.
+
+The seats never saw these files during the run: only the mandates, playbook and skills
+installed at the start (commit `a01ead4`) were in their repository.
 
 ## Credits
 

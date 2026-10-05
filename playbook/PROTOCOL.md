@@ -23,6 +23,10 @@ The lead records the blocker in the run log and in the final report.
 a seat that finishes a turn silently stops the factory. Every turn ends with a message to
 the lead or to the next owner: a packet, a verdict, a status, or a blocker.
 
+**Address with a real mention.** A message reaches only the seats named in the platform's
+mention field. A handle typed into the text (for example a line ending in a handle) wakes
+nobody. Before sending, check that every seat that must act next is in the mention list.
+
 ## 1. Seats and ownership
 
 | Seat | Handle | Owns | Leaves to others |
@@ -120,9 +124,16 @@ NEXT     who acts next and on which findings
 A rejection names behaviour. A finding without a reproducing command or a specification
 quote is a note, and notes never block.
 
+**Every verdict reaches the lead.** The verifier sends each verdict to the owner and the
+lead, both as mentions. An owner who receives a verdict that does not also mention the
+lead forwards it to the lead in the same turn, ACCEPT included: the lead starts the stage
+gate only when it knows the last item is accepted, and nothing else tells it.
+
 **Item budget.** A work item may be rejected three times. On the fourth failure the lead
 re-plans: split the item, move it to another owner, or send it to the analyst for
-diagnosis. A re-planned item gets a new id and a fresh budget.
+diagnosis. A re-planned item gets a new id and a fresh budget. The count comes from the
+verdict files in the reviews folder, not from memory; an owner holding a third rejection
+tells the lead before attempting a fourth.
 
 **Stage budget.** A stage gate may fail three times. After the third failure, or when the
 same gate stays red for reasons outside the band's control (tooling, infrastructure), the
@@ -148,6 +159,10 @@ All seats share one working tree, so every seat follows these rules:
   the last accepted stage folder, deleting any nested version control directory in the
   copy, and committing the copy unchanged; only then is it extended. An accepted stage
   folder is frozen.
+- **Run instructions move with the stage.** The carry-forward item also rewrites the
+  copy's run instructions for the new stage (title, every build and start command, what
+  the artifact now serves, tool paths), and the verifier reviews them as part of that item.
+  A copied file that still names the previous stage builds the wrong product.
 - Report the full revision hash of every commit you hand off.
 - Credentials stay out of the repository.
 

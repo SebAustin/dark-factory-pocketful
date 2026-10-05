@@ -69,4 +69,5 @@ Report the axes under separate headings so a clean one never hides a failing one
 Use the format of PROTOCOL section 5. ACCEPT requires every applicable check green on this
 revision. Each REJECT finding carries the requirement id, the specification quote, observed
 versus expected, and a reproducing command. Save the verdict under `reviews/stage<N>/`,
-commit it as yourself, and send it to the owner and to the lead.
+commit it as yourself, and send it to the owner and to the lead with **both in the
+mention list** (a handle written only in the text reaches nobody; PROTOCOL section 0).
